@@ -15,7 +15,13 @@ function loadSchema(name) {
 
 /** Builds validators for each content type. */
 export function createValidators() {
-  const ajv = new Ajv2020({ allErrors: true, strict: true, strictTypes: false, strictRequired: false, discriminator: true });
+  const ajv = new Ajv2020({
+    allErrors: true,
+    strict: true,
+    strictTypes: false,
+    strictRequired: false,
+    discriminator: true,
+  });
   addFormats(ajv);
   ajv.addSchema(loadSchema("common.schema.json"));
   return {
@@ -42,7 +48,9 @@ function readYaml(file) {
 }
 
 function formatAjvErrors(errors) {
-  return (errors ?? []).map((e) => `${e.instancePath || "/"} ${e.message}${e.params ? " " + JSON.stringify(e.params) : ""}`);
+  return (errors ?? []).map(
+    (e) => `${e.instancePath || "/"} ${e.message}${e.params ? " " + JSON.stringify(e.params) : ""}`,
+  );
 }
 
 /**
@@ -99,8 +107,10 @@ export function validateTree(root, { partial = false } = {}) {
       const key = `${r.kind}/${r.metadata.namespace ?? ""}/${r.metadata.name}`;
       if (seen.has(key)) report(file, `duplicate resource ${key}`);
       seen.add(key);
-      if (!CLUSTER_SCOPED.has(r.kind) && !r.metadata.namespace) report(file, `${r.kind} ${r.metadata.name} needs metadata.namespace`);
-      if (CLUSTER_SCOPED.has(r.kind) && r.metadata.namespace) report(file, `${r.kind} ${r.metadata.name} is cluster-scoped`);
+      if (!CLUSTER_SCOPED.has(r.kind) && !r.metadata.namespace)
+        report(file, `${r.kind} ${r.metadata.name} needs metadata.namespace`);
+      if (CLUSTER_SCOPED.has(r.kind) && r.metadata.namespace)
+        report(file, `${r.kind} ${r.metadata.name} is cluster-scoped`);
     }
   }
 
@@ -118,10 +128,12 @@ export function validateTree(root, { partial = false } = {}) {
     const expectedId = `${doc.course}/${doc.lesson}`;
     if (doc.id !== expectedId) report(file, `id must be ${expectedId}`);
     const rel = relative(join(root, "challenges"), file).split(sep).join("/");
-    if (rel !== `${doc.course}/${doc.lesson}.yaml`) report(file, `file must be challenges/${doc.course}/${doc.lesson}.yaml`);
+    if (rel !== `${doc.course}/${doc.lesson}.yaml`)
+      report(file, `file must be challenges/${doc.course}/${doc.lesson}.yaml`);
 
     const course = courses.get(doc.course);
-    if (course && !course.lessons.includes(doc.lesson)) report(file, `course ${doc.course} does not list lesson ${doc.lesson}`);
+    if (course && !course.lessons.includes(doc.lesson))
+      report(file, `course ${doc.course} does not list lesson ${doc.lesson}`);
     if (!course && !partial) report(file, `course ${doc.course} not found`);
 
     if (!fixtures.has(doc.initialFixture)) report(file, `fixture ${doc.initialFixture} not found`);
@@ -136,10 +148,12 @@ export function validateTree(root, { partial = false } = {}) {
       if (goalIds.has(goal.id)) report(file, `duplicate goal id ${goal.id}`);
       goalIds.add(goal.id);
       for (const t of targets(goal)) {
-        if (CLUSTER_SCOPED.has(t.kind) && t.namespace) report(file, `goal ${goal.id}: ${t.kind} is cluster-scoped; remove namespace`);
+        if (CLUSTER_SCOPED.has(t.kind) && t.namespace)
+          report(file, `goal ${goal.id}: ${t.kind} is cluster-scoped; remove namespace`);
       }
       if (goal.type === "answer") {
-        if (!(goal.id in (doc.solution.answers ?? {}))) report(file, `goal ${goal.id}: solution.answers must include an answer`);
+        if (!(goal.id in (doc.solution.answers ?? {})))
+          report(file, `goal ${goal.id}: solution.answers must include an answer`);
         if (goal.input === "choice" && !goal.choices.includes(String(goal.expected.static))) {
           report(file, `goal ${goal.id}: expected answer must be one of the choices`);
         }

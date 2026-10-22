@@ -17,7 +17,9 @@ if (args[0] === "--expect-invalid") {
   }
   const validators = createValidators();
   let failures = 0;
-  const files = readdirSync(dir).filter((f) => f.endsWith(".yaml")).sort();
+  const files = readdirSync(dir)
+    .filter((f) => f.endsWith(".yaml"))
+    .sort();
   for (const name of files) {
     const file = join(dir, name);
     const type = typeFromName(file);

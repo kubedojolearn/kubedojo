@@ -15,6 +15,7 @@
 | Security | [security/threat-model.md](security/threat-model.md) | Threats, controls and the parts that implement them |
 | API | [api/openapi.yaml](api/openapi.yaml) | OpenAPI 3.1 contract for the Go API |
 | API | [api/websocket.md](api/websocket.md) | WebSocket protocol v1 (schema: [api/ws-protocol.schema.json](api/ws-protocol.schema.json)) |
+| Operations | [operations/keys.md](operations/keys.md) | Secrets, key generation and rotation |
 | Content | [../packages/content-schema/](../packages/content-schema/README.md) | JSON Schemas for courses, challenges and fixtures |
 
 ## Where truth lives (one-paragraph version)

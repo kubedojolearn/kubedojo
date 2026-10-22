@@ -90,10 +90,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "title",
-          "url"
-        ],
+        "required": ["title", "url"],
         "properties": {
           "title": {
             "type": "string",
@@ -155,9 +152,7 @@
       "description": "Hidden reference solution replayed in CI; must make every goal pass.",
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "commands"
-      ],
+      "required": ["commands"],
       "properties": {
         "files": {
           "type": "array",
@@ -188,11 +183,7 @@
     "reward": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "baseXP",
-        "firstTryBonusXP",
-        "hintPenaltyPerHintXP"
-      ],
+      "required": ["baseXP", "firstTryBonusXP", "hintPenaltyPerHintXP"],
       "properties": {
         "baseXP": {
           "type": "integer",
@@ -252,9 +243,7 @@
     "target": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "kind"
-      ],
+      "required": ["kind"],
       "properties": {
         "kind": {
           "$ref": "common.schema.json#/$defs/kind"
@@ -271,41 +260,26 @@
       },
       "oneOf": [
         {
-          "required": [
-            "name"
-          ],
+          "required": ["name"],
           "not": {
-            "required": [
-              "labelSelector"
-            ]
+            "required": ["labelSelector"]
           }
         },
         {
-          "required": [
-            "labelSelector"
-          ],
+          "required": ["labelSelector"],
           "not": {
-            "required": [
-              "name"
-            ]
+            "required": ["name"]
           }
         }
       ]
     },
     "scalar": {
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
+      "type": ["string", "number", "boolean"]
     },
     "assertion": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "path",
-        "operator"
-      ],
+      "required": ["path", "operator"],
       "properties": {
         "path": {
           "$ref": "#/$defs/resourcePath"
@@ -331,24 +305,17 @@
           "if": {
             "properties": {
               "operator": {
-                "enum": [
-                  "exists",
-                  "notExists"
-                ]
+                "enum": ["exists", "notExists"]
               }
             }
           },
           "then": {
             "not": {
-              "required": [
-                "value"
-              ]
+              "required": ["value"]
             }
           },
           "else": {
-            "required": [
-              "value"
-            ]
+            "required": ["value"]
           }
         },
         {
@@ -375,13 +342,7 @@
           "if": {
             "properties": {
               "operator": {
-                "enum": [
-                  "equals",
-                  "notEquals",
-                  "contains",
-                  "greaterThanOrEqual",
-                  "lessThanOrEqual"
-                ]
+                "enum": ["equals", "notEquals", "contains", "greaterThanOrEqual", "lessThanOrEqual"]
               }
             }
           },
@@ -397,10 +358,7 @@
           "if": {
             "properties": {
               "operator": {
-                "enum": [
-                  "lengthEquals",
-                  "lengthGreaterThanOrEqual"
-                ]
+                "enum": ["lengthEquals", "lengthGreaterThanOrEqual"]
               }
             }
           },
@@ -418,12 +376,7 @@
     "stateGoal": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "type",
-        "description",
-        "target"
-      ],
+      "required": ["id", "type", "description", "target"],
       "properties": {
         "id": {
           "$ref": "common.schema.json#/$defs/slug"
@@ -459,28 +412,20 @@
       },
       "oneOf": [
         {
-          "required": [
-            "absent"
-          ],
+          "required": ["absent"],
           "properties": {
             "absent": {
               "const": true
             }
           },
           "not": {
-            "required": [
-              "assertions"
-            ]
+            "required": ["assertions"]
           }
         },
         {
-          "required": [
-            "assertions"
-          ],
+          "required": ["assertions"],
           "not": {
-            "required": [
-              "absent"
-            ]
+            "required": ["absent"]
           }
         }
       ]
@@ -488,14 +433,7 @@
     "answerGoal": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "type",
-        "description",
-        "prompt",
-        "input",
-        "expected"
-      ],
+      "required": ["id", "type", "description", "prompt", "input", "expected"],
       "properties": {
         "id": {
           "$ref": "common.schema.json#/$defs/slug"
@@ -520,11 +458,7 @@
           "maxLength": 300
         },
         "input": {
-          "enum": [
-            "text",
-            "number",
-            "choice"
-          ]
+          "enum": ["text", "number", "choice"]
         },
         "caseSensitive": {
           "type": "boolean",
@@ -552,10 +486,7 @@
             "path": {
               "type": "object",
               "additionalProperties": false,
-              "required": [
-                "target",
-                "path"
-              ],
+              "required": ["target", "path"],
               "properties": {
                 "target": {
                   "$ref": "#/$defs/target"
@@ -568,9 +499,7 @@
             "count": {
               "type": "object",
               "additionalProperties": false,
-              "required": [
-                "kind"
-              ],
+              "required": ["kind"],
               "properties": {
                 "kind": {
                   "$ref": "common.schema.json#/$defs/kind"
@@ -596,22 +525,16 @@
             }
           },
           "then": {
-            "required": [
-              "choices"
-            ],
+            "required": ["choices"],
             "properties": {
               "expected": {
-                "required": [
-                  "static"
-                ]
+                "required": ["static"]
               }
             }
           },
           "else": {
             "not": {
-              "required": [
-                "choices"
-              ]
+              "required": ["choices"]
             }
           }
         }
@@ -620,12 +543,7 @@
     "observationGoal": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "type",
-        "description",
-        "command"
-      ],
+      "required": ["id", "type", "description", "command"],
       "properties": {
         "id": {
           "$ref": "common.schema.json#/$defs/slug"
@@ -648,9 +566,7 @@
           "description": "Matched against the parsed command, never the raw text. Only successful (exit 0) commands count.",
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "verb"
-          ],
+          "required": ["verb"],
           "properties": {
             "verb": {
               "$ref": "#/$defs/commandVerb"
@@ -670,13 +586,7 @@
               "$ref": "common.schema.json#/$defs/dnsSubdomain"
             },
             "output": {
-              "enum": [
-                "table",
-                "wide",
-                "yaml",
-                "json",
-                "name"
-              ]
+              "enum": ["table", "wide", "yaml", "json", "name"]
             },
             "setsNamespace": {
               "$ref": "common.schema.json#/$defs/dnsLabel",
@@ -688,9 +598,7 @@
     },
     "goal": {
       "type": "object",
-      "required": [
-        "type"
-      ],
+      "required": ["type"],
       "discriminator": {
         "propertyName": "type"
       },

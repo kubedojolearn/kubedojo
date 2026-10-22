@@ -1,0 +1,55 @@
+// Command worker runs KubeDojo background jobs (outbox publishing, session expiry and retention
+// as they are added in later parts). It shares configuration and storage with the API.
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/buildinfo"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/config"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/database"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/logging"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/redis"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/worker"
+)
+
+func main() {
+	if err := run(); err != nil {
+		fmt.Fprintln(os.Stderr, "worker:", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
+	cfg, err := config.Load(os.Getenv)
+	if err != nil {
+		return fmt.Errorf("invalid configuration:\n%w", err)
+	}
+	log := logging.New(os.Stdout, cfg.LogLevel)
+	log.Info("starting worker", "version", buildinfo.Version, "commit", buildinfo.Commit, "env", cfg.Env)
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	pool, err := database.Open(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+
+	rdb, err := redis.Open(ctx, cfg.RedisURL)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = rdb.Close() }()
+
+	// Jobs are registered here as their parts land (outbox: Part 09, expiry: Part 09, retention: Part 19).
+	runner := worker.NewRunner(log)
+	runner.Run(ctx)
+	log.Info("worker stopped")
+	return nil
+}

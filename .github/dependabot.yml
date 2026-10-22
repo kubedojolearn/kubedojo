@@ -1,0 +1,34 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly }
+    groups:
+      next-react:
+        patterns: ["next", "react", "react-dom", "eslint-config-next", "@types/react*"]
+      tooling:
+        patterns:
+          [
+            "eslint*",
+            "prettier",
+            "typescript",
+            "vitest",
+            "@vitejs/*",
+            "@testing-library/*",
+            "@playwright/test",
+            "@redocly/cli",
+            "lefthook",
+          ]
+    open-pull-requests-limit: 10
+  - package-ecosystem: gomod
+    directory: /apps/api
+    schedule: { interval: weekly }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+  - package-ecosystem: docker
+    directories: ["/apps/api", "/apps/web"]
+    schedule: { interval: weekly }
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule: { interval: weekly }

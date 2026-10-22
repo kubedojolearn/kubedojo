@@ -1,0 +1,27 @@
+{
+  "name": "kubedojo",
+  "private": true,
+  "description": "KubeDojo — master Kubernetes, one command at a time.",
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@10.34.5",
+  "engines": {
+    "node": ">=24",
+    "pnpm": ">=10.34"
+  },
+  "scripts": {
+    "prepare": "lefthook install",
+    "lint": "pnpm -r --parallel run lint && prettier --check .",
+    "format": "prettier --write .",
+    "typecheck": "pnpm -r --parallel run typecheck",
+    "test": "pnpm -r run test",
+    "build": "pnpm -r run build",
+    "openapi:lint": "redocly lint docs/api/openapi.yaml",
+    "content:validate": "pnpm --filter @kubedojo/content-schema run validate:examples",
+    "licenses:check": "node scripts/check-licenses.mjs"
+  },
+  "devDependencies": {
+    "@redocly/cli": "2.69.0",
+    "lefthook": "2.2.2",
+    "prettier": "3.9.10"
+  }
+}

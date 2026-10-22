@@ -1,0 +1,21 @@
+name: Simulator difference
+description: The simulator behaves differently from real Kubernetes, or a command is unsupported
+labels: [simulator]
+body:
+  - type: textarea
+    id: command
+    attributes:
+      label: Command or manifest
+      render: shell
+    validations: { required: true }
+  - type: textarea
+    id: simulator
+    attributes:
+      label: What the simulator did
+    validations: { required: true }
+  - type: textarea
+    id: kubernetes
+    attributes:
+      label: What Kubernetes v1.37 does
+      description: Link to docs or paste real kubectl output if you have it.
+    validations: { required: true }

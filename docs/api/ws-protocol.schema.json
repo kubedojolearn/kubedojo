@@ -3,10 +3,7 @@
   "$id": "https://kubedojo.dev/schemas/ws-protocol-v1.json",
   "title": "KubeDojo lab WebSocket protocol v1",
   "description": "Every frame is a UTF-8 JSON text frame of at most 32 KiB. See docs/api/websocket.md.",
-  "oneOf": [
-    { "$ref": "#/$defs/ClientMessage" },
-    { "$ref": "#/$defs/ServerMessage" }
-  ],
+  "oneOf": [{ "$ref": "#/$defs/ClientMessage" }, { "$ref": "#/$defs/ServerMessage" }],
   "$defs": {
     "uuid": {
       "type": "string",
@@ -31,11 +28,7 @@
     },
 
     "ClientMessage": {
-      "oneOf": [
-        { "$ref": "#/$defs/Auth" },
-        { "$ref": "#/$defs/CommandRun" },
-        { "$ref": "#/$defs/ClientHeartbeat" }
-      ]
+      "oneOf": [{ "$ref": "#/$defs/Auth" }, { "$ref": "#/$defs/CommandRun" }, { "$ref": "#/$defs/ClientHeartbeat" }]
     },
     "ServerMessage": {
       "oneOf": [
@@ -91,7 +84,17 @@
     "CommandResult": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type", "requestId", "sequence", "stdout", "stderr", "exitCode", "errorCode", "mutated", "snapshotVersion"],
+      "required": [
+        "type",
+        "requestId",
+        "sequence",
+        "stdout",
+        "stderr",
+        "exitCode",
+        "errorCode",
+        "mutated",
+        "snapshotVersion"
+      ],
       "properties": {
         "type": { "const": "command.result" },
         "requestId": { "$ref": "#/$defs/uuid" },
@@ -107,7 +110,10 @@
         },
         "mutated": { "type": "boolean" },
         "snapshotVersion": { "$ref": "#/$defs/version" },
-        "deduplicated": { "type": "boolean", "description": "true when this requestId had already executed and the stored result is returned" }
+        "deduplicated": {
+          "type": "boolean",
+          "description": "true when this requestId had already executed and the stored result is returned"
+        }
       }
     },
     "StateChanged": {

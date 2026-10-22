@@ -25,7 +25,8 @@ test("every invalid example is rejected", () => {
 
 function scratchTree() {
   const root = mkdtempSync(join(tmpdir(), "kubedojo-content-"));
-  for (const sub of ["challenges", "fixtures", "courses"]) cpSync(join(examples, sub), join(root, sub), { recursive: true });
+  for (const sub of ["challenges", "fixtures", "courses"])
+    cpSync(join(examples, sub), join(root, sub), { recursive: true });
   return root;
 }
 
@@ -41,7 +42,7 @@ test("cross-file rules catch mismatched ids, missing fixtures and answers", () =
   const text = readFileSync(file, "utf8")
     .replace("id: fundamentals/cluster-architecture", "id: fundamentals/wrong-id")
     .replace("initialFixture: fixtures/three-node-cluster.yaml", "initialFixture: fixtures/missing.yaml")
-    .replace("    node-count: \"3\"\n", "");
+    .replace('    node-count: "3"\n', "");
   writeFileSync(file, text);
   const messages = validateTree(root, { partial: true }).map((p) => p.message);
   assert.ok(messages.includes("id must be fundamentals/cluster-architecture"));

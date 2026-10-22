@@ -107,11 +107,16 @@
       "allOf": [
         {
           "if": { "properties": { "kind": { "const": "Namespace" } } },
-          "then": { "properties": { "apiVersion": { "const": "v1" }, "metadata": { "not": { "required": ["namespace"] } } } }
+          "then": {
+            "properties": { "apiVersion": { "const": "v1" }, "metadata": { "not": { "required": ["namespace"] } } }
+          }
         },
         {
           "if": { "properties": { "kind": { "const": "Node" } } },
-          "then": { "required": ["status"], "properties": { "apiVersion": { "const": "v1" }, "metadata": { "not": { "required": ["namespace"] } } } },
+          "then": {
+            "required": ["status"],
+            "properties": { "apiVersion": { "const": "v1" }, "metadata": { "not": { "required": ["namespace"] } } }
+          },
           "else": { "not": { "required": ["status"] } }
         },
         {

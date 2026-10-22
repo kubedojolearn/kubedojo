@@ -18,17 +18,36 @@ test("documented frames are valid", () => {
     { type: "auth", protocolVersion: 1, ticket },
     { type: "auth.ok", protocolVersion: 1, sessionId: id, snapshotVersion: 42, heartbeatIntervalMs: 25000 },
     { type: "command.run", requestId: id, input: "kubectl get pods" },
-    { type: "command.result", requestId: id, sequence: 7, stdout: "...", stderr: "", exitCode: 0, errorCode: null, mutated: false, snapshotVersion: 43 },
     {
-      type: "command.result", requestId: id, sequence: 8, stdout: "", stderr: "Pipes are not supported in the simulator",
-      exitCode: 1, errorCode: "UNSUPPORTED_COMMAND", mutated: false, snapshotVersion: 43, deduplicated: true,
+      type: "command.result",
+      requestId: id,
+      sequence: 7,
+      stdout: "...",
+      stderr: "",
+      exitCode: 0,
+      errorCode: null,
+      mutated: false,
+      snapshotVersion: 43,
+    },
+    {
+      type: "command.result",
+      requestId: id,
+      sequence: 8,
+      stdout: "",
+      stderr: "Pipes are not supported in the simulator",
+      exitCode: 1,
+      errorCode: "UNSUPPORTED_COMMAND",
+      mutated: false,
+      snapshotVersion: 43,
+      deduplicated: true,
     },
     { type: "state.changed", snapshotVersion: 43, eventCount: 3 },
     { type: "heartbeat", timestamp: "2026-10-22T10:00:00Z" },
     { type: "heartbeat" },
     { type: "error", code: "RATE_LIMITED", message: "Slow down", requestId: id, retryAfterMs: 1000 },
   ];
-  for (const frame of frames) assert.ok(validate(frame), `${JSON.stringify(frame)}: ${JSON.stringify(validate.errors)}`);
+  for (const frame of frames)
+    assert.ok(validate(frame), `${JSON.stringify(frame)}: ${JSON.stringify(validate.errors)}`);
 });
 
 test("malformed frames are rejected", () => {
@@ -43,5 +62,6 @@ test("malformed frames are rejected", () => {
     { type: "error", code: "NOT_A_CODE", message: "x" },
     { type: "unknown" },
   ];
-  for (const frame of frames) assert.equal(validate(frame), false, `${JSON.stringify(frame).slice(0, 80)} should be rejected`);
+  for (const frame of frames)
+    assert.equal(validate(frame), false, `${JSON.stringify(frame).slice(0, 80)} should be rejected`);
 });

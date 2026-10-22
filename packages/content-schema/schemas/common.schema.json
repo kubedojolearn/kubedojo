@@ -30,7 +30,18 @@
     },
     "kind": {
       "type": "string",
-      "enum": ["Namespace", "Node", "Pod", "Deployment", "ReplicaSet", "Service", "EndpointSlice", "Endpoints", "ConfigMap", "Secret"]
+      "enum": [
+        "Namespace",
+        "Node",
+        "Pod",
+        "Deployment",
+        "ReplicaSet",
+        "Service",
+        "EndpointSlice",
+        "Endpoints",
+        "ConfigMap",
+        "Secret"
+      ]
     },
     "dnsSubdomain": {
       "type": "string",

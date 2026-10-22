@@ -12,7 +12,11 @@
   "bin": {
     "kubedojo-content-validate": "./bin/validate.js"
   },
-  "files": ["schemas", "src", "bin"],
+  "files": [
+    "schemas",
+    "src",
+    "bin"
+  ],
   "scripts": {
     "validate:examples": "node bin/validate.js examples --partial && node bin/validate.js --expect-invalid examples/invalid",
     "test": "node --test"
