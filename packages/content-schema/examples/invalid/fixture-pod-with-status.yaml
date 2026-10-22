@@ -1,0 +1,9 @@
+schemaVersion: 1
+simulatorVersion: kubernetes-1.37-subset-1
+resources:
+  - apiVersion: v1
+    kind: Pod
+    metadata: { name: web, namespace: default }
+    spec:
+      containers: [{ name: web, image: "nginx:1.27" }]
+    status: { phase: Running }

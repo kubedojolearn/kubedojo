@@ -1,0 +1,18 @@
+schemaVersion: 1
+slug: workloads
+title: Pods and workloads
+summary: Run, inspect, scale and roll out applications with Pods and Deployments.
+description: |
+  Kubernetes runs your containers inside **Pods**, and you almost never manage Pods by hand.
+  This course starts with a single Pod and works up to Deployments that keep the right number
+  of Pods running and replace them safely when you ship a new version.
+difficulty: beginner
+displayOrder: 2
+prerequisites: [fundamentals]
+lessons:
+  - launch-a-pod
+  - inspect-a-pod
+  - troubleshoot-pending-pod
+  - create-a-deployment
+  - scaling-deployments
+  - rollout-and-rollback

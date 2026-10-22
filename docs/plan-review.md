@@ -4,6 +4,24 @@
 - **Review date:** 22 October 2026
 - **Scope note:** Parts 11–20 were not in the source document and are not covered by this review.
 
+## Resolution status (Part 01)
+
+| Item | Resolved in |
+| --- | --- |
+| 1. Lessons that can't be graded | [ADR-0007](adr/0007-challenge-goal-types.md), [course-outline.md](product/course-outline.md), `challenge.schema.json` |
+| 2. Missing simulator behavior | [simulator-compatibility.md](architecture/simulator-compatibility.md) (EndpointSlice, scheduler, image catalog, kubeconfig, label/annotate, Secrets) |
+| 3. Simulated time | [ADR-0006](adr/0006-deterministic-reconciliation.md) |
+| 4. WebSocket exposure | [ADR-0003](adr/0003-auth-bff.md), [overview.md](architecture/overview.md) |
+| 5. Provisioning and deleted accounts | [ADR-0003](adr/0003-auth-bff.md), `POST /api/v1/auth/provision` in [openapi.yaml](api/openapi.yaml) |
+| Two sources of content | [ADR-0005](adr/0005-versioned-content.md) |
+| Two models of lab state; one active session per lesson | [ADR-0004](adr/0004-pg-state-redis-events.md) |
+| `jti` replay store | [ADR-0003](adr/0003-auth-bff.md) (decided: no store; rationale recorded) |
+| Streak time zone | [review-checklist.md](architecture/review-checklist.md) U4; `Settings.timeZone` in the API |
+| Command rate is a rate limit | [simulator-compatibility.md](architecture/simulator-compatibility.md) §5, [requirements.md](architecture/requirements.md) S6 |
+| Part 09 dependencies, Part 08 timing, vertical slice | [risk-register.md](architecture/risk-register.md) R2; to apply when those parts start |
+| Trademark notice, logo | [risk-register.md](architecture/risk-register.md) R7 |
+
+
 ## Summary
 
 The foundations are solid. The trust boundary is right: the browser signs in, the Next.js server makes short-lived signed tokens, and Go checks roles in its own database. The server is authoritative, XP comes from an append-only ledger with idempotency keys, typed commands are parsed against an allowlist and never run in a shell, and state is versioned so a reconnect just refetches it. The problems are in grading, a few contradictions, and the order of the parts.

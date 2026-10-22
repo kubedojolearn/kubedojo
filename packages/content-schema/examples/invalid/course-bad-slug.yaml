@@ -1,0 +1,8 @@
+schemaVersion: 1
+slug: Bad_Slug
+title: Bad slug
+summary: Course slugs must be lowercase kebab-case.
+description: x
+difficulty: beginner
+displayOrder: 1
+lessons: [one]

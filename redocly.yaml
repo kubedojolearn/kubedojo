@@ -1,0 +1,3 @@
+# Redocly CLI config for linting docs/api/openapi.yaml.
+extends:
+  - recommended

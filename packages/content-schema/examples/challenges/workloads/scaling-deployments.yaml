@@ -1,0 +1,57 @@
+schemaVersion: 1
+id: workloads/scaling-deployments
+version: 1
+course: workloads
+lesson: scaling-deployments
+title: Scale a Deployment
+summary: Change how many copies of an app run, and watch the ReplicaSet create Pods to match.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 8
+lastReviewed: 2026-10-22
+objectives:
+  - Read a Deployment's desired and ready replica counts
+  - Change the desired replica count imperatively or declaratively
+  - Explain which controller creates the new Pods
+prerequisites:
+  - workloads/create-a-deployment
+body: |
+  A Deployment stores the number of Pods you *want* in `spec.replicas`. The ReplicaSet it
+  owns compares that with the Pods that *exist* and creates or deletes Pods until they match.
+
+  Your cluster has an `nginx` Deployment running one replica. Traffic is growing: run three.
+
+  > **Simulated cluster:** Pods become ready as soon as they are scheduled. On a real cluster
+  > this takes a few seconds while images are pulled and containers start.
+references:
+  - title: Scaling a Deployment (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#scaling-a-deployment
+initialFixture: fixtures/nginx-one-replica.yaml
+terminal:
+  allowedFamilies: [get, describe, scale, rollout, apply, events, explain]
+goals:
+  - id: deployment-replicas
+    type: state
+    description: The nginx Deployment wants 3 replicas and all 3 are ready.
+    failureMessage: Check `kubectl get deployment nginx` — compare READY with what you asked for.
+    target:
+      kind: Deployment
+      namespace: default
+      name: nginx
+    assertions:
+      - path: spec.replicas
+        operator: equals
+        value: 3
+      - path: status.readyReplicas
+        operator: equals
+        value: 3
+hints:
+  - Try kubectl get deployments.
+  - kubectl scale can change the desired replica count.
+  - "Try: kubectl scale deployment nginx --replicas=3"
+solution:
+  commands:
+    - kubectl scale deployment nginx --replicas=3
+reward:
+  baseXP: 100
+  firstTryBonusXP: 25
+  hintPenaltyPerHintXP: 10

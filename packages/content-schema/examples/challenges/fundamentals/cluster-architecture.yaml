@@ -1,0 +1,56 @@
+schemaVersion: 1
+id: fundamentals/cluster-architecture
+version: 1
+course: fundamentals
+lesson: cluster-architecture
+title: How a cluster is put together
+summary: Meet the control plane and the worker nodes, and find them in a live (simulated) cluster.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 10
+lastReviewed: 2026-10-22
+objectives:
+  - Name the control-plane components and what each one does
+  - List the nodes in a cluster and tell control-plane nodes from workers
+  - Explain where cluster state is stored
+body: |
+  A Kubernetes cluster has two halves. The **control plane** decides what should run:
+  the API server is the front door, etcd stores the cluster's state, the scheduler picks a node
+  for each new Pod, and the controller manager runs the loops that make reality match what you asked for.
+  **Worker nodes** run your Pods.
+
+  Use `kubectl get nodes` and `kubectl get pods -n kube-system` to explore this cluster, then
+  answer the questions in the goals panel.
+references:
+  - title: Cluster architecture (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/architecture/
+initialFixture: fixtures/three-node-cluster.yaml
+goals:
+  - id: node-count
+    type: answer
+    description: Count the nodes in this cluster.
+    prompt: How many nodes does this cluster have?
+    input: number
+    expected:
+      count: { kind: Node }
+  - id: state-store
+    type: answer
+    description: Identify where the cluster stores its state.
+    prompt: Which control-plane component stores the cluster's state?
+    input: choice
+    choices: [kube-apiserver, etcd, kube-scheduler, kube-controller-manager]
+    expected:
+      static: etcd
+hints:
+  - "`kubectl get nodes` lists every node."
+  - "`kubectl get pods -n kube-system` shows the control-plane components running as Pods."
+solution:
+  commands:
+    - kubectl get nodes
+    - kubectl get pods -n kube-system
+  answers:
+    node-count: "3"
+    state-store: etcd
+reward:
+  baseXP: 50
+  firstTryBonusXP: 10
+  hintPenaltyPerHintXP: 5
