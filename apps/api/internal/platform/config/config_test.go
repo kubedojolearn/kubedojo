@@ -1,6 +1,10 @@
 package config
 
 import (
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/base64"
 	"strings"
 	"testing"
 	"time"
@@ -57,5 +61,44 @@ func TestProductionRequiresRedisTLS(t *testing.T) {
 	e["REDIS_URL"] = "rediss://cache.internal:6380/0"
 	if _, err := Load(env(e)); err != nil {
 		t.Fatalf("Load: %v", err)
+	}
+}
+
+func apiEnv(t *testing.T) map[string]string {
+	t.Helper()
+	pub, _, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	der, _ := x509.MarshalPKIXPublicKey(pub)
+	e := validEnv()
+	e["API_JWT_PUBLIC_KEYS"] = "dev-1:" + base64.StdEncoding.EncodeToString(der)
+	return e
+}
+
+func TestLoadAPI(t *testing.T) {
+	cfg, err := LoadAPI(env(apiEnv(t)))
+	if err != nil {
+		t.Fatalf("LoadAPI: %v", err)
+	}
+	if len(cfg.JWTPublicKeys) != 1 || cfg.RequestTimeout != 5*time.Second || cfg.MaxBodyBytes != 128<<10 {
+		t.Fatalf("defaults: %+v", cfg)
+	}
+}
+
+func TestLoadAPIReportsProblems(t *testing.T) {
+	e := apiEnv(t)
+	delete(e, "API_JWT_PUBLIC_KEYS")
+	e["TRUSTED_PROXY_CIDRS"] = "10.0.0.0/8,banana"
+	e["REQUEST_TIMEOUT"] = "500ms"
+	e["MAX_BODY_BYTES"] = "10"
+	_, err := LoadAPI(env(e))
+	if err == nil {
+		t.Fatal("expected errors")
+	}
+	for _, want := range []string{"API_JWT_PUBLIC_KEYS", "TRUSTED_PROXY_CIDRS", "REQUEST_TIMEOUT", "MAX_BODY_BYTES"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("%q not reported in %v", want, err)
+		}
 	}
 }

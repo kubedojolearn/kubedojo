@@ -14,6 +14,8 @@
 | Decisions | [adr/](adr/README.md) | Architecture decision records |
 | Security | [security/threat-model.md](security/threat-model.md) | Threats, controls and the parts that implement them |
 | API | [api/openapi.yaml](api/openapi.yaml) | OpenAPI 3.1 contract for the Go API |
+| API | [api/conventions.md](api/conventions.md) | Request lifecycle, authentication, errors, pagination, rate limits, network restriction |
+| API | [../packages/api-client/](../packages/api-client/src/index.ts) | Typed TypeScript client generated from the OpenAPI contract |
 | API | [api/websocket.md](api/websocket.md) | WebSocket protocol v1 (schema: [api/ws-protocol.schema.json](api/ws-protocol.schema.json)) |
 | Design | [design/screens.md](design/screens.md) | Every V1 screen: layout, states and the part that builds it |
 | Design | [design/tokens.md](design/tokens.md), [brand.md](design/brand.md) | Colors, type, spacing, terminal and graph styles; logo and voice |

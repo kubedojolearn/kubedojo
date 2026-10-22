@@ -73,6 +73,7 @@ lint-api:
 .PHONY: lint-contracts
 lint-contracts:
 	pnpm openapi:lint
+	pnpm --filter @kubedojo/api-client check:generated
 
 .PHONY: typecheck
 typecheck: ## TypeScript and Go type checks
@@ -93,6 +94,7 @@ test-api:
 .PHONY: test-contracts
 test-contracts:
 	pnpm --filter @kubedojo/content-schema test
+	pnpm --filter @kubedojo/api-client test
 	pnpm content:validate
 
 .PHONY: test-integration

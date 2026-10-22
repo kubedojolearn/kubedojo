@@ -3,11 +3,16 @@
 package config
 
 import (
+	"crypto/ed25519"
 	"errors"
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/ratelimit"
 )
 
 // Environment names. Production enables the strictest checks.
@@ -93,4 +98,50 @@ func validateURL(key, raw string, schemes ...string) error {
 		}
 	}
 	return fmt.Errorf("%s must use scheme %s", key, strings.Join(schemes, " or "))
+}
+
+// API is the configuration of the HTTP API binary: the shared Config plus API-only settings.
+type API struct {
+	Config
+	JWTPublicKeys     map[string]ed25519.PublicKey
+	TrustedProxyCIDRs string
+	RequestTimeout    time.Duration
+	MaxBodyBytes      int64
+}
+
+// LoadAPI loads and validates the API's configuration, reporting every problem at once.
+func LoadAPI(getenv func(string) string) (API, error) {
+	base, baseErr := Load(getenv)
+	errs := []error{baseErr}
+	cfg := API{Config: base}
+
+	keys, err := auth.ParsePublicKeys(getenv("API_JWT_PUBLIC_KEYS"))
+	if err != nil {
+		errs = append(errs, err)
+	}
+	cfg.JWTPublicKeys = keys
+
+	cfg.TrustedProxyCIDRs = strings.TrimSpace(getenv("TRUSTED_PROXY_CIDRS"))
+	if _, err := ratelimit.NewClientIPResolver(cfg.TrustedProxyCIDRs); err != nil {
+		errs = append(errs, err)
+	}
+
+	cfg.RequestTimeout = 5 * time.Second
+	if v := strings.TrimSpace(getenv("REQUEST_TIMEOUT")); v != "" {
+		d, err := time.ParseDuration(v)
+		if err != nil || d < time.Second || d > time.Minute {
+			errs = append(errs, errors.New("REQUEST_TIMEOUT must be a duration between 1s and 1m"))
+		}
+		cfg.RequestTimeout = d
+	}
+
+	cfg.MaxBodyBytes = 128 << 10
+	if v := strings.TrimSpace(getenv("MAX_BODY_BYTES")); v != "" {
+		n, err := strconv.ParseInt(v, 10, 64)
+		if err != nil || n < 1024 || n > 8<<20 {
+			errs = append(errs, errors.New("MAX_BODY_BYTES must be an integer between 1024 and 8388608"))
+		}
+		cfg.MaxBodyBytes = n
+	}
+	return cfg, errors.Join(errs...)
 }

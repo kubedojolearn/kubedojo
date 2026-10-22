@@ -5,7 +5,6 @@ coverage
 playwright-report
 test-results
 apps/api
-packages/api-client/src/schema.d.ts
 # Docs and content are hand-formatted Markdown/YAML; tables and long lines are intentional.
 *.md
 docs/api/openapi.yaml

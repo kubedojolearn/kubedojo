@@ -9,6 +9,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -17,6 +18,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/health"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/httpapi"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/buildinfo"
@@ -24,7 +26,9 @@ import (
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/database"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/httpserver"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/logging"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/ratelimit"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/redis"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/users"
 )
 
 func main() {
@@ -48,12 +52,13 @@ func main() {
 }
 
 func serve() error {
-	cfg, err := config.Load(os.Getenv)
+	cfg, err := config.LoadAPI(os.Getenv)
 	if err != nil {
 		return fmt.Errorf("invalid configuration:\n%w", err)
 	}
 	log := logging.New(os.Stdout, cfg.LogLevel)
-	log.Info("starting api", "version", buildinfo.Version, "commit", buildinfo.Commit, "env", cfg.Env)
+	log.Info("starting api", "version", buildinfo.Version, "commit", buildinfo.Commit, "env", cfg.Env, "jwt_kids", len(cfg.JWTPublicKeys))
+	slog.SetDefault(log)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -71,10 +76,17 @@ func serve() error {
 	defer func() { _ = rdb.Close() }()
 
 	router := httpapi.NewRouter(httpapi.Deps{
+		Log: log,
 		Health: health.Handler{
 			Postgres: health.PingFunc(pool.Ping),
 			Redis:    health.PingFunc(func(ctx context.Context) error { return rdb.Ping(ctx).Err() }),
 		},
+		Verifier:       auth.NewVerifier(cfg.JWTPublicKeys, nil),
+		Identities:     auth.NoIdentities{},
+		Users:          users.Unavailable{},
+		Limiter:        ratelimit.NewRedis(rdb),
+		RequestTimeout: cfg.RequestTimeout,
+		MaxBodyBytes:   cfg.MaxBodyBytes,
 	})
 	if err := httpserver.Run(ctx, log, cfg.HTTPAddr, router, cfg.ShutdownTimeout); err != nil {
 		return err

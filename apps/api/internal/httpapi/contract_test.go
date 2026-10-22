@@ -1,0 +1,120 @@
+package httpapi
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"regexp"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/pb33f/libopenapi"
+	validator "github.com/pb33f/libopenapi-validator"
+)
+
+// The OpenAPI document is the contract (docs/api/openapi.yaml). These tests fail when an
+// implemented route is missing from it or answers with a shape it doesn't describe.
+
+const specPath = "../../../../docs/api/openapi.yaml"
+
+func loadValidator(t *testing.T) (validator.Validator, []byte) {
+	t.Helper()
+	spec, err := os.ReadFile(specPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := libopenapi.NewDocument(spec)
+	if err != nil {
+		t.Fatalf("parse spec: %v", err)
+	}
+	v, errs := validator.NewValidator(doc)
+	if len(errs) > 0 {
+		t.Fatalf("build validator: %v", errs)
+	}
+	if ok, verrs := v.ValidateDocument(); !ok {
+		for _, e := range verrs {
+			t.Errorf("spec invalid: %s: %s", e.Message, e.Reason)
+		}
+		t.FailNow()
+	}
+	return v, spec
+}
+
+func TestEveryRouteIsInTheContract(t *testing.T) {
+	_, spec := loadValidator(t)
+	h, _ := testRouter(t, true)
+	routes, ok := h.(chi.Routes)
+	if !ok {
+		t.Fatal("router is not chi.Routes")
+	}
+	param := regexp.MustCompile(`\{[^}]+\}`)
+	specText := string(spec)
+	err := chi.Walk(routes, func(method, route string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
+		// Match path keys loosely on parameter names; the method must be listed under the path.
+		pattern := regexp.QuoteMeta(param.ReplaceAllString(route, "{X}"))
+		pattern = strings.ReplaceAll(pattern, `\{X\}`, `\{[^}]+\}`)
+		re := regexp.MustCompile(`(?m)^  ` + pattern + `:\n((?:    .*\n|\n)*)`)
+		m := re.FindStringSubmatch(specText)
+		if m == nil {
+			t.Errorf("%s %s is not in openapi.yaml", method, route)
+			return nil
+		}
+		if !strings.Contains(m[1], "\n    "+strings.ToLower(method)+":") && !strings.HasPrefix(m[1], "    "+strings.ToLower(method)+":") {
+			t.Errorf("%s %s: method not documented", method, route)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestResponsesMatchTheContract(t *testing.T) {
+	v, _ := loadValidator(t)
+	readyRouter, s := testRouter(t, true)
+	downRouter, _ := testRouter(t, false)
+	token := s.Token(t, "100", time.Now())
+
+	cases := []struct {
+		name    string
+		handler http.Handler
+		path    string
+		auth    string
+		status  int
+	}{
+		{"healthz", readyRouter, "/api/v1/healthz", "", 200},
+		{"readyz ready", readyRouter, "/api/v1/readyz", "", 200},
+		{"readyz unavailable", downRouter, "/api/v1/readyz", "", 503},
+		{"users/me", readyRouter, "/api/v1/users/me", token, 200},
+		{"users/me unauthenticated", readyRouter, "/api/v1/users/me", "", 401},
+		{"users/me rate limited", readyRouter, "/api/v1/users/me", s.Token(t, "429", time.Now()), 429},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(tc.handler)
+			defer srv.Close()
+			req, _ := http.NewRequest(http.MethodGet, srv.URL+tc.path, nil)
+			if tc.auth != "" {
+				req.Header.Set("Authorization", "Bearer "+tc.auth)
+			}
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = resp.Body.Close() }()
+			if resp.StatusCode != tc.status {
+				t.Fatalf("status %d, want %d", resp.StatusCode, tc.status)
+			}
+			// Validate against the spec using the same path the server saw.
+			specReq, _ := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
+			specReq.Header = req.Header.Clone()
+			if ok, errs := v.ValidateHttpResponse(specReq, resp); !ok {
+				for _, e := range errs {
+					t.Errorf("%s: %s (%s)", e.Message, e.Reason, e.HowToFix)
+				}
+			}
+		})
+	}
+}

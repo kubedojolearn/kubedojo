@@ -194,6 +194,7 @@ paths:
                   data: { $ref: "#/components/schemas/Me" }
                   meta: { $ref: "#/components/schemas/Meta" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/RateLimited" }
     patch:
       tags: [users]
       operationId: updateMe
@@ -218,6 +219,7 @@ paths:
         "400": { $ref: "#/components/responses/ValidationFailed" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
 
   /api/v1/users/me/export:
     get:
@@ -237,6 +239,7 @@ paths:
                   data: { type: object, additionalProperties: true }
                   meta: { $ref: "#/components/schemas/Meta" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/RateLimited" }
 
   /api/v1/users/me/deletion:
     post:
@@ -261,6 +264,7 @@ paths:
         "202": { description: Deletion accepted. }
         "400": { $ref: "#/components/responses/ValidationFailed" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/RateLimited" }
 
   /api/v1/users/me/progress:
     get:
@@ -287,6 +291,7 @@ paths:
                   data: { $ref: "#/components/schemas/Progress" }
                   meta: { $ref: "#/components/schemas/PageMeta" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/RateLimited" }
 
   /api/v1/users/me/achievements:
     get:
@@ -308,6 +313,7 @@ paths:
                     items: { $ref: "#/components/schemas/Achievement" }
                   meta: { $ref: "#/components/schemas/Meta" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/RateLimited" }
 
   /api/v1/users/me/activity:
     get:
@@ -332,6 +338,7 @@ paths:
                     items: { $ref: "#/components/schemas/ActivityItem" }
                   meta: { $ref: "#/components/schemas/PageMeta" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/RateLimited" }
 
   /api/v1/profiles/{handle}:
     parameters:
@@ -411,6 +418,7 @@ paths:
                     items: { $ref: "#/components/schemas/Lab" }
                   meta: { $ref: "#/components/schemas/PageMeta" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/RateLimited" }
     post:
       tags: [labs]
       operationId: createLab
@@ -459,6 +467,7 @@ paths:
               schema: { $ref: "#/components/schemas/LabResponse" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
 
   /api/v1/labs/{labId}/resume:
     parameters:
@@ -478,6 +487,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
         "410": { $ref: "#/components/responses/SessionExpired" }
+        "429": { $ref: "#/components/responses/RateLimited" }
 
   /api/v1/labs/{labId}/reset:
     parameters:
@@ -499,6 +509,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
         "410": { $ref: "#/components/responses/SessionExpired" }
+        "429": { $ref: "#/components/responses/RateLimited" }
 
   /api/v1/labs/{labId}/finish:
     parameters:
@@ -519,6 +530,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
 
   /api/v1/labs/{labId}/snapshot:
     parameters:
@@ -541,6 +553,7 @@ paths:
                   meta: { $ref: "#/components/schemas/Meta" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
 
   /api/v1/labs/{labId}/events:
     parameters:
@@ -568,6 +581,7 @@ paths:
                   meta: { $ref: "#/components/schemas/PageMeta" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
 
   /api/v1/labs/{labId}/commands:
     parameters:
@@ -595,6 +609,7 @@ paths:
                   meta: { $ref: "#/components/schemas/PageMeta" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
     post:
       tags: [labs]
       operationId: runLabCommand
@@ -650,6 +665,7 @@ paths:
                   meta: { $ref: "#/components/schemas/Meta" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
     put:
       tags: [labs]
       operationId: saveLabFile
@@ -685,6 +701,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
 
   /api/v1/labs/{labId}/answers:
     parameters:
@@ -781,6 +798,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
 
   /api/v1/labs/{labId}/ws-ticket:
     parameters:
@@ -845,6 +863,7 @@ paths:
                   meta: { $ref: "#/components/schemas/Meta" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
 
   /api/v1/admin/content/validate:
     post:
@@ -876,6 +895,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
 
   /api/v1/admin/content/publish:
     post:
@@ -912,6 +932,7 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
 
   /api/v1/admin/audit:
     get:
@@ -937,6 +958,7 @@ paths:
                   meta: { $ref: "#/components/schemas/PageMeta" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
 
 components:
   securitySchemes:
