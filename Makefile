@@ -48,6 +48,30 @@ down: ## Stop all containers (data volumes are kept)
 deps-up: ## Start only Postgres and Redis
 	$(COMPOSE) up -d --wait postgres redis
 
+##@ Database
+
+API_CLI := cd $(API_DIR) && go run ./cmd/api
+
+.PHONY: migrate-up
+migrate-up: deps-up ## Apply database migrations
+	$(API_CLI) migrate up
+
+.PHONY: migrate-down-dev
+migrate-down-dev: deps-up ## Roll back the latest migration (refused in production)
+	$(API_CLI) migrate down
+
+.PHONY: migrate-status
+migrate-status: deps-up ## Show applied and pending migrations
+	$(API_CLI) migrate status
+
+.PHONY: seed
+seed: migrate-up ## Upsert reference data (courses, lessons, achievements); idempotent
+	$(API_CLI) seed
+
+.PHONY: sqlc
+sqlc: ## Regenerate the type-safe query layer from db/queries
+	cd $(API_DIR) && go tool -modfile=tools/go.mod sqlc generate
+
 .PHONY: logs
 logs: ## Follow container logs
 	$(COMPOSE) --profile app logs -f
@@ -69,6 +93,8 @@ lint-api:
 	@cd $(API_DIR) && unformatted="$$(gofmt -l .)" && if [ -n "$$unformatted" ]; then echo "gofmt needed:"; echo "$$unformatted"; exit 1; fi
 	cd $(API_DIR) && go vet ./... && go vet -tags=integration ./...
 	cd $(API_DIR) && $(GOLANGCI_LINT) run ./...
+	cd $(API_DIR) && go tool -modfile=tools/go.mod sqlc vet
+	cd $(API_DIR) && go tool -modfile=tools/go.mod sqlc diff
 
 .PHONY: lint-contracts
 lint-contracts:

@@ -64,12 +64,3 @@ func (h Handler) GetMe(w http.ResponseWriter, r *http.Request) error {
 	httpx.WriteJSON(w, r, http.StatusOK, me)
 	return nil
 }
-
-// Unavailable is the Reader used before the user store exists; no principal can reach it
-// while identities are unresolvable. Replaced by the PostgreSQL store in Part 05.
-type Unavailable struct{}
-
-// GetMe always fails.
-func (Unavailable) GetMe(context.Context, uuid.UUID) (Me, error) {
-	return Me{}, errors.New("user store not configured")
-}

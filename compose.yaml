@@ -38,6 +38,26 @@ services:
       timeout: 3s
       retries: 20
 
+  # One-shot: applies migrations and idempotent seeds before the API starts.
+  migrate:
+    profiles: [app]
+    security_opt: ["no-new-privileges:true"]
+    build:
+      context: apps/api
+      args:
+        VERSION: ${KUBEDOJO_VERSION:-dev}
+        COMMIT: ${KUBEDOJO_COMMIT:-unknown}
+    command: ["bootstrap"]
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres: { condition: service_healthy }
+    read_only: true
+    cap_drop: [ALL]
+    restart: "no"
+
   api:
     <<: *hardening
     profiles: [app]
@@ -56,6 +76,7 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
     read_only: true
     cap_drop: [ALL]
     expose: ["8080"]

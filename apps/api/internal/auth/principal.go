@@ -45,12 +45,3 @@ func PrincipalFrom(ctx context.Context) (Principal, bool) {
 	p, ok := ctx.Value(principalKey{}).(Principal)
 	return p, ok
 }
-
-// NoIdentities is the resolver used before a user store exists: every verified assertion is
-// reported as not linked (401). Replaced by the PostgreSQL resolver in Part 05.
-type NoIdentities struct{}
-
-// Resolve always returns ErrIdentityNotLinked.
-func (NoIdentities) Resolve(context.Context, string, string) (Principal, error) {
-	return Principal{}, ErrIdentityNotLinked
-}

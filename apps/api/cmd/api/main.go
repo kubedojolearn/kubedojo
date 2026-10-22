@@ -2,8 +2,13 @@
 //
 // Usage:
 //
-//	api [serve]       start the HTTP server (default)
-//	api healthcheck   exit 0 if the local server's liveness probe answers (for container HEALTHCHECK)
+//	api [serve]                                    start the HTTP server (default)
+//	api healthcheck                                exit 0 if the local liveness probe answers
+//	api migrate up|status|version                  apply or inspect database migrations
+//	api migrate down|reset                         roll back one / all migrations (not in production)
+//	api seed                                       upsert reference data (idempotent)
+//	api bootstrap                                  migrate up, then seed (container start-up)
+//	api admin set-role -handle H -role R -reason T change a user's role (audited)
 package main
 
 import (
@@ -42,8 +47,10 @@ func main() {
 		err = serve()
 	case "healthcheck":
 		err = healthcheck()
+	case "migrate", "seed", "bootstrap", "admin":
+		err = runOperator(cmd, os.Args[2:])
 	default:
-		err = fmt.Errorf("unknown command %q (want serve or healthcheck)", cmd)
+		err = fmt.Errorf("unknown command %q (want serve, healthcheck, migrate, seed, bootstrap or admin)", cmd)
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "api:", err)
@@ -75,6 +82,7 @@ func serve() error {
 	}
 	defer func() { _ = rdb.Close() }()
 
+	userStore := users.NewStore(pool)
 	router := httpapi.NewRouter(httpapi.Deps{
 		Log: log,
 		Health: health.Handler{
@@ -82,8 +90,8 @@ func serve() error {
 			Redis:    health.PingFunc(func(ctx context.Context) error { return rdb.Ping(ctx).Err() }),
 		},
 		Verifier:       auth.NewVerifier(cfg.JWTPublicKeys, nil),
-		Identities:     auth.NoIdentities{},
-		Users:          users.Unavailable{},
+		Identities:     userStore,
+		Users:          userStore,
 		Limiter:        ratelimit.NewRedis(rdb),
 		RequestTimeout: cfg.RequestTimeout,
 		MaxBodyBytes:   cfg.MaxBodyBytes,

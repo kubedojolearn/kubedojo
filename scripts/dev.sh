@@ -13,6 +13,9 @@ set +a
 WEB_UPSTREAM=host.docker.internal:3000 API_UPSTREAM=host.docker.internal:8080 \
   docker compose up -d --wait postgres redis edge
 
+echo "→ applying migrations and seeds"
+(cd apps/api && go run ./cmd/api bootstrap)
+
 pids=()
 cleanup() {
   trap - INT TERM EXIT

@@ -9,6 +9,7 @@
 | Architecture | [architecture/overview.md](architecture/overview.md) | Components, request flows, lab lifecycle, data ownership |
 | Architecture | [architecture/simulator-compatibility.md](architecture/simulator-compatibility.md) | Exactly which kubectl commands, resources and behaviors are simulated |
 | Architecture | [architecture/requirements.md](architecture/requirements.md) | Accessibility, performance, security, testing, privacy and retention requirements; launch criteria |
+| Architecture | [architecture/data-model.md](architecture/data-model.md) | ER diagram, invariants the database enforces, write paths |
 | Architecture | [architecture/risk-register.md](architecture/risk-register.md) | Delivery and product risks with owners and mitigations |
 | Architecture | [architecture/review-checklist.md](architecture/review-checklist.md) | Unresolved tradeoffs and the checklist every part's PR is reviewed against |
 | Decisions | [adr/](adr/README.md) | Architecture decision records |
@@ -21,6 +22,7 @@
 | Design | [design/tokens.md](design/tokens.md), [brand.md](design/brand.md) | Colors, type, spacing, terminal and graph styles; logo and voice |
 | Design | [design/baseline.md](design/baseline.md) | Lighthouse and accessibility baseline |
 | Operations | [operations/keys.md](operations/keys.md) | Secrets, key generation and rotation |
+| Operations | [operations/database.md](operations/database.md) | Migrations, seeds, initial admin, retention and account deletion |
 | Content | [../packages/content-schema/](../packages/content-schema/README.md) | JSON Schemas for courses, challenges and fixtures |
 
 ## Where truth lives (one-paragraph version)
