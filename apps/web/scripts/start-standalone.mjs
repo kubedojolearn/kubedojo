@@ -17,7 +17,8 @@ const port = process.argv[2] ?? process.env.PORT ?? "3000";
 const child = spawn(process.execPath, ["server.js"], {
   cwd: standalone,
   stdio: "inherit",
-  env: { ...process.env, PORT: port, HOSTNAME: process.env.HOSTNAME ?? "127.0.0.1" },
+  // Not $HOSTNAME: shells and Docker set it to the machine name, which would bind to the wrong interface.
+  env: { ...process.env, PORT: port, HOSTNAME: process.env.WEB_BIND_HOST ?? "127.0.0.1" },
 });
 for (const sig of ["SIGINT", "SIGTERM"]) process.on(sig, () => child.kill(sig));
 child.on("exit", (code) => process.exit(code ?? 0));

@@ -15,6 +15,9 @@
 | Security | [security/threat-model.md](security/threat-model.md) | Threats, controls and the parts that implement them |
 | API | [api/openapi.yaml](api/openapi.yaml) | OpenAPI 3.1 contract for the Go API |
 | API | [api/websocket.md](api/websocket.md) | WebSocket protocol v1 (schema: [api/ws-protocol.schema.json](api/ws-protocol.schema.json)) |
+| Design | [design/screens.md](design/screens.md) | Every V1 screen: layout, states and the part that builds it |
+| Design | [design/tokens.md](design/tokens.md), [brand.md](design/brand.md) | Colors, type, spacing, terminal and graph styles; logo and voice |
+| Design | [design/baseline.md](design/baseline.md) | Lighthouse and accessibility baseline |
 | Operations | [operations/keys.md](operations/keys.md) | Secrets, key generation and rotation |
 | Content | [../packages/content-schema/](../packages/content-schema/README.md) | JSON Schemas for courses, challenges and fixtures |
 

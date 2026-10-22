@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("home page renders", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1, name: "KubeDojo" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: /Master Kubernetes/ })).toBeVisible();
 });
 
 test("health endpoint reports build info without secrets", async ({ request }) => {

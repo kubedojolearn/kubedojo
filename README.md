@@ -35,7 +35,8 @@ Health checks: `curl localhost:8000/api/healthz` (web) and, in `make dev`, `curl
 
 ```sh
 make check      # lint + typecheck + unit + integration tests + license check (what CI runs)
-make test-e2e   # Playwright end-to-end tests
+make test-e2e   # Playwright end-to-end tests (accessibility, responsive, keyboard, navigation)
+make test-visual  # screenshot comparisons inside the pinned Playwright container
 make help       # every target
 ```
 

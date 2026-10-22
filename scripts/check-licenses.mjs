@@ -24,10 +24,18 @@ const EXCEPTIONS = new Map([
   [/^@img\/sharp-libvips-/, "LGPL-3.0-or-later"],
 ]);
 
+/** Evaluates simple SPDX expressions: "A OR B" passes if any part passes, "A AND B" if all do. */
+function allowed(expression) {
+  const expr = expression.trim().replace(/^\((.*)\)$/, "$1");
+  if (/ OR /i.test(expr)) return expr.split(/ OR /i).some(allowed);
+  if (/ AND /i.test(expr)) return expr.split(/ AND /i).every(allowed);
+  return ALLOWED.has(expr);
+}
+
 const report = JSON.parse(execFileSync("pnpm", ["licenses", "list", "--json", "--prod"], { encoding: "utf8" }));
 const problems = [];
 for (const [license, pkgs] of Object.entries(report)) {
-  if (ALLOWED.has(license)) continue;
+  if (allowed(license)) continue;
   for (const pkg of pkgs) {
     const excepted = [...EXCEPTIONS].some(([pattern, lic]) => pattern.test(pkg.name) && lic === license);
     if (!excepted) problems.push(`${pkg.name}@${pkg.versions?.join(",") ?? "?"}: ${license}`);

@@ -104,6 +104,20 @@ test-e2e: ## Playwright end-to-end tests (builds and starts the web app)
 	pnpm --filter @kubedojo/web exec playwright install chromium
 	pnpm --filter @kubedojo/web test:e2e
 
+PLAYWRIGHT_IMAGE := mcr.microsoft.com/playwright:v1.64.1-noble
+VISUAL_RUN := docker run --rm --ipc=host -v "$(CURDIR):/repo" -w /repo/apps/web -e CI=1 -e E2E_SKIP_BUILD=1 \
+  $(PLAYWRIGHT_IMAGE) node node_modules/@playwright/test/cli.js test --project=visual
+
+.PHONY: test-visual
+test-visual: ## Visual regression screenshots (inside the pinned Playwright container)
+	pnpm --filter @kubedojo/web build
+	$(VISUAL_RUN)
+
+.PHONY: test-visual-update
+test-visual-update: ## Re-record visual baselines; review the image diffs before committing
+	pnpm --filter @kubedojo/web build
+	$(VISUAL_RUN) --update-snapshots
+
 .PHONY: licenses
 licenses: ## Check production dependency licenses
 	pnpm licenses:check
