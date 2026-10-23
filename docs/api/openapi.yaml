@@ -534,6 +534,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/LabResponse" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
@@ -556,6 +557,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/LabResponse" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
@@ -798,6 +800,7 @@ paths:
                 properties:
                   data: { $ref: "#/components/schemas/ValidationResult" }
                   meta: { $ref: "#/components/schemas/Meta" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
@@ -1525,8 +1528,8 @@ components:
             resourceVersion: { type: string }
             generation: { type: integer }
             creationTimestamp: { type: string, format: date-time }
-        spec: { type: object }
-        status: { type: object }
+        spec: { type: object, additionalProperties: true }
+        status: { type: object, additionalProperties: true }
 
     Snapshot:
       type: object

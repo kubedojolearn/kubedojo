@@ -11,6 +11,7 @@ import (
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/courses"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/health"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/labs"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/httpx"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/ratelimit"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/progress"
@@ -26,6 +27,7 @@ type Deps struct {
 	Users          users.Service
 	Catalog        courses.Catalog
 	Progress       progress.Reader
+	Labs           labs.Lifecycle
 	Settings       progress.SettingsReader
 	Cursors        *httpx.Cursors
 	Limiter        ratelimit.Limiter
@@ -39,6 +41,8 @@ var (
 	userGeneralLimit = ratelimit.Rule{Name: "api", Limit: 300, Window: time.Minute}
 	// Sign-in provisioning, per GitHub identity; fails closed (requirements S6).
 	provisionLimit = ratelimit.Rule{Name: "provision", Limit: 10, Window: time.Minute, FailClosed: true}
+	// Starting and resetting labs loads a whole fixture; both are rare in normal use.
+	labLifecycleLimit = ratelimit.Rule{Name: "lab-lifecycle", Limit: 30, Window: time.Hour}
 )
 
 // NewRouter builds the handler. Middleware order (outermost first): request ID, panic recovery,
@@ -92,6 +96,18 @@ func NewRouter(d Deps) http.Handler {
 			r.Method(http.MethodPost, "/users/me/progress/opened", httpx.Handler(progressHandler.MarkOpened))
 			r.Method(http.MethodGet, "/users/me/achievements", httpx.Handler(progressHandler.GetAchievements))
 			r.Method(http.MethodGet, "/users/me/activity", httpx.Handler(progressHandler.GetActivity))
+
+			// Labs: ownership is enforced in every query; another user's lab is a 404.
+			labsHandler := labs.Handler{Labs: d.Labs, Cursors: d.Cursors}
+			lifecycle := ratelimit.PerUser(d.Limiter, labLifecycleLimit)
+			r.Method(http.MethodGet, "/labs", httpx.Handler(labsHandler.List))
+			r.With(lifecycle).Method(http.MethodPost, "/labs", httpx.Handler(labsHandler.Create))
+			r.Method(http.MethodGet, "/labs/{labId}", httpx.Handler(labsHandler.Get))
+			r.Method(http.MethodPost, "/labs/{labId}/resume", httpx.Handler(labsHandler.Resume))
+			r.With(lifecycle).Method(http.MethodPost, "/labs/{labId}/reset", httpx.Handler(labsHandler.Reset))
+			r.Method(http.MethodPost, "/labs/{labId}/finish", httpx.Handler(labsHandler.Finish))
+			r.Method(http.MethodGet, "/labs/{labId}/snapshot", httpx.Handler(labsHandler.GetSnapshot))
+			r.Method(http.MethodGet, "/labs/{labId}/events", httpx.Handler(labsHandler.ListEvents))
 		})
 	})
 	return r

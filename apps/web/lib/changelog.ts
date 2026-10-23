@@ -8,6 +8,16 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-23",
+    title: "Labs start a simulated cluster",
+    items: [
+      "Start a lab from a lesson to get your own simulated cluster, loaded from the lesson's starting state.",
+      "See every object in the cluster with its status, and the events controllers record as it changes.",
+      "Reset a lab to its starting state, or end it. Labs you don't touch for 14 days expire.",
+      "The terminal arrives next; for now the lab is read-only.",
+    ],
+  },
+  {
+    date: "2026-10-23",
     title: "Your dashboard and profile",
     items: [
       "A short, skippable welcome when you first sign in.",

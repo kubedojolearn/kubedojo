@@ -106,6 +106,16 @@ type HintUsage struct {
 	RevealedAt time.Time
 }
 
+type IdempotencyRecord struct {
+	UserID     uuid.UUID
+	Operation  string
+	Key        string
+	TargetID   uuid.UUID
+	StatusCode int16
+	Response   json.RawMessage
+	CreatedAt  time.Time
+}
+
 type LabAnswer struct {
 	SessionID    uuid.UUID
 	GoalID       string
@@ -173,6 +183,8 @@ type LabSession struct {
 	EndedAt            *time.Time
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
+	GeneratorCounter   int64
+	ResourceRevision   int64
 }
 
 type Lesson struct {

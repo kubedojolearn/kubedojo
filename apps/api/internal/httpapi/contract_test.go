@@ -85,32 +85,58 @@ func TestResponsesMatchTheContract(t *testing.T) {
 		auth    string
 		body    string
 		status  int
+		headers map[string]string
 	}{
-		{"catalog courses", readyRouter, "", "/api/v1/catalog/courses", "", "", 200},
-		{"catalog course", readyRouter, "", "/api/v1/catalog/courses/workloads", "", "", 200},
-		{"catalog course missing", readyRouter, "", "/api/v1/catalog/courses/nope", "", "", 404},
-		{"catalog lesson", readyRouter, "", "/api/v1/catalog/courses/workloads/lessons/scaling-deployments", "", "", 200},
-		{"catalog lesson missing", readyRouter, "", "/api/v1/catalog/courses/workloads/lessons/launch-a-pod", "", "", 404},
-		{"progress", readyRouter, "", "/api/v1/users/me/progress?limit=1", token, "", 200},
-		{"progress bad cursor", readyRouter, "", "/api/v1/users/me/progress?cursor=forged.sig", token, "", 400},
-		{"progress unauthenticated", readyRouter, "", "/api/v1/users/me/progress", "", "", 401},
-		{"lesson opened", readyRouter, http.MethodPost, "/api/v1/users/me/progress/opened", token, `{"courseSlug":"workloads","lessonSlug":"scaling-deployments"}`, 204},
-		{"lesson opened unpublished", readyRouter, http.MethodPost, "/api/v1/users/me/progress/opened", token, `{"courseSlug":"workloads","lessonSlug":"launch-a-pod"}`, 404},
-		{"achievements", readyRouter, "", "/api/v1/users/me/achievements", token, "", 200},
-		{"activity", readyRouter, "", "/api/v1/users/me/activity", token, "", 200},
-		{"public profile", readyRouter, "", "/api/v1/profiles/public-learner", "", "", 200},
-		{"private profile", readyRouter, "", "/api/v1/profiles/private-learner", "", "", 404},
-		{"provision", readyRouter, http.MethodPost, "/api/v1/auth/provision", provisionToken(t, s, "583231"), "", 200},
-		{"provision unauthenticated", readyRouter, http.MethodPost, "/api/v1/auth/provision", "", "", 401},
-		{"update me", readyRouter, http.MethodPatch, "/api/v1/users/me", token, `{"displayName":"Ada","settings":{"theme":"dark"}}`, 200},
-		{"update me invalid", readyRouter, http.MethodPatch, "/api/v1/users/me", token, `{"handle":"-x-"}`, 400},
-		{"update me conflict", readyRouter, http.MethodPatch, "/api/v1/users/me", token, `{"handle":"taken"}`, 409},
-		{"healthz", readyRouter, "", "/api/v1/healthz", "", "", 200},
-		{"readyz ready", readyRouter, "", "/api/v1/readyz", "", "", 200},
-		{"readyz unavailable", downRouter, "", "/api/v1/readyz", "", "", 503},
-		{"users/me", readyRouter, "", "/api/v1/users/me", token, "", 200},
-		{"users/me unauthenticated", readyRouter, "", "/api/v1/users/me", "", "", 401},
-		{"users/me rate limited", readyRouter, "", "/api/v1/users/me", s.Token(t, "429", time.Now()), "", 429},
+		{"labs list", readyRouter, "", "/api/v1/labs?state=active&limit=1", token, "", 200, nil},
+		{"labs list bad state", readyRouter, "", "/api/v1/labs?state=running", token, "", 400, nil},
+		{"labs list unauthenticated", readyRouter, "", "/api/v1/labs", "", "", 401, nil},
+		{"lab create", readyRouter, http.MethodPost, "/api/v1/labs", token, `{"challengeVersionId":"55555555-5555-4555-8555-555555555555"}`, 201, nil},
+		{"lab create bad id", readyRouter, http.MethodPost, "/api/v1/labs", token, `{"challengeVersionId":"x"}`, 400, nil},
+		{"lab create unknown field", readyRouter, http.MethodPost, "/api/v1/labs", token, `{"challengeVersionId":"55555555-5555-4555-8555-555555555555","seed":1}`, 400, nil},
+		{"lab create unknown version", readyRouter, http.MethodPost, "/api/v1/labs", token, `{"challengeVersionId":"12121212-1212-4121-8121-121212121212"}`, 404, nil},
+		{"lab create stale version", readyRouter, http.MethodPost, "/api/v1/labs", token, `{"challengeVersionId":"99999999-9999-4999-8999-999999999999"}`, 409, nil},
+		{"lab get", readyRouter, "", "/api/v1/labs/66666666-6666-4666-8666-666666666666", token, "", 200, nil},
+		{"lab get other user", readyRouter, "", "/api/v1/labs/12121212-1212-4121-8121-121212121212", token, "", 404, nil},
+		{"lab get malformed id", readyRouter, "", "/api/v1/labs/not-a-uuid", token, "", 404, nil},
+		{"lab resume", readyRouter, http.MethodPost, "/api/v1/labs/66666666-6666-4666-8666-666666666666/resume", token, "", 200, nil},
+		{"lab resume ended", readyRouter, http.MethodPost, "/api/v1/labs/77777777-7777-4777-8777-777777777777/resume", token, "", 409, nil},
+		{"lab resume expired", readyRouter, http.MethodPost, "/api/v1/labs/88888888-8888-4888-8888-888888888888/resume", token, "", 410, nil},
+		{"lab reset", readyRouter, http.MethodPost, "/api/v1/labs/66666666-6666-4666-8666-666666666666/reset", token, "", 200, map[string]string{"Idempotency-Key": "4b1f0c8e-reset-1"}},
+		{"lab reset without key", readyRouter, http.MethodPost, "/api/v1/labs/66666666-6666-4666-8666-666666666666/reset", token, "", 400, nil},
+		{"lab reset reused key", readyRouter, http.MethodPost, "/api/v1/labs/66666666-6666-4666-8666-666666666666/reset", token, "", 409, map[string]string{"Idempotency-Key": "reused-key"}},
+		{"lab reset expired", readyRouter, http.MethodPost, "/api/v1/labs/88888888-8888-4888-8888-888888888888/reset", token, "", 410, map[string]string{"Idempotency-Key": "4b1f0c8e-reset-1"}},
+		{"lab finish", readyRouter, http.MethodPost, "/api/v1/labs/66666666-6666-4666-8666-666666666666/finish", token, "", 200, map[string]string{"Idempotency-Key": "4b1f0c8e-reset-1"}},
+		{"lab finish other user", readyRouter, http.MethodPost, "/api/v1/labs/12121212-1212-4121-8121-121212121212/finish", token, "", 404, map[string]string{"Idempotency-Key": "4b1f0c8e-reset-1"}},
+		{"lab snapshot", readyRouter, "", "/api/v1/labs/66666666-6666-4666-8666-666666666666/snapshot", token, "", 200, nil},
+		{"lab snapshot other user", readyRouter, "", "/api/v1/labs/12121212-1212-4121-8121-121212121212/snapshot", token, "", 404, nil},
+		{"lab events", readyRouter, "", "/api/v1/labs/66666666-6666-4666-8666-666666666666/events?limit=1", token, "", 200, nil},
+		{"lab events bad cursor", readyRouter, "", "/api/v1/labs/66666666-6666-4666-8666-666666666666/events?cursor=forged.sig", token, "", 400, nil},
+		{"lab create rate limited", readyRouter, http.MethodPost, "/api/v1/labs", s.Token(t, "429", time.Now()), `{"challengeVersionId":"55555555-5555-4555-8555-555555555555"}`, 429, nil},
+		{"catalog courses", readyRouter, "", "/api/v1/catalog/courses", "", "", 200, nil},
+		{"catalog course", readyRouter, "", "/api/v1/catalog/courses/workloads", "", "", 200, nil},
+		{"catalog course missing", readyRouter, "", "/api/v1/catalog/courses/nope", "", "", 404, nil},
+		{"catalog lesson", readyRouter, "", "/api/v1/catalog/courses/workloads/lessons/scaling-deployments", "", "", 200, nil},
+		{"catalog lesson missing", readyRouter, "", "/api/v1/catalog/courses/workloads/lessons/launch-a-pod", "", "", 404, nil},
+		{"progress", readyRouter, "", "/api/v1/users/me/progress?limit=1", token, "", 200, nil},
+		{"progress bad cursor", readyRouter, "", "/api/v1/users/me/progress?cursor=forged.sig", token, "", 400, nil},
+		{"progress unauthenticated", readyRouter, "", "/api/v1/users/me/progress", "", "", 401, nil},
+		{"lesson opened", readyRouter, http.MethodPost, "/api/v1/users/me/progress/opened", token, `{"courseSlug":"workloads","lessonSlug":"scaling-deployments"}`, 204, nil},
+		{"lesson opened unpublished", readyRouter, http.MethodPost, "/api/v1/users/me/progress/opened", token, `{"courseSlug":"workloads","lessonSlug":"launch-a-pod"}`, 404, nil},
+		{"achievements", readyRouter, "", "/api/v1/users/me/achievements", token, "", 200, nil},
+		{"activity", readyRouter, "", "/api/v1/users/me/activity", token, "", 200, nil},
+		{"public profile", readyRouter, "", "/api/v1/profiles/public-learner", "", "", 200, nil},
+		{"private profile", readyRouter, "", "/api/v1/profiles/private-learner", "", "", 404, nil},
+		{"provision", readyRouter, http.MethodPost, "/api/v1/auth/provision", provisionToken(t, s, "583231"), "", 200, nil},
+		{"provision unauthenticated", readyRouter, http.MethodPost, "/api/v1/auth/provision", "", "", 401, nil},
+		{"update me", readyRouter, http.MethodPatch, "/api/v1/users/me", token, `{"displayName":"Ada","settings":{"theme":"dark"}}`, 200, nil},
+		{"update me invalid", readyRouter, http.MethodPatch, "/api/v1/users/me", token, `{"handle":"-x-"}`, 400, nil},
+		{"update me conflict", readyRouter, http.MethodPatch, "/api/v1/users/me", token, `{"handle":"taken"}`, 409, nil},
+		{"healthz", readyRouter, "", "/api/v1/healthz", "", "", 200, nil},
+		{"readyz ready", readyRouter, "", "/api/v1/readyz", "", "", 200, nil},
+		{"readyz unavailable", downRouter, "", "/api/v1/readyz", "", "", 503, nil},
+		{"users/me", readyRouter, "", "/api/v1/users/me", token, "", 200, nil},
+		{"users/me unauthenticated", readyRouter, "", "/api/v1/users/me", "", "", 401, nil},
+		{"users/me rate limited", readyRouter, "", "/api/v1/users/me", s.Token(t, "429", time.Now()), "", 429, nil},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -126,6 +152,9 @@ func TestResponsesMatchTheContract(t *testing.T) {
 			}
 			if tc.body != "" {
 				req.Header.Set("Content-Type", "application/json")
+			}
+			for k, v := range tc.headers {
+				req.Header.Set(k, v)
 			}
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {

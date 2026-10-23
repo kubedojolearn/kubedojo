@@ -1,78 +1,148 @@
 import type { Metadata } from "next";
-import { Lightbulb, ListChecks, Network, RotateCcw, SquareTerminal, FileCode } from "lucide-react";
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
+import { Suspense } from "react";
+import { ArrowLeft, Clock, History, Network, SquareTerminal } from "lucide-react";
 import { InDevelopmentBadge } from "@/components/feedback/in-development";
-import { UnavailableButton } from "@/components/feedback/unavailable-button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { CardListSkeleton, LoadingStatus } from "@/components/feedback/loading";
+import { EmptyState } from "@/components/feedback/states";
+import { LabControls } from "@/components/lab/lab-controls";
+import { ResourceList } from "@/components/lab/resource-list";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import { getLab, getRecentEvents, getSnapshot, isLabId, type Lab } from "@/lib/labs";
 
 export const metadata: Metadata = { title: "Lab" };
 
-const panels = [
-  { value: "terminal", label: "Terminal", icon: SquareTerminal, body: "Run kubectl against your simulated cluster." },
-  {
-    value: "editor",
-    label: "YAML editor",
-    icon: FileCode,
-    body: "Edit manifests and apply them with kubectl apply -f.",
-  },
-  {
-    value: "map",
-    label: "Cluster map",
-    icon: Network,
-    body: "See Deployments, ReplicaSets, Pods and Services and how they connect, with an equivalent list view.",
-  },
-];
+type Props = PageProps<"/lab/[sessionId]">;
 
-/** Layout preview of the lab. Each panel describes what it will do; none is interactive yet. */
-export default function LabPage() {
+const stateLabel: Record<Lab["state"], string> = {
+  active: "Active",
+  completed: "Completed",
+  abandoned: "Ended",
+  expired: "Expired",
+};
+
+// Simulated time is shown in UTC: it is the lab's logical clock, not the learner's wall clock.
+const simTime = new Intl.DateTimeFormat("en-GB", {
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  timeZone: "UTC",
+});
+
+async function LabView({ params }: Props) {
+  const { sessionId } = await params;
+  if (!isLabId(sessionId)) notFound();
+  const me = await getCurrentUser();
+  if (!me) redirect(`/login?callbackUrl=/lab/${sessionId}`);
+
+  // Ownership first: someone else's lab is simply not found.
+  const lab = await getLab(sessionId);
+  if (!lab) notFound();
+  const [snapshot, events] = await Promise.all([getSnapshot(sessionId), getRecentEvents(sessionId, 30)]);
+  if (!snapshot) notFound();
+  const lessonHref = `/learn/${lab.courseSlug}/${lab.lessonSlug}`;
+  const active = lab.state === "active";
+
   return (
     <div className="flex flex-col gap-4">
       <header className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Lab</h1>
-        <InDevelopmentBadge label="Layout preview" />
-        <div className="ml-auto flex flex-wrap gap-2">
-          <UnavailableButton variant="outline" reason="Hints arrive with grading.">
-            <Lightbulb /> Hint
-          </UnavailableButton>
-          <UnavailableButton variant="outline" reason="Resetting arrives with persistent labs.">
-            <RotateCcw /> Reset
-          </UnavailableButton>
-          <UnavailableButton reason="Checking your work arrives with grading.">
-            <ListChecks /> Check my work
-          </UnavailableButton>
-        </div>
-      </header>
-      <div className="grid min-h-[60svh] gap-4 lg:grid-cols-[minmax(18rem,2fr)_3fr]">
-        <section aria-labelledby="lesson-pane-heading" className="min-w-0 space-y-3 rounded-xl border bg-card p-5">
-          <h2 id="lesson-pane-heading" className="font-semibold">
-            Lesson and goals
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            The lesson text, the goals you need to meet and any questions to answer appear here.
+        <div className="min-w-0 space-y-1">
+          <Link href={lessonHref} className="inline-flex items-center gap-1 text-sm text-link hover:underline">
+            <ArrowLeft aria-hidden className="size-4" /> Back to the lesson
+          </Link>
+          <h1 className="text-2xl font-semibold tracking-tight text-balance">{lab.title}</h1>
+          <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <Badge variant={active ? "default" : "secondary"}>{stateLabel[lab.state]}</Badge>
+            <span className="inline-flex items-center gap-1">
+              <Clock aria-hidden className="size-3.5" />
+              Simulated clock {simTime.format(new Date(snapshot.simTime))} UTC
+            </span>
+            <span>Version {lab.version}</span>
           </p>
-          <div aria-hidden className="space-y-2 pt-2">
-            <Skeleton className="h-4 w-11/12" />
-            <Skeleton className="h-4 w-4/5" />
-            <Skeleton className="h-4 w-3/5" />
+        </div>
+        {active && (
+          <div className="ml-auto">
+            <LabControls labId={lab.id} />
           </div>
-        </section>
-        <Tabs defaultValue="terminal" className="min-w-0 rounded-xl border bg-card p-3">
-          <TabsList aria-label="Lab panels" className="h-auto max-w-full flex-wrap">
-            {panels.map((p) => (
-              <TabsTrigger key={p.value} value={p.value}>
-                <p.icon aria-hidden /> {p.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-          {panels.map((p) => (
-            <TabsContent key={p.value} value={p.value} className="mt-3">
-              <div className="grid min-h-80 place-items-center rounded-lg border border-dashed bg-terminal p-6 text-center text-sm text-terminal-foreground">
-                <p className="max-w-sm">{p.body}</p>
-              </div>
-            </TabsContent>
-          ))}
-        </Tabs>
-      </div>
+        )}
+      </header>
+
+      {!active && (
+        <div role="status" className="rounded-xl border bg-muted/40 p-4 text-sm">
+          This lab is read-only because it{" "}
+          {lab.state === "expired" ? "expired after 14 days without activity" : "has ended"}.{" "}
+          <Link href={lessonHref} className="text-link underline underline-offset-4">
+            Start the lesson again
+          </Link>{" "}
+          for a fresh cluster.
+        </div>
+      )}
+
+      <Tabs defaultValue="cluster" className="min-w-0 rounded-xl border bg-card p-3">
+        <TabsList aria-label="Lab panels" className="h-auto max-w-full flex-wrap">
+          <TabsTrigger value="cluster">
+            <Network aria-hidden /> Cluster
+          </TabsTrigger>
+          <TabsTrigger value="events">
+            <History aria-hidden /> Events
+          </TabsTrigger>
+          <TabsTrigger value="terminal">
+            <SquareTerminal aria-hidden /> Terminal
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="cluster" className="mt-3">
+          <p className="mb-4 text-sm text-muted-foreground">
+            Every object in your simulated cluster ({snapshot.resources.length}). Nothing here runs on a real cluster.
+          </p>
+          <ResourceList resources={snapshot.resources} />
+        </TabsContent>
+        <TabsContent value="events" className="mt-3">
+          {events.length === 0 ? (
+            <EmptyState title="No events yet" description="Controllers record events here as your cluster changes." />
+          ) : (
+            <ol className="divide-y rounded-lg border text-sm">
+              {events.map((e) => (
+                <li key={e.seq} className="grid gap-1 px-3 py-2 sm:grid-cols-[6rem_8rem_1fr]">
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {simTime.format(new Date(e.occurredAt))}
+                  </span>
+                  <span className={e.type === "Warning" ? "font-medium text-warning" : "font-medium"}>{e.reason}</span>
+                  <span className="min-w-0 break-words">
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {e.involvedObject.kind.toLowerCase()}/{e.involvedObject.name}
+                    </span>{" "}
+                    {e.message}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </TabsContent>
+        <TabsContent value="terminal" className="mt-3">
+          <div className="grid min-h-60 place-items-center gap-3 rounded-lg border border-dashed bg-terminal p-6 text-center text-sm text-terminal-foreground">
+            <p className="max-w-sm">Run kubectl against your simulated cluster.</p>
+            <InDevelopmentBadge label="Terminal in progress" />
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
+  );
+}
+
+export default function LabPage(props: Props) {
+  return (
+    <Suspense
+      fallback={
+        <>
+          <LoadingStatus label="Loading your lab" />
+          <CardListSkeleton count={2} />
+        </>
+      }
+    >
+      <LabView {...props} />
+    </Suspense>
   );
 }

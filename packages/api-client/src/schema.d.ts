@@ -970,8 +970,12 @@ export interface components {
         /** Format: date-time */
         creationTimestamp: string;
       };
-      spec?: Record<string, never>;
-      status?: Record<string, never>;
+      spec?: {
+        [key: string]: unknown;
+      };
+      status?: {
+        [key: string]: unknown;
+      };
     } & {
       [key: string]: unknown;
     };
@@ -1785,6 +1789,7 @@ export interface operations {
           "application/json": components["schemas"]["LabResponse"];
         };
       };
+      400: components["responses"]["ValidationFailed"];
       401: components["responses"]["Unauthenticated"];
       404: components["responses"]["NotFound"];
       409: components["responses"]["Conflict"];
@@ -1815,6 +1820,7 @@ export interface operations {
           "application/json": components["schemas"]["LabResponse"];
         };
       };
+      400: components["responses"]["ValidationFailed"];
       401: components["responses"]["Unauthenticated"];
       404: components["responses"]["NotFound"];
       409: components["responses"]["Conflict"];
@@ -2086,6 +2092,7 @@ export interface operations {
           };
         };
       };
+      400: components["responses"]["ValidationFailed"];
       401: components["responses"]["Unauthenticated"];
       404: components["responses"]["NotFound"];
       409: components["responses"]["Conflict"];

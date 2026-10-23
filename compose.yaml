@@ -81,6 +81,29 @@ services:
     cap_drop: [ALL]
     expose: ["8080"]
 
+  # Background jobs (lab expiry, idempotency retention). Same image as the API.
+  worker:
+    <<: *hardening
+    profiles: [app]
+    build:
+      context: apps/api
+      args:
+        VERSION: ${KUBEDOJO_VERSION:-dev}
+        COMMIT: ${KUBEDOJO_COMMIT:-unknown}
+    entrypoint: ["/usr/local/bin/worker"]
+    command: []
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      api: { condition: service_started }
+    healthcheck:
+      disable: true
+    read_only: true
+    cap_drop: [ALL]
+
   web:
     <<: *hardening
     profiles: [app]

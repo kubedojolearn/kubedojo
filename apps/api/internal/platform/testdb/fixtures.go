@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -104,4 +105,35 @@ func CreateLab(t testing.TB, pool *pgxpool.Pool, userID uuid.UUID, l Lesson) dbg
 		t.Fatalf("create lab: %v", err)
 	}
 	return s
+}
+
+// CreateLaunchableLesson inserts a published course and lesson whose current published
+// challenge version embeds fixtureJSON, so labs can be started from it.
+func CreateLaunchableLesson(t testing.TB, pool *pgxpool.Pool, slug, fixtureJSON string) Lesson {
+	t.Helper()
+	ctx := context.Background()
+	q := dbgen.New(pool)
+	l := CreatePublishedLesson(t, pool, slug)
+	if err := q.SetCoursePublished(ctx, dbgen.SetCoursePublishedParams{ID: l.CourseID, Published: true}); err != nil {
+		t.Fatal(err)
+	}
+	l.VersionID = PublishVersion(t, pool, l.LessonID, 2, fixtureJSON)
+	return l
+}
+
+// PublishVersion inserts a challenge version with the fixture, publishes it and makes it the
+// lesson's current version.
+func PublishVersion(t testing.TB, pool *pgxpool.Pool, lessonID uuid.UUID, version int32, fixtureJSON string) uuid.UUID {
+	t.Helper()
+	ctx := context.Background()
+	q := dbgen.New(pool)
+	spec := `{"challenge":{"version":` + strconv.Itoa(int(version)) + `},"fixture":` + fixtureJSON + `}`
+	id := InsertVersion(t, pool, lessonID, version, spec)
+	if n, err := q.PublishChallengeVersion(ctx, id); err != nil || n != 1 {
+		t.Fatalf("publish: %v (%d rows)", err, n)
+	}
+	if err := q.SetLessonCurrentVersion(ctx, dbgen.SetLessonCurrentVersionParams{LessonID: lessonID, ChallengeVersionID: &id}); err != nil {
+		t.Fatal(err)
+	}
+	return id
 }

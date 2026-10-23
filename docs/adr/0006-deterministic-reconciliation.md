@@ -12,20 +12,24 @@ Real Kubernetes converges asynchronously over wall-clock time. If the simulator 
 **Logical clock.** Each lab session has a simulated clock `simNow`, stored on `lab_sessions.sim_time`.
 
 - It starts at the fixture epoch (`2026-01-01T00:00:00Z` unless the fixture sets `epoch`). Fixture objects may set `ageSeconds` to backdate `creationTimestamp`.
-- **Every mutating command advances it by a fixed tick** (default 10 s, `SIM_TICK_SECONDS`). Read-only commands do not advance it and never change any state, which keeps Part 10's rule "a read-only command never mutates state" true.
+- **Every mutating command advances it by a fixed tick** of 10 s (`simulator.Tick`). The tick is part of a simulator version, not configuration: making it configurable would let two deployments produce different output for the same commands. Read-only commands do not advance it and never change any state, which keeps Part 10's rule "a read-only command never mutates state" true.
 - Wall-clock time never enters the simulator. `AGE`, event timestamps and restart counts are all computed from `simNow`.
 
 **Reconcile to a fixed point after every mutation.** After a mutating command is applied, controllers run in a fixed order until nothing changes:
 
-1. Namespace lifecycle (terminating namespaces delete their contents)
-2. Deployment controller (ReplicaSets, rolling update steps, revision history)
-3. ReplicaSet controller (create/delete Pods to match replicas)
-4. Scheduler (bind Pending Pods to Nodes)
-5. Kubelet simulation (image resolution, config references, crash profiles, readiness)
-6. EndpointSlice controller (Service → ready Pod endpoints)
-7. Garbage collector (owner-reference cascade)
+1. Namespace lifecycle (deleting a namespace deletes its contents; there is no Terminating phase)
+2. Node addresses (stable InternalIPs in name order)
+3. Deployment controller (ReplicaSets, rolling update steps, revision history)
+4. ReplicaSet controller (create/delete Pods to match replicas)
+5. Scheduler (bind Pending Pods to Nodes)
+6. Kubelet simulation (Pod IPs, image resolution, config references, crash profiles, readiness)
+7. Service addresses (ClusterIPs, NodePorts)
+8. EndpointSlice controller (Service → Pod endpoints with readiness)
+9. Garbage collector (owner-reference cascade)
 
-A pass that changes nothing ends the loop. More than 32 passes is a simulator bug: the transaction rolls back and the learner sees an internal error (with the request ID), never a half-reconciled cluster.
+A pass that changes nothing ends the loop. More than 256 passes (`MaxReconcilePasses`) is a simulator bug: the transaction rolls back and the learner sees an internal error (with the request ID), never a half-reconciled cluster.
+
+*Amended 2026-10-23 (Part 09):* the cap was first set at 32. A rolling update moves one step per pass, and the largest allowed Deployment (50 replicas with `maxSurge: 1, maxUnavailable: 0`) needs about 100 passes, so the cap is 256. It still stops a controller bug within milliseconds.
 
 **Intermediate steps are visible.** The reconcile loop records each step as a synthetic Event (e.g. `ScalingReplicaSet`, `SuccessfulCreate`, `Scheduled`). `kubectl rollout status` prints the recorded rollout steps followed by the final result, so learners see a rolling update happen even though it completed within one transaction.
 

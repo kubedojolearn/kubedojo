@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth/authtest"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/courses"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/health"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/labs"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/httpx"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/ratelimit"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/progress"
@@ -131,6 +133,93 @@ func (progressFake) PublicProfile(_ context.Context, handle string) (progress.Pu
 
 func (userStore) AnalyticsOptOut(context.Context, uuid.UUID) (bool, error) { return false, nil }
 
+var (
+	testLabID    = uuid.MustParse("66666666-6666-4666-8666-666666666666")
+	endedLabID   = uuid.MustParse("77777777-7777-4777-8777-777777777777")
+	expiredLabID = uuid.MustParse("88888888-8888-4888-8888-888888888888")
+	testVersion  = uuid.MustParse("55555555-5555-4555-8555-555555555555")
+	staleVersion = uuid.MustParse("99999999-9999-4999-8999-999999999999")
+)
+
+type labsFake struct{}
+
+func fakeLab(state string) labs.Lab {
+	t := time.Date(2026, 10, 23, 9, 0, 0, 0, time.UTC)
+	l := labs.Lab{
+		ID: testLabID, LessonID: "workloads/scaling-deployments", CourseSlug: "workloads", LessonSlug: "scaling-deployments",
+		Title: "Scale", ChallengeVersionID: testVersion, State: state, Version: 1, SimulatorVersion: "kubernetes-1.37-subset-1",
+		StartedAt: t, LastActiveAt: t, ExpiresAt: t.Add(labs.IdleTTL),
+	}
+	if state != "active" {
+		l.EndedAt = &t
+	}
+	return l
+}
+
+func labErr(id uuid.UUID) error {
+	switch id {
+	case testLabID:
+		return nil
+	case endedLabID:
+		return labs.ErrNotActive
+	case expiredLabID:
+		return labs.ErrExpired
+	}
+	return labs.ErrNotFound
+}
+
+func (labsFake) Create(_ context.Context, _, cv uuid.UUID) (labs.Lab, bool, error) {
+	switch cv {
+	case testVersion:
+		return fakeLab("active"), true, nil
+	case staleVersion:
+		return labs.Lab{}, false, labs.ErrStaleChallenge
+	}
+	return labs.Lab{}, false, labs.ErrChallengeNotFound
+}
+
+func (labsFake) List(context.Context, uuid.UUID, *string, *labs.ListCursor, int32) ([]labs.Lab, *labs.ListCursor, error) {
+	l := fakeLab("active")
+	return []labs.Lab{l}, &labs.ListCursor{LastActiveAt: l.LastActiveAt, ID: l.ID}, nil
+}
+
+func (labsFake) Get(_ context.Context, _, id uuid.UUID) (labs.Lab, error) {
+	return fakeLab("active"), labErr(id)
+}
+
+func (labsFake) Resume(_ context.Context, _, id uuid.UUID) (labs.Lab, error) {
+	return fakeLab("active"), labErr(id)
+}
+
+func (labsFake) Reset(_ context.Context, _, id uuid.UUID, key string) (labs.Lab, error) {
+	if key == "reused-key" {
+		return labs.Lab{}, labs.ErrIdempotencyConflict
+	}
+	l := fakeLab("active")
+	l.Version = 2
+	return l, labErr(id)
+}
+
+func (labsFake) Finish(_ context.Context, _, id uuid.UUID, _ string) (labs.Lab, error) {
+	return fakeLab("abandoned"), labErr(id)
+}
+
+func (labsFake) Snapshot(_ context.Context, _, id uuid.UUID) (labs.Snapshot, error) {
+	return labs.Snapshot{
+		LabID: testLabID, Version: 1, SimulatorVersion: "kubernetes-1.37-subset-1", SimTime: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		CurrentNamespace: "default",
+		Resources:        []json.RawMessage{json.RawMessage(`{"apiVersion":"v1","kind":"Namespace","metadata":{"name":"default","uid":"0b6f2c1e-4c49-4d8a-9a51-1f1d2f3e4a5b","resourceVersion":"1","creationTimestamp":"2025-12-02T00:00:00Z","annotations":{"kubedojo.dev/simulated":"true"}},"status":{"phase":"Active"}}`)},
+	}, labErr(id)
+}
+
+func (labsFake) Events(_ context.Context, _, id uuid.UUID, _ int64, _ int32) ([]labs.SimEvent, *int64, error) {
+	next := int64(1)
+	return []labs.SimEvent{{
+		Seq: 1, Version: 1, Type: "Normal", Reason: "Scheduled", Message: "Successfully assigned default/web-1 to node-2",
+		InvolvedObject: labs.InvolvedObject{Kind: "Pod", Namespace: "default", Name: "web-1"}, OccurredAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+	}}, &next, labErr(id)
+}
+
 type limiter struct{}
 
 func (limiter) Allow(ctx context.Context, key string, _ int, _ time.Duration) (ratelimit.Decision, error) {
@@ -160,6 +249,7 @@ func testRouter(t *testing.T, ready bool) (http.Handler, authtest.Signer) {
 		Users:          userStore{},
 		Catalog:        catalog{},
 		Progress:       progressFake{},
+		Labs:           labsFake{},
 		Settings:       userStore{},
 		Cursors:        httpx.NewCursors([]byte("0123456789abcdef0123456789abcdef")),
 		Limiter:        limiter{},

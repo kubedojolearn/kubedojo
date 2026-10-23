@@ -33,6 +33,7 @@ import (
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/courses"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/health"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/httpapi"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/labs"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/buildinfo"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/config"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/database"
@@ -108,6 +109,7 @@ func serve() error {
 		Users:          userStore,
 		Catalog:        courses.NewService(pool),
 		Progress:       progress.NewService(pool),
+		Labs:           labs.NewService(pool),
 		Settings:       userStore,
 		Cursors:        httpx.NewCursors(cursorKey),
 		Limiter:        ratelimit.NewRedis(rdb),

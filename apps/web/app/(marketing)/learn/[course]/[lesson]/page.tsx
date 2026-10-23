@@ -5,12 +5,13 @@ import { Suspense } from "react";
 import { ArrowLeft, ArrowRight, BookOpen, Clock, ExternalLink, FlaskConical, Target } from "lucide-react";
 import { InDevelopmentBadge } from "@/components/feedback/in-development";
 import { LoadingStatus } from "@/components/feedback/loading";
-import { UnavailableButton } from "@/components/feedback/unavailable-button";
+import { StartLabButton } from "@/components/lab/start-lab-button";
 import { Container } from "@/components/layout/page-header";
 import { LessonOpened } from "@/components/learning/lesson-opened";
 import { LessonShortcuts } from "@/components/learning/lesson-shortcuts";
 import { Markdown } from "@/components/learning/markdown";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -152,10 +153,16 @@ async function LessonView({ params }: Props) {
               ))}
             </ol>
             <div className="mt-5 flex flex-wrap items-center gap-3">
-              <UnavailableButton reason="Labs open as the simulator is finished.">
-                <FlaskConical /> Start lab
-              </UnavailableButton>
-              <InDevelopmentBadge label="Labs coming soon" />
+              {session?.subject ? (
+                <StartLabButton challengeVersionId={lesson.challengeVersionId} />
+              ) : (
+                <Button asChild>
+                  <Link href={`/login?callbackUrl=${encodeURIComponent(`/learn/${lesson.courseSlug}/${lesson.slug}`)}`}>
+                    <FlaskConical /> Sign in to start the lab
+                  </Link>
+                </Button>
+              )}
+              <InDevelopmentBadge label="Terminal in progress" />
             </div>
           </section>
 
