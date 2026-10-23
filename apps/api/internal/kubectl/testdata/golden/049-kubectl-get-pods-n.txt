@@ -1,0 +1,6 @@
+$ kubectl get pods -n
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: flag needs an argument: 'n' in -n
+See 'kubectl get --help' for usage.

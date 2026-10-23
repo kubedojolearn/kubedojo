@@ -1,0 +1,5 @@
+$ kubectl rollout undo deploy/nginx
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: 'kubectl rollout undo' changes the cluster, and changing the simulated cluster isn't available yet

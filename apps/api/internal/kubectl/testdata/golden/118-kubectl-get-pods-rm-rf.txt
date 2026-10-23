@@ -1,0 +1,5 @@
+$ kubectl get pods; rm -rf /
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: ';' is shell syntax, and the simulator has no shell. Run one kubectl command at a time.

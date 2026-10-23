@@ -7,16 +7,15 @@ import (
 )
 
 // crashBackoff returns how many restarts fit in elapsed under kubelet's backoff (10s doubling
-// to a 5m cap), and the current backoff delay.
-func crashBackoff(elapsed time.Duration) (restarts int32, delay time.Duration) {
+// to a 5m cap), the current backoff delay, and when (after start) the last restart happened.
+func crashBackoff(elapsed time.Duration) (restarts int32, delay, last time.Duration) {
 	delay = 10 * time.Second
-	var t time.Duration
-	for t+delay <= elapsed && restarts < 1_000_000 {
-		t += delay
+	for last+delay <= elapsed && restarts < 1_000_000 {
+		last += delay
 		restarts++
 		delay = min(delay*2, 5*time.Minute)
 	}
-	return restarts, delay
+	return restarts, delay, last
 }
 
 type configProblem struct{ message string }
@@ -172,8 +171,9 @@ func syncPod(s *State, p *Pod, node *Node) error {
 				s.Record("Warning", "Failed", p, "Error: "+problem.message)
 			}
 		case ContainerCrashes(profile, env):
-			started := *p.Status.StartTime
-			restarts, delay := crashBackoff(elapsed)
+			// Each attempt crashes as soon as it starts; the last one began at the last restart.
+			restarts, delay, last := crashBackoff(elapsed)
+			started := p.Status.StartTime.Add(last)
 			cs.RestartCount = restarts
 			cs.Started = false
 			cs.State.Waiting = &ContainerStateWaiting{

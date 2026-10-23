@@ -1,0 +1,5 @@
+$ kubectl port-forward svc/web 8080:80
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: 'kubectl port-forward' isn't supported: no containers actually run in the simulator, so there is no port to forward.

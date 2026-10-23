@@ -1,0 +1,8 @@
+$ kubectl api-resources --namespaced=false
+--- exit 0
+--- stdout
+NAME         SHORTNAMES   APIVERSION   NAMESPACED   KIND
+namespaces   ns           v1           false        Namespace
+nodes        no           v1           false        Node
+--- stderr
+ⓘ This simulated cluster serves only these resource types (see the support matrix).

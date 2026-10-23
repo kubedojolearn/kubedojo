@@ -50,6 +50,7 @@ Name validation matches Kubernetes: DNS-1123 subdomain for most kinds, DNS-1123 
 | **Garbage collection** | Deleting an owner deletes dependents (`ownerReferences`, foreground semantics, immediate). `--cascade=orphan` supported. | Immediate. |
 | **kubeconfig** | Each lab has one simulated kubeconfig: cluster `kubedojo`, user `learner`, context `kubedojo`. Current namespace defaults to `default` and changes with `config set-context --current --namespace`. Stored on the session. | No credentials or real server. |
 | **Logs** | Each catalog profile defines log lines; templated with Pod name/IP. Prefixed in the UI with a "simulated" marker. | Fixed content. |
+| **API defaulting** | Like the API server, input gets defaults: Pod `restartPolicy: Always`, container port `protocol: TCP`, Deployment/ReplicaSet `replicas: 1`, Deployment `strategy` RollingUpdate 25%/25% and `revisionHistoryLimit: 10`, Service `type: ClusterIP`, port `protocol: TCP` and `targetPort` = `port`, Secret `type: Opaque`. | Only these defaults. |
 | **Reset** | Reloads the lab from its challenge version's fixture with the same seed, so names, UIDs and IPs match the first start. `resourceVersion`s keep increasing across the reset, earlier events are dropped and command history is kept. | No equivalent; recreating a real cluster gives new names. |
 | **Apply** | `kubectl apply` stores `kubectl.kubernetes.io/last-applied-configuration` and performs a three-way merge on the supported field subset. | Client-side apply only; server-side apply not supported. |
 
@@ -57,22 +58,24 @@ Name validation matches Kubernetes: DNS-1123 subdomain for most kinds, DNS-1123 
 
 All commands start with `kubectl` (the alias `k` is accepted). Global flags: `-n/--namespace`, `-A/--all-namespaces` (where kubectl allows it), `-h/--help`. Anything else global (`--context`, `--kubeconfig`, `--server`, `--token`, `-v`) returns `UNSUPPORTED`.
 
-**Rejected before parsing** (error `UNSUPPORTED_COMMAND`, nothing executes): `;`, `&&`, `||`, `|`, `>`, `>>`, `<`, `$(`, backticks, `&` at the end, newlines (multi-line input), any first word other than `kubectl`/`k`/`clear`/`help`, input over 16 KiB, more than 64 tokens. The tokenizer supports single and double quotes and backslash escapes only.
+**Rejected before parsing** (nothing executes): outside single quotes, `;`, `&&`, `||`, `|`, `&`, `>`, `>>`, `<`, `$(`, `$VAR`/`${VAR}`, backticks and bare `(`/`)` (`UNSUPPORTED_COMMAND`); newlines (multi-line input); control characters, invalid UTF-8, input over 16 KiB and more than 64 words (`VALIDATION_FAILED`); any first word other than `kubectl`/`k`/`clear`/`help` (`UNSUPPORTED_COMMAND`, exit 127). The tokenizer (`internal/kubectl/tokenize.go`) supports single quotes (literal), double quotes (with `\"` and `\\`) and backslash escapes only, and never expands anything. Inside double quotes, `$` and backticks are still rejected because a shell would expand them there.
+
+Failed commands are terminal output, not API errors: `POST /labs/{id}/commands` answers `200` with the exit code, stderr and an `errorCode` (`UNSUPPORTED_COMMAND`, `VALIDATION_FAILED`, `NOT_FOUND`). Each command runs at most once per client `requestId`; a retry returns the stored result. Read commands never change state, the clock or the lab version (golden tests assert this for every command). Command history stores output with Secret `data` values replaced by `<redacted>`; the learner's own terminal shows them.
 
 ### Read commands (Part 10)
 
 | Command | Level | Supported options |
 | --- | --- | --- |
 | `get <type>[,<type>…] [name…]` | Supported | `-o wide\|yaml\|json\|name`, `-l/--selector` (equality and set-based), `--show-labels`, `-n`, `-A`, `--no-headers`, `--sort-by` (metadata.name, metadata.creationTimestamp only). Types: all kinds in §1, plus short names (`po`, `deploy`, `rs`, `svc`, `ns`, `no`, `cm`, `ep`, `ev`) and `all` (= pods, services, deployments, replicasets). `-w/--watch`: not supported (see ADR-0006). `-o jsonpath/custom-columns/go-template`: not supported. |
-| `describe <type> <name>` / `describe <type> -l …` | Supported | Kinds in §1. Includes Events section from simulated events. |
-| `logs <pod> [-c container]` | Partial | `--previous`, `--tail=N`. `-f/--follow`: not supported. Output is from the image's behavior profile. |
+| `describe <type> <name>` / `describe <type> -l …` | Supported | Kinds in §1. Includes Events section from simulated events. Like kubectl, a name that matches no object exactly describes every object whose name starts with it. Secret values are never printed (sizes only). |
+| `logs <pod> [-c container]` | Partial | `pod/<name>`, `deployment/<name>`, `replicaset/<name>` (first Pod, with kubectl's `Found N pods` note), `-c`, `--previous`, `--tail=N`. Containers that never started return kubectl's `waiting to start` error. `-f/--follow`, `--timestamps`, `--all-containers`: not supported. Output is from the image's behavior profile. |
 | `get events` / `events` | Supported | `--for <type>/<name>`, `--types Warning,Normal`, `-n`, `-A`. Sorted by simulated time. |
 | `explain <type>[.<field>…]` | Partial | Documented fields of supported kinds only; unsupported fields say so. `--recursive` supported. |
 | `api-resources` | Supported | `--namespaced=true\|false`, `-o wide\|name`. Lists only simulated kinds, with a footer noting the cluster is simulated. |
 | `cluster-info` | Supported | Prints simulated control-plane URLs (`https://kubedojo.sim:6443`). |
 | `version` | Supported | `Client Version: v1.37.1`, `Server Version: v1.37.1 (simulated)`. `-o yaml/json`. |
 | `config view` / `get-contexts` / `current-context` | Supported | `--minify` for view. |
-| `rollout status` / `rollout history` | Supported | `--revision=N` for history. |
+| `rollout status` / `rollout history` | Supported | `--revision=N` for history. Because the cluster is always reconciled, a rollout that can't finish prints kubectl's `Waiting for deployment …` line, a hint about why, and exits 1 instead of waiting forever. |
 | `help`, `<command> --help` | Supported | Lists only supported commands and flags, with a link to the support matrix. |
 
 ### Mutating commands (Parts 11–13; listed here so lessons can rely on them)

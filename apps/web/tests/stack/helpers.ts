@@ -29,6 +29,8 @@ export async function signIn(
       data: { completeOnboarding: true },
     });
     expect(res.ok()).toBe(true);
-    if (/\/onboarding/.test(page.url())) await page.goto(callbackUrl);
+    // The post-sign-in redirect to onboarding may still be landing; go to the target either way.
+    await page.goto(callbackUrl);
+    await expect(page).not.toHaveURL(/\/onboarding/);
   }
 }

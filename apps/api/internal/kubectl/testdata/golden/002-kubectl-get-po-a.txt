@@ -1,0 +1,10 @@
+$ kubectl get po -A
+--- exit 0
+--- stdout
+NAMESPACE   NAME                      READY   STATUS             RESTARTS        AGE
+default     nginx-4fzxcz7snh-tbjxs    1/1     Running            0               60m
+default     picky                     0/1     Pending            0               2m
+default     typo                      0/1     ImagePullBackOff   0               5m
+shop        orders-vqtcsddx9v-flhpw   0/1     CrashLoopBackOff   5 (4m50s ago)   10m
+shop        orders-vqtcsddx9v-q7rwf   0/1     CrashLoopBackOff   5 (4m50s ago)   10m
+--- stderr

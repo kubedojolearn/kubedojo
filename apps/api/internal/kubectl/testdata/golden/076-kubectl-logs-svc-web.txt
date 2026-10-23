@@ -1,0 +1,5 @@
+$ kubectl logs svc/web
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: cannot get the logs from services: only pods, deployments and replicasets have logs

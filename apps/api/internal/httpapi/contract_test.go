@@ -87,6 +87,16 @@ func TestResponsesMatchTheContract(t *testing.T) {
 		status  int
 		headers map[string]string
 	}{
+		{"lab command", readyRouter, http.MethodPost, "/api/v1/labs/66666666-6666-4666-8666-666666666666/commands", token, `{"requestId":"abababab-abab-4bab-8bab-abababababab","input":"kubectl get pods"}`, 200, nil},
+		{"lab command failing", readyRouter, http.MethodPost, "/api/v1/labs/66666666-6666-4666-8666-666666666666/commands", token, `{"requestId":"abababab-abab-4bab-8bab-abababababab","input":"kubectl get pod nope"}`, 200, nil},
+		{"lab command bad request id", readyRouter, http.MethodPost, "/api/v1/labs/66666666-6666-4666-8666-666666666666/commands", token, `{"requestId":"1","input":"kubectl get pods"}`, 400, nil},
+		{"lab command empty", readyRouter, http.MethodPost, "/api/v1/labs/66666666-6666-4666-8666-666666666666/commands", token, `{"requestId":"abababab-abab-4bab-8bab-abababababab","input":""}`, 400, nil},
+		{"lab command nul", readyRouter, http.MethodPost, "/api/v1/labs/66666666-6666-4666-8666-666666666666/commands", token, `{"requestId":"abababab-abab-4bab-8bab-abababababab","input":"kubectl\u0000"}`, 400, nil},
+		{"lab command ended lab", readyRouter, http.MethodPost, "/api/v1/labs/77777777-7777-4777-8777-777777777777/commands", token, `{"requestId":"abababab-abab-4bab-8bab-abababababab","input":"kubectl get pods"}`, 409, nil},
+		{"lab command expired lab", readyRouter, http.MethodPost, "/api/v1/labs/88888888-8888-4888-8888-888888888888/commands", token, `{"requestId":"abababab-abab-4bab-8bab-abababababab","input":"kubectl get pods"}`, 410, nil},
+		{"lab command other user", readyRouter, http.MethodPost, "/api/v1/labs/12121212-1212-4121-8121-121212121212/commands", token, `{"requestId":"abababab-abab-4bab-8bab-abababababab","input":"kubectl get pods"}`, 404, nil},
+		{"lab commands list", readyRouter, "", "/api/v1/labs/66666666-6666-4666-8666-666666666666/commands?limit=1", token, "", 200, nil},
+		{"lab commands bad cursor", readyRouter, "", "/api/v1/labs/66666666-6666-4666-8666-666666666666/commands?cursor=forged.sig", token, "", 400, nil},
 		{"labs list", readyRouter, "", "/api/v1/labs?state=active&limit=1", token, "", 200, nil},
 		{"labs list bad state", readyRouter, "", "/api/v1/labs?state=running", token, "", 400, nil},
 		{"labs list unauthenticated", readyRouter, "", "/api/v1/labs", "", "", 401, nil},

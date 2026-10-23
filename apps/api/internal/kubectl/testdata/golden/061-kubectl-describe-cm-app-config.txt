@@ -1,0 +1,24 @@
+$ kubectl describe cm app-config
+--- exit 0
+--- stdout
+Name:         app-config
+Namespace:    default
+Labels:       <none>
+Annotations:  <none>
+
+Data
+====
+level:
+----
+debug
+
+mode:
+----
+prod
+
+
+BinaryData
+====
+
+Events:  <none>
+--- stderr

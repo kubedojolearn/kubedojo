@@ -1,0 +1,31 @@
+$ kubectl get ev -A
+--- exit 0
+--- stdout
+NAMESPACE   LAST SEEN   TYPE      REASON              OBJECT                         MESSAGE
+default     60m         Normal    ScalingReplicaSet   deployment/nginx               Scaled up replica set nginx-4fzxcz7snh from 0 to 1
+default     60m         Normal    SuccessfulCreate    replicaset/nginx-4fzxcz7snh    Created pod: nginx-4fzxcz7snh-tbjxs
+default     60m         Normal    Scheduled           pod/nginx-4fzxcz7snh-tbjxs     Successfully assigned default/nginx-4fzxcz7snh-tbjxs to node-2
+default     60m         Normal    Pulled              pod/nginx-4fzxcz7snh-tbjxs     Container image "nginx:1.27" already present on machine (simulated)
+default     60m         Normal    Created             pod/nginx-4fzxcz7snh-tbjxs     Created container: nginx
+default     60m         Normal    Started             pod/nginx-4fzxcz7snh-tbjxs     Started container nginx
+shop        10m         Normal    ScalingReplicaSet   deployment/orders              Scaled up replica set orders-vqtcsddx9v from 0 to 2
+shop        10m         Normal    SuccessfulCreate    replicaset/orders-vqtcsddx9v   Created pod: orders-vqtcsddx9v-q7rwf
+shop        10m         Normal    SuccessfulCreate    replicaset/orders-vqtcsddx9v   Created pod: orders-vqtcsddx9v-flhpw
+shop        10m         Normal    Scheduled           pod/orders-vqtcsddx9v-flhpw    Successfully assigned shop/orders-vqtcsddx9v-flhpw to node-3
+shop        10m         Normal    Scheduled           pod/orders-vqtcsddx9v-q7rwf    Successfully assigned shop/orders-vqtcsddx9v-q7rwf to node-3
+shop        10m         Normal    Pulled              pod/orders-vqtcsddx9v-flhpw    Container image "kubedojo/orders:1.0" already present on machine (simulated)
+shop        10m         Normal    Created             pod/orders-vqtcsddx9v-flhpw    Created container: orders
+shop        10m         Normal    Started             pod/orders-vqtcsddx9v-flhpw    Started container orders
+shop        10m         Warning   BackOff             pod/orders-vqtcsddx9v-flhpw    Back-off restarting failed container orders in pod orders-vqtcsddx9v-flhpw_shop(d868da38-8672-4b56-a4d2-1225283af2e8)
+shop        10m         Normal    Pulled              pod/orders-vqtcsddx9v-q7rwf    Container image "kubedojo/orders:1.0" already present on machine (simulated)
+shop        10m         Normal    Created             pod/orders-vqtcsddx9v-q7rwf    Created container: orders
+shop        10m         Normal    Started             pod/orders-vqtcsddx9v-q7rwf    Started container orders
+shop        10m         Warning   BackOff             pod/orders-vqtcsddx9v-q7rwf    Back-off restarting failed container orders in pod orders-vqtcsddx9v-q7rwf_shop(51ce3318-3622-40f6-880e-43ed5da9a60f)
+default     5m          Normal    Scheduled           pod/typo                       Successfully assigned default/typo to node-2
+default     5m          Normal    Pulling             pod/typo                       Pulling image "ngnix:1.27"
+default     5m          Warning   Failed              pod/typo                       Failed to pull image "ngnix:1.27": rpc error: code = NotFound desc = failed to pull and unpack image "ngnix:1.27": not found (simulated registry)
+default     5m          Warning   Failed              pod/typo                       Error: ErrImagePull
+default     5m          Normal    BackOff             pod/typo                       Back-off pulling image "ngnix:1.27"
+default     5m          Warning   Failed              pod/typo                       Error: ImagePullBackOff
+default     2m          Warning   FailedScheduling    pod/picky                      0/3 nodes are available: 1 node(s) had untolerated taint {node-role.kubernetes.io/control-plane: }, 2 node(s) didn't match Pod's node affinity/selector.
+--- stderr

@@ -188,8 +188,67 @@ func DecodeInput(raw []byte) (Object, error) {
 			s.Data[k] = []byte(v)
 		}
 	}
+	applyDefaults(o)
 	TypeMetaFor(o)
 	return o, nil
+}
+
+// applyDefaults fills in what the API server's defaulting would, so stored objects (and
+// `-o yaml`) look like a real cluster's.
+func applyDefaults(o Object) {
+	podSpec := func(s *PodSpec) {
+		if s.RestartPolicy == "" {
+			s.RestartPolicy = "Always"
+		}
+		for i := range s.Containers {
+			for j := range s.Containers[i].Ports {
+				if s.Containers[i].Ports[j].Protocol == "" {
+					s.Containers[i].Ports[j].Protocol = "TCP"
+				}
+			}
+		}
+	}
+	one := func(r **int32) {
+		if *r == nil {
+			v := int32(1)
+			*r = &v
+		}
+	}
+	switch v := o.(type) {
+	case *Pod:
+		podSpec(&v.Spec)
+	case *ReplicaSet:
+		one(&v.Spec.Replicas)
+		podSpec(&v.Spec.Template.Spec)
+	case *Deployment:
+		one(&v.Spec.Replicas)
+		podSpec(&v.Spec.Template.Spec)
+		if v.Spec.Strategy.Type == "" {
+			v.Spec.Strategy.Type = "RollingUpdate"
+		}
+		if v.Spec.Strategy.Type == "RollingUpdate" && v.Spec.Strategy.RollingUpdate == nil {
+			v.Spec.Strategy.RollingUpdate = &RollingUpdate{
+				MaxSurge: &IntOrString{IsStr: true, StrVal: "25%"}, MaxUnavailable: &IntOrString{IsStr: true, StrVal: "25%"},
+			}
+		}
+		if v.Spec.RevisionHistoryLimit == nil {
+			limit := int32(10)
+			v.Spec.RevisionHistoryLimit = &limit
+		}
+	case *Service:
+		if v.Spec.Type == "" {
+			v.Spec.Type = "ClusterIP"
+		}
+		for i := range v.Spec.Ports {
+			p := &v.Spec.Ports[i]
+			if p.Protocol == "" {
+				p.Protocol = "TCP"
+			}
+			if !p.TargetPort.IsStr && p.TargetPort.IntVal == 0 {
+				p.TargetPort = IntOrString{IntVal: p.Port}
+			}
+		}
+	}
 }
 
 // MarshalForOutput renders an object as kubectl -o json would, with the simulated annotation.

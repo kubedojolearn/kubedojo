@@ -162,7 +162,7 @@ async function LessonView({ params }: Props) {
                   </Link>
                 </Button>
               )}
-              <InDevelopmentBadge label="Terminal in progress" />
+              <InDevelopmentBadge label="Read-only commands for now" />
             </div>
           </section>
 

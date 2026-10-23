@@ -1,0 +1,6 @@
+$ kubectl version
+--- exit 0
+--- stdout
+Client Version: v1.37.1
+Server Version: v1.37.1 (simulated)
+--- stderr

@@ -1,0 +1,21 @@
+$ kubectl rollout history deployment/nginx --revision=1
+--- exit 0
+--- stdout
+deployment.apps/nginx with revision #1
+Pod Template:
+  Labels:  app=nginx
+           pod-template-hash=4fzxcz7snh
+  Containers:
+   nginx:
+    Image:      nginx:1.27
+    Port:       80/TCP
+    Host Port:  0/TCP
+    Requests:
+      cpu:         100m
+      memory:      64Mi
+    Environment:   <none>
+    Mounts:        <none>
+  Volumes:         <none>
+  Node-Selectors:  <none>
+  Tolerations:     <none>
+--- stderr

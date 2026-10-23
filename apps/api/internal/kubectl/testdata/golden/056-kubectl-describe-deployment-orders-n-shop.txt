@@ -1,0 +1,41 @@
+$ kubectl describe deployment orders -n shop
+--- exit 0
+--- stdout
+Name:                   orders
+Namespace:              shop
+CreationTimestamp:      Wed, 31 Dec 2025 23:50:00 +0000
+Labels:                 app=orders
+Annotations:            deployment.kubernetes.io/revision: 1
+Selector:               app=orders
+Replicas:               2 desired | 2 updated | 2 total | 0 available | 2 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=orders
+  Containers:
+   orders:
+    Image:      kubedojo/orders:1.0
+    Port:       <none>
+    Host Port:  <none>
+    Requests:
+      cpu:     50m
+      memory:  32Mi
+    Environment:
+      MODE:        <set to the key 'mode' of config map 'orders-config'>  Optional: true
+    Mounts:        <none>
+  Volumes:         <none>
+  Node-Selectors:  <none>
+  Tolerations:     <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      False   MinimumReplicasUnavailable
+  Progressing    True    ReplicaSetUpdated
+OldReplicaSets:  <none>
+NewReplicaSet:   orders-vqtcsddx9v (2/2 replicas created)
+Events:
+  Type    Reason             Age   From                   Message
+  ----    ------             ----  ----                   -------
+  Normal  ScalingReplicaSet  10m   deployment-controller  Scaled up replica set orders-vqtcsddx9v from 0 to 2
+--- stderr

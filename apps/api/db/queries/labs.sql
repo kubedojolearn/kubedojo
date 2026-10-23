@@ -151,3 +151,22 @@ ON CONFLICT (user_id, lesson_id) DO UPDATE SET
 -- name: PruneLabEvents :exec
 -- Keeps the newest events only, like the API server's event TTL.
 DELETE FROM lab_events WHERE session_id = sqlc.arg(session_id) AND seq <= sqlc.arg(through_seq);
+
+-- name: GetCommandByRequestID :one
+SELECT * FROM command_executions WHERE session_id = sqlc.arg(session_id) AND request_id = sqlc.arg(request_id);
+
+-- name: NextCommandSeq :one
+UPDATE lab_sessions SET command_seq = command_seq + 1 WHERE id = $1 RETURNING command_seq;
+
+-- name: InsertCommandExecution :one
+INSERT INTO command_executions (session_id, sequence, request_id, input, parsed, stdout, stderr, exit_code, error_code, mutated, snapshot_version, duration_ms)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+RETURNING *;
+
+-- name: ListCommands :many
+-- Newest first, before a sequence number.
+SELECT * FROM command_executions
+WHERE session_id = sqlc.arg(session_id)
+  AND (sqlc.narg(before_seq)::bigint IS NULL OR sequence < sqlc.narg(before_seq)::bigint)
+ORDER BY sequence DESC
+LIMIT sqlc.arg(page_limit);

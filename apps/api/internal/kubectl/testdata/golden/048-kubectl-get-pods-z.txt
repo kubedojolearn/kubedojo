@@ -1,0 +1,6 @@
+$ kubectl get pods -Z
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: unknown shorthand flag: 'Z' in -Z
+See 'kubectl get --help' for usage.

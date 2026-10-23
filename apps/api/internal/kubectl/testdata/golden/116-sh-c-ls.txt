@@ -1,0 +1,5 @@
+$ sh -c ls
+--- exit 127 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+sh: command not available. Only kubectl commands run in the simulator (try 'help').

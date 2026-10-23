@@ -1,0 +1,45 @@
+$ kubectl describe node node-2
+--- exit 0
+--- stdout
+Name:               node-2
+Roles:              <none>
+Labels:             kubernetes.io/hostname=node-2
+                    kubernetes.io/os=linux
+Annotations:        <none>
+CreationTimestamp:  Mon, 22 Dec 2025 00:00:00 +0000
+Taints:             <none>
+Unschedulable:      false
+Conditions:
+  Type   Status
+  ----   ------
+  Ready  True
+Addresses:
+  InternalIP:  192.168.49.3
+  Hostname:    node-2
+Capacity:
+  cpu:     4
+  memory:  8Gi
+  pods:    110
+Allocatable:
+  cpu:     3800m
+  memory:  7Gi
+  pods:    110
+System Info:
+  Kubelet Version:            v1.37.1
+  Container Runtime Version:  containerd://2.1.4 (simulated)
+  OS Image:                   KubeDojo simulated node
+  Operating System:           linux
+  Architecture:               amd64
+Non-terminated Pods:          (2 in total)
+  Namespace                   Name                    CPU Requests  Memory Requests  Age
+  ---------                   ----                    ------------  ---------------  ---
+  default                     nginx-4fzxcz7snh-tbjxs  100m (2%)     64Mi (0%)        60m
+  default                     typo                    0 (0%)        0 (0%)           5m
+Allocated resources:
+  (Total limits may be over 100 percent, i.e., overcommitted.)
+  Resource  Requests
+  --------  --------
+  cpu       100m (2%)
+  memory    64Mi (0%)
+Events:     <none>
+--- stderr

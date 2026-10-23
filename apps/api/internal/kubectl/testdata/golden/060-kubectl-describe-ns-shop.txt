@@ -1,0 +1,12 @@
+$ kubectl describe ns shop
+--- exit 0
+--- stdout
+Name:         shop
+Labels:       kubernetes.io/metadata.name=shop
+Annotations:  <none>
+Status:       Active
+
+No resource quota.
+
+No LimitRange resource.
+--- stderr

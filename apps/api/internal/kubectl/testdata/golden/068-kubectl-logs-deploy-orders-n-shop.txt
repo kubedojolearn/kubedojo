@@ -1,0 +1,7 @@
+$ kubectl logs deploy/orders -n shop
+--- exit 0
+--- stdout
+orders 1.0 starting
+fatal: MODE is not set
+--- stderr
+Found 2 pods, using pod/orders-vqtcsddx9v-flhpw

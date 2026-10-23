@@ -23,6 +23,8 @@ type Lifecycle interface {
 	Finish(ctx context.Context, userID, labID uuid.UUID, key string) (Lab, error)
 	Snapshot(ctx context.Context, userID, labID uuid.UUID) (Snapshot, error)
 	Events(ctx context.Context, userID, labID uuid.UUID, afterSeq int64, limit int32) ([]SimEvent, *int64, error)
+	RunCommand(ctx context.Context, userID, labID, requestID uuid.UUID, input string) (CommandResult, error)
+	Commands(ctx context.Context, userID, labID uuid.UUID, before *CommandCursor, limit int32) ([]CommandResult, *CommandCursor, error)
 }
 
 // Handler serves lab routes. Every route is scoped to the authenticated user.
@@ -44,6 +46,8 @@ func MapError(err error) error {
 		return httpx.Conflict("This lab has ended. Start the lesson again for a new lab.")
 	case errors.Is(err, ErrExpired):
 		return &httpx.Error{Status: http.StatusGone, Code: httpx.CodeSessionExpired, Message: "This lab expired. Start the lesson again for a fresh lab."}
+	case errors.Is(err, ErrInvalidInput):
+		return httpx.Validation("Invalid command.", httpx.FieldError{Field: "input", Message: "must be 1-16384 bytes of UTF-8 text without NUL characters"})
 	case errors.Is(err, ErrIdempotencyConflict):
 		return httpx.Conflict("This Idempotency-Key was already used for a different request.")
 	}
@@ -254,4 +258,71 @@ func (h Handler) ListEvents(w http.ResponseWriter, r *http.Request) error {
 		return h.writePage(w, r, events, eventCursor{Seq: *next})
 	}
 	return h.writePage(w, r, events, nil)
+}
+
+// RunCommandRequest is the POST /labs/{labId}/commands body.
+type RunCommandRequest struct {
+	RequestID string `json:"requestId"`
+	Input     string `json:"input"`
+}
+
+// RunCommand handles POST /labs/{labId}/commands. Failed commands are terminal output (200 with
+// a non-zero exit code), not API errors.
+func (h Handler) RunCommand(w http.ResponseWriter, r *http.Request) error {
+	p, err := principal(r)
+	if err != nil {
+		return err
+	}
+	id, err := LabID(r)
+	if err != nil {
+		return err
+	}
+	var req RunCommandRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		return err
+	}
+	requestID, err := uuid.Parse(req.RequestID)
+	if err != nil {
+		return httpx.Validation("Invalid request ID.", httpx.FieldError{Field: "requestId", Message: "must be a UUID"})
+	}
+	if !ValidInput(req.Input) {
+		return MapError(ErrInvalidInput)
+	}
+	res, err := h.Labs.RunCommand(r.Context(), p.UserID, id, requestID, req.Input)
+	if err != nil {
+		return MapError(err)
+	}
+	httpx.WriteJSON(w, r, http.StatusOK, res)
+	return nil
+}
+
+// ListCommands handles GET /labs/{labId}/commands (newest first).
+func (h Handler) ListCommands(w http.ResponseWriter, r *http.Request) error {
+	p, err := principal(r)
+	if err != nil {
+		return err
+	}
+	id, err := LabID(r)
+	if err != nil {
+		return err
+	}
+	page, err := httpx.ParsePage(r)
+	if err != nil {
+		return err
+	}
+	var before *CommandCursor
+	if page.Cursor != "" {
+		before = &CommandCursor{}
+		if err := h.Cursors.Decode(page.Cursor, before); err != nil {
+			return err
+		}
+	}
+	cmds, next, err := h.Labs.Commands(r.Context(), p.UserID, id, before, int32(page.Limit)) //nolint:gosec // limit is 1-100
+	if err != nil {
+		return MapError(err)
+	}
+	if next != nil {
+		return h.writePage(w, r, cmds, *next)
+	}
+	return h.writePage(w, r, cmds, nil)
 }

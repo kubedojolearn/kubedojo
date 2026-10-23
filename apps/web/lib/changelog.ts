@@ -7,6 +7,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-10-24",
+    title: "A kubectl terminal in every lab",
+    items: [
+      "Run kubectl get, describe, logs, events, explain, rollout status and history against your simulated cluster.",
+      "Output follows real kubectl: tables, -o wide, yaml, json and name, label selectors, namespaces and kubectl's error messages.",
+      "Your command history is kept with the lab, and you can download a transcript. Secret values are never kept in it.",
+      "There is no shell: pipes, ;, && and redirection are refused, not run.",
+    ],
+  },
+  {
     date: "2026-10-23",
     title: "Labs start a simulated cluster",
     items: [

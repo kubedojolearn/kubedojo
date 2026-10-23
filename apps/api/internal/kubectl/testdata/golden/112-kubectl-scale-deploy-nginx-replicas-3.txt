@@ -1,0 +1,5 @@
+$ kubectl scale deploy nginx --replicas=3
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: 'kubectl scale' changes the cluster, and changing the simulated cluster isn't available yet. For now you can inspect it with get, describe, logs and events.

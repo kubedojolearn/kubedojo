@@ -1,0 +1,7 @@
+$ kubectl get endpointslices
+--- exit 0
+--- stdout
+NAME           ADDRESSTYPE   PORTS   ENDPOINTS    AGE
+web-np-4fhqh   IPv4          80      10.244.1.2   33m
+web-sj9wz      IPv4          80      10.244.1.2   50m
+--- stderr

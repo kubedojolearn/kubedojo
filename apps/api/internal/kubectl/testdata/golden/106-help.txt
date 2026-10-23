@@ -1,0 +1,28 @@
+$ help
+--- exit 0
+--- stdout
+kubectl runs against your simulated KubeDojo cluster. Nothing runs on a real cluster.
+
+Inspect the cluster:
+  get            List resources: kubectl get pods, kubectl get deploy,svc -o wide
+  describe       Show details and events: kubectl describe pod <name>
+  logs           Print a container's (simulated) logs: kubectl logs <pod>
+  events         List events: kubectl events --types=Warning
+  explain        Document a resource's fields: kubectl explain deployment.spec
+  rollout        Check a rollout: kubectl rollout status deployment/<name>
+  api-resources  List the resource types the simulator has
+  cluster-info   Show the (simulated) control plane address
+  version        Show the client and server versions
+  config         Show the kubeconfig: kubectl config view
+
+Common flags:
+  -n, --namespace <ns>   Work in another namespace
+  -A, --all-namespaces   List across all namespaces
+  -l, --selector <sel>   Filter by labels, e.g. -l app=web or -l 'tier in (web,api)'
+  -o, --output <fmt>     wide, yaml, json or name
+  -h, --help             Help for a command: kubectl get --help
+
+Changing the cluster (create, apply, scale, delete, ...) arrives in the next update.
+Shell features (pipes, ;, &&, redirection, $variables) aren't available: there is no shell.
+Type 'clear' to clear the terminal.
+--- stderr

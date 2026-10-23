@@ -1,0 +1,8 @@
+$ kubectl get nodes
+--- exit 0
+--- stdout
+NAME     STATUS   ROLES           AGE   VERSION
+node-1   Ready    control-plane   10d   v1.37.1
+node-2   Ready    <none>          10d   v1.37.1
+node-3   Ready    <none>          10d   v1.37.1
+--- stderr

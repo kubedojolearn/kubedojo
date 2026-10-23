@@ -1,0 +1,6 @@
+$ kubectl events -n nope
+--- exit 0
+--- stdout
+--- stderr
+No events found in nope namespace.
+ⓘ The namespace "nope" doesn't exist. List namespaces with: kubectl get namespaces

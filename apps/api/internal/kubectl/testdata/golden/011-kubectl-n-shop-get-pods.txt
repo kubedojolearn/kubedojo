@@ -1,0 +1,7 @@
+$ kubectl -n shop get pods
+--- exit 0
+--- stdout
+NAME                      READY   STATUS             RESTARTS        AGE
+orders-vqtcsddx9v-flhpw   0/1     CrashLoopBackOff   5 (4m50s ago)   10m
+orders-vqtcsddx9v-q7rwf   0/1     CrashLoopBackOff   5 (4m50s ago)   10m
+--- stderr

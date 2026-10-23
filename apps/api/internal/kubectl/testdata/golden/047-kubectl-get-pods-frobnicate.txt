@@ -1,0 +1,6 @@
+$ kubectl get pods --frobnicate
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: unknown flag: --frobnicate
+See 'kubectl get --help' for usage.

@@ -1,0 +1,6 @@
+$ kubectl get pods -l app=nginx
+--- exit 0
+--- stdout
+NAME                     READY   STATUS    RESTARTS   AGE
+nginx-4fzxcz7snh-tbjxs   1/1     Running   0          60m
+--- stderr

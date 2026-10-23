@@ -38,6 +38,10 @@
   --color-sim-badge-foreground: var(--sim-badge-foreground);
   --color-terminal: #050b16;
   --color-terminal-foreground: #d6e2f5;
+  /* From the terminal palette in lib/design-tokens.ts (all ≥ 4.5:1 on the terminal background). */
+  --color-terminal-prompt: #5eead4;
+  --color-terminal-error: #ff7b7b;
+  --color-terminal-muted: #8293b0;
 
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);

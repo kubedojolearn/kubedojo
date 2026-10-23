@@ -1,0 +1,5 @@
+$ kubectl cluster-info dump
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: 'cluster-info dump' isn't supported in the simulator; use 'kubectl get all -A' and 'kubectl events -A'

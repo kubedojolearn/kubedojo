@@ -1,0 +1,5 @@
+$ kubectl get pods --context=prod
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: --context isn't supported in the simulator: the simulator has a single context

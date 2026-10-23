@@ -1,0 +1,7 @@
+$ kubectl get
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+You must specify the type of resource to get. Use "kubectl api-resources" for a complete list of supported resources.
+
+error: Required resource not specified.

@@ -220,6 +220,27 @@ func (labsFake) Events(_ context.Context, _, id uuid.UUID, _ int64, _ int32) ([]
 	}}, &next, labErr(id)
 }
 
+func fakeCommand(input string) labs.CommandResult {
+	code := "NOT_FOUND"
+	res := labs.CommandResult{
+		RequestID: uuid.MustParse("abababab-abab-4bab-8bab-abababababab"), Sequence: 1, Input: input,
+		Stdout: "NAME    READY   STATUS    RESTARTS   AGE\nweb-1   1/1     Running   0          5m\n", SnapshotVersion: 1,
+		ExecutedAt: time.Date(2026, 10, 23, 9, 0, 0, 0, time.UTC),
+	}
+	if input == "kubectl get pod nope" {
+		res.Stdout, res.Stderr, res.ExitCode, res.ErrorCode = "", "Error from server (NotFound): pods \"nope\" not found\n", 1, &code
+	}
+	return res
+}
+
+func (labsFake) RunCommand(_ context.Context, _, id, _ uuid.UUID, input string) (labs.CommandResult, error) {
+	return fakeCommand(input), labErr(id)
+}
+
+func (labsFake) Commands(_ context.Context, _, id uuid.UUID, _ *labs.CommandCursor, _ int32) ([]labs.CommandResult, *labs.CommandCursor, error) {
+	return []labs.CommandResult{fakeCommand("kubectl get pods")}, &labs.CommandCursor{Sequence: 1}, labErr(id)
+}
+
 type limiter struct{}
 
 func (limiter) Allow(ctx context.Context, key string, _ int, _ time.Duration) (ratelimit.Decision, error) {

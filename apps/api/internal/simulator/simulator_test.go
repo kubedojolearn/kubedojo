@@ -453,7 +453,7 @@ func TestCrashLoopFollowsTheLogicalClock(t *testing.T) {
 func TestCrashBackoffSchedule(t *testing.T) {
 	cases := map[time.Duration]int32{0: 0, 9 * time.Second: 0, 10 * time.Second: 1, 30 * time.Second: 2, 70 * time.Second: 3, 10 * time.Minute: 5}
 	for elapsed, want := range cases {
-		if got, _ := crashBackoff(elapsed); got != want {
+		if got, _, _ := crashBackoff(elapsed); got != want {
 			t.Errorf("%v: %d, want %d", elapsed, got, want)
 		}
 	}

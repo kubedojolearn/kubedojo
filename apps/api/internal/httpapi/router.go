@@ -43,6 +43,8 @@ var (
 	provisionLimit = ratelimit.Rule{Name: "provision", Limit: 10, Window: time.Minute, FailClosed: true}
 	// Starting and resetting labs loads a whole fixture; both are rare in normal use.
 	labLifecycleLimit = ratelimit.Rule{Name: "lab-lifecycle", Limit: 30, Window: time.Hour}
+	// Terminal commands (simulator-compatibility.md §5).
+	commandLimit = ratelimit.Rule{Name: "commands", Limit: 100, Window: time.Minute}
 )
 
 // NewRouter builds the handler. Middleware order (outermost first): request ID, panic recovery,
@@ -108,6 +110,8 @@ func NewRouter(d Deps) http.Handler {
 			r.Method(http.MethodPost, "/labs/{labId}/finish", httpx.Handler(labsHandler.Finish))
 			r.Method(http.MethodGet, "/labs/{labId}/snapshot", httpx.Handler(labsHandler.GetSnapshot))
 			r.Method(http.MethodGet, "/labs/{labId}/events", httpx.Handler(labsHandler.ListEvents))
+			r.Method(http.MethodGet, "/labs/{labId}/commands", httpx.Handler(labsHandler.ListCommands))
+			r.With(ratelimit.PerUser(d.Limiter, commandLimit)).Method(http.MethodPost, "/labs/{labId}/commands", httpx.Handler(labsHandler.RunCommand))
 		})
 	})
 	return r

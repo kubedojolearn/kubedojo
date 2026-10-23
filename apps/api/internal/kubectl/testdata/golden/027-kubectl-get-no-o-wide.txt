@@ -1,0 +1,8 @@
+$ kubectl get no -o wide
+--- exit 0
+--- stdout
+NAME     STATUS   ROLES           AGE   VERSION   INTERNAL-IP    EXTERNAL-IP   OS-IMAGE                  KERNEL-VERSION   CONTAINER-RUNTIME
+node-1   Ready    control-plane   10d   v1.37.1   192.168.49.2   <none>        KubeDojo simulated node   <unknown>        containerd://2.1.4 (simulated)
+node-2   Ready    <none>          10d   v1.37.1   192.168.49.3   <none>        KubeDojo simulated node   <unknown>        containerd://2.1.4 (simulated)
+node-3   Ready    <none>          10d   v1.37.1   192.168.49.4   <none>        KubeDojo simulated node   <unknown>        containerd://2.1.4 (simulated)
+--- stderr

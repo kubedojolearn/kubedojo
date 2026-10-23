@@ -1,0 +1,8 @@
+$ kubectl rollout history deployment/nginx
+--- exit 0
+--- stdout
+deployment.apps/nginx
+REVISION  CHANGE-CAUSE
+1         <none>
+
+--- stderr

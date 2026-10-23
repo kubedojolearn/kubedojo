@@ -1,0 +1,10 @@
+$ kubectl get ns
+--- exit 0
+--- stdout
+NAME              STATUS   AGE
+default           Active   30d
+kube-node-lease   Active   30d
+kube-public       Active   30d
+kube-system       Active   30d
+shop              Active   25h
+--- stderr

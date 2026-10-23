@@ -1,0 +1,24 @@
+$ kubectl config view
+--- exit 0
+--- stdout
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: DATA+OMITTED
+    server: https://kubedojo.sim:6443
+  name: kubedojo
+contexts:
+- context:
+    cluster: kubedojo
+    namespace: default
+    user: learner
+  name: kubedojo
+current-context: kubedojo
+kind: Config
+preferences: {}
+users:
+- name: learner
+  user:
+    client-certificate-data: DATA+OMITTED
+    client-key-data: DATA+OMITTED
+--- stderr

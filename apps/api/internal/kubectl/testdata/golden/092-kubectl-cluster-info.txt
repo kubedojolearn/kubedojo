@@ -1,0 +1,7 @@
+$ kubectl cluster-info
+--- exit 0
+--- stdout
+Kubernetes control plane is running at https://kubedojo.sim:6443
+
+ⓘ This control plane is simulated by KubeDojo; there is no real API server at this address.
+--- stderr

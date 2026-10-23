@@ -57,3 +57,14 @@ export async function getRecentEvents(labId: string, limit = 100): Promise<SimEv
   }
   return events.slice(-limit);
 }
+
+export type CommandResult = Schemas["CommandResult"];
+
+/** The lab's most recent commands, oldest first (Secret values are redacted in history). */
+export async function getCommandHistory(labId: string, limit = 50): Promise<CommandResult[]> {
+  const { data, response } = await apiClient(await subject()).GET("/api/v1/labs/{labId}/commands", {
+    params: { path: { labId }, query: { limit } },
+  });
+  if (!data) throw new Error(`command history request failed (${response.status})`);
+  return [...data.data].reverse();
+}

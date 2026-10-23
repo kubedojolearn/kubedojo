@@ -1,0 +1,59 @@
+$ kubectl get pod typo -o yaml
+--- exit 0
+--- stdout
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    kubedojo.dev/simulated: "true"
+  creationTimestamp: "2025-12-31T23:55:00Z"
+  labels:
+    run: typo
+  name: typo
+  namespace: default
+  resourceVersion: "46"
+  uid: abaab891-9ec9-478a-9c90-961b7f936d22
+spec:
+  containers:
+  - image: ngnix:1.27
+    name: web
+    resources: {}
+  nodeName: node-2
+  restartPolicy: Always
+status:
+  conditions:
+  - lastTransitionTime: "2025-12-31T23:55:00Z"
+    status: "True"
+    type: PodReadyToStartContainers
+  - lastTransitionTime: "2025-12-31T23:55:00Z"
+    status: "True"
+    type: Initialized
+  - lastTransitionTime: "2025-12-31T23:55:00Z"
+    message: 'containers with unready status: [web]'
+    reason: ContainersNotReady
+    status: "False"
+    type: Ready
+  - lastTransitionTime: "2025-12-31T23:55:00Z"
+    message: 'containers with unready status: [web]'
+    reason: ContainersNotReady
+    status: "False"
+    type: ContainersReady
+  - lastTransitionTime: "2025-12-31T23:55:00Z"
+    status: "True"
+    type: PodScheduled
+  containerStatuses:
+  - image: ngnix:1.27
+    lastState: {}
+    name: web
+    ready: false
+    restartCount: 0
+    started: false
+    state:
+      waiting:
+        message: Back-off pulling image "ngnix:1.27"
+        reason: ImagePullBackOff
+  hostIP: 192.168.49.3
+  phase: Pending
+  podIP: 10.244.1.3
+  startTime: "2025-12-31T23:55:00Z"
+--- stderr

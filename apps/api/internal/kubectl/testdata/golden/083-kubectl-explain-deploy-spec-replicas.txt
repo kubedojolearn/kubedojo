@@ -1,0 +1,12 @@
+$ kubectl explain deploy.spec.replicas
+--- exit 0
+--- stdout
+KIND:       Deployment
+GROUP:      apps
+VERSION:    v1
+
+FIELD: replicas <integer>
+
+DESCRIPTION:
+    Number of desired pods. Defaults to 1.
+--- stderr

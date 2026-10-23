@@ -32,7 +32,7 @@ var nginxLogs = []string{
 var builtinImages = []ImageProfile{
 	runImage("nginx:1.25", nginxLogs...), runImage("nginx:1.26", nginxLogs...), runImage("nginx:1.27", nginxLogs...),
 	runImage("nginx:latest", nginxLogs...), runImage("nginx", nginxLogs...),
-	runImage("busybox:1.36", "(no output)"), runImage("busybox", "(no output)"),
+	runImage("busybox:1.36"), runImage("busybox"),
 	runImage("redis:7", "Ready to accept connections tcp"), runImage("redis", "Ready to accept connections tcp"),
 	runImage("httpd:2.4", "AH00094: Command line: 'httpd -D FOREGROUND'"),
 	runImage("kubedojo/demo-api:1.0", "demo-api 1.0 starting", "listening on 0.0.0.0:8080"),

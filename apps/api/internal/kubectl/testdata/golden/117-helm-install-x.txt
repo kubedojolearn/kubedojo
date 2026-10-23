@@ -1,0 +1,5 @@
+$ helm install x
+--- exit 127 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+helm: command not available. Only kubectl commands run in the simulator (try 'help').

@@ -1,0 +1,47 @@
+$ kubectl describe pod typo
+--- exit 0
+--- stdout
+Name:             typo
+Namespace:        default
+Priority:         0
+Service Account:  default
+Node:             node-2/192.168.49.3
+Start Time:       Wed, 31 Dec 2025 23:55:00 +0000
+Labels:           run=typo
+Annotations:      <none>
+Status:           Pending
+IP:               10.244.1.3
+IPs:
+  IP:  10.244.1.3
+Containers:
+  web:
+    Image:          ngnix:1.27
+    Port:           <none>
+    Host Port:      <none>
+    State:          Waiting
+      Reason:       ImagePullBackOff
+    Ready:          False
+    Restart Count:  0
+    Environment:    <none>
+    Mounts:         <none>
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True
+  Initialized                 True
+  Ready                       False
+  ContainersReady             False
+  PodScheduled                True
+Volumes:                      <none>
+QoS Class:                    BestEffort
+Node-Selectors:               <none>
+Tolerations:                  <none>
+Events:
+  Type     Reason     Age   From               Message
+  ----     ------     ----  ----               -------
+  Normal   Scheduled  5m    default-scheduler  Successfully assigned default/typo to node-2
+  Normal   Pulling    5m    kubelet            Pulling image "ngnix:1.27"
+  Warning  Failed     5m    kubelet            Failed to pull image "ngnix:1.27": rpc error: code = NotFound desc = failed to pull and unpack image "ngnix:1.27": not found (simulated registry)
+  Warning  Failed     5m    kubelet            Error: ErrImagePull
+  Normal   BackOff    5m    kubelet            Back-off pulling image "ngnix:1.27"
+  Warning  Failed     5m    kubelet            Error: ImagePullBackOff
+--- stderr

@@ -1,0 +1,15 @@
+$ kubectl api-resources -o name
+--- exit 0
+--- stdout
+configmaps
+endpoints
+events
+namespaces
+nodes
+pods
+secrets
+services
+deployments.apps
+replicasets.apps
+endpointslices.discovery.k8s.io
+--- stderr

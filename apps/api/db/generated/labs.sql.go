@@ -228,6 +228,36 @@ func (q *Queries) GetChallengeVersionSpec(ctx context.Context, id uuid.UUID) (js
 	return spec, err
 }
 
+const getCommandByRequestID = `-- name: GetCommandByRequestID :one
+SELECT session_id, sequence, request_id, input, parsed, stdout, stderr, exit_code, error_code, mutated, snapshot_version, duration_ms, executed_at FROM command_executions WHERE session_id = $1 AND request_id = $2
+`
+
+type GetCommandByRequestIDParams struct {
+	SessionID uuid.UUID
+	RequestID uuid.UUID
+}
+
+func (q *Queries) GetCommandByRequestID(ctx context.Context, arg GetCommandByRequestIDParams) (CommandExecution, error) {
+	row := q.db.QueryRow(ctx, getCommandByRequestID, arg.SessionID, arg.RequestID)
+	var i CommandExecution
+	err := row.Scan(
+		&i.SessionID,
+		&i.Sequence,
+		&i.RequestID,
+		&i.Input,
+		&i.Parsed,
+		&i.Stdout,
+		&i.Stderr,
+		&i.ExitCode,
+		&i.ErrorCode,
+		&i.Mutated,
+		&i.SnapshotVersion,
+		&i.DurationMs,
+		&i.ExecutedAt,
+	)
+	return i, err
+}
+
 const getIdempotencyRecord = `-- name: GetIdempotencyRecord :one
 SELECT user_id, operation, key, target_id, status_code, response, created_at FROM idempotency_records
 WHERE user_id = $1 AND operation = $2 AND key = $3
@@ -404,6 +434,61 @@ func (q *Queries) GetLaunchableChallengeVersion(ctx context.Context, id uuid.UUI
 	return i, err
 }
 
+const insertCommandExecution = `-- name: InsertCommandExecution :one
+INSERT INTO command_executions (session_id, sequence, request_id, input, parsed, stdout, stderr, exit_code, error_code, mutated, snapshot_version, duration_ms)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+RETURNING session_id, sequence, request_id, input, parsed, stdout, stderr, exit_code, error_code, mutated, snapshot_version, duration_ms, executed_at
+`
+
+type InsertCommandExecutionParams struct {
+	SessionID       uuid.UUID
+	Sequence        int64
+	RequestID       uuid.UUID
+	Input           string
+	Parsed          []byte
+	Stdout          string
+	Stderr          string
+	ExitCode        int16
+	ErrorCode       *string
+	Mutated         bool
+	SnapshotVersion int64
+	DurationMs      int32
+}
+
+func (q *Queries) InsertCommandExecution(ctx context.Context, arg InsertCommandExecutionParams) (CommandExecution, error) {
+	row := q.db.QueryRow(ctx, insertCommandExecution,
+		arg.SessionID,
+		arg.Sequence,
+		arg.RequestID,
+		arg.Input,
+		arg.Parsed,
+		arg.Stdout,
+		arg.Stderr,
+		arg.ExitCode,
+		arg.ErrorCode,
+		arg.Mutated,
+		arg.SnapshotVersion,
+		arg.DurationMs,
+	)
+	var i CommandExecution
+	err := row.Scan(
+		&i.SessionID,
+		&i.Sequence,
+		&i.RequestID,
+		&i.Input,
+		&i.Parsed,
+		&i.Stdout,
+		&i.Stderr,
+		&i.ExitCode,
+		&i.ErrorCode,
+		&i.Mutated,
+		&i.SnapshotVersion,
+		&i.DurationMs,
+		&i.ExecutedAt,
+	)
+	return i, err
+}
+
 const insertIdempotencyRecord = `-- name: InsertIdempotencyRecord :exec
 INSERT INTO idempotency_records (user_id, operation, key, target_id, status_code, response)
 VALUES ($1, $2, $3, $4, $5, $6)
@@ -462,6 +547,55 @@ func (q *Queries) InsertLabEvent(ctx context.Context, arg InsertLabEventParams) 
 		arg.OccurredAt,
 	)
 	return err
+}
+
+const listCommands = `-- name: ListCommands :many
+SELECT session_id, sequence, request_id, input, parsed, stdout, stderr, exit_code, error_code, mutated, snapshot_version, duration_ms, executed_at FROM command_executions
+WHERE session_id = $1
+  AND ($2::bigint IS NULL OR sequence < $2::bigint)
+ORDER BY sequence DESC
+LIMIT $3
+`
+
+type ListCommandsParams struct {
+	SessionID uuid.UUID
+	BeforeSeq *int64
+	PageLimit int32
+}
+
+// Newest first, before a sequence number.
+func (q *Queries) ListCommands(ctx context.Context, arg ListCommandsParams) ([]CommandExecution, error) {
+	rows, err := q.db.Query(ctx, listCommands, arg.SessionID, arg.BeforeSeq, arg.PageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CommandExecution{}
+	for rows.Next() {
+		var i CommandExecution
+		if err := rows.Scan(
+			&i.SessionID,
+			&i.Sequence,
+			&i.RequestID,
+			&i.Input,
+			&i.Parsed,
+			&i.Stdout,
+			&i.Stderr,
+			&i.ExitCode,
+			&i.ErrorCode,
+			&i.Mutated,
+			&i.SnapshotVersion,
+			&i.DurationMs,
+			&i.ExecutedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listLabEvents = `-- name: ListLabEvents :many
@@ -773,6 +907,17 @@ func (q *Queries) LockLabSession(ctx context.Context, arg LockLabSessionParams) 
 		&i.ResourceRevision,
 	)
 	return i, err
+}
+
+const nextCommandSeq = `-- name: NextCommandSeq :one
+UPDATE lab_sessions SET command_seq = command_seq + 1 WHERE id = $1 RETURNING command_seq
+`
+
+func (q *Queries) NextCommandSeq(ctx context.Context, id uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, nextCommandSeq, id)
+	var command_seq int64
+	err := row.Scan(&command_seq)
+	return command_seq, err
 }
 
 const pruneLabEvents = `-- name: PruneLabEvents :exec

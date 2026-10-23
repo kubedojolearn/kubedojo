@@ -1,0 +1,19 @@
+$ kubectl explain deployments.apps.spec.strategy
+--- exit 0
+--- stdout
+KIND:       Deployment
+GROUP:      apps
+VERSION:    v1
+
+FIELD: strategy <DeploymentStrategy>
+
+DESCRIPTION:
+    The deployment strategy to use to replace existing pods with new ones.
+    
+FIELDS:
+  type	<string>
+    RollingUpdate (default) or Recreate.
+
+  rollingUpdate	<RollingUpdateDeployment>
+    Rolling update config params.
+--- stderr

@@ -3,15 +3,15 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { ArrowLeft, Clock, History, Network, SquareTerminal } from "lucide-react";
-import { InDevelopmentBadge } from "@/components/feedback/in-development";
 import { CardListSkeleton, LoadingStatus } from "@/components/feedback/loading";
 import { EmptyState } from "@/components/feedback/states";
 import { LabControls } from "@/components/lab/lab-controls";
 import { ResourceList } from "@/components/lab/resource-list";
+import { Terminal } from "@/components/lab/terminal";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { getLab, getRecentEvents, getSnapshot, isLabId, type Lab } from "@/lib/labs";
+import { getCommandHistory, getLab, getRecentEvents, getSnapshot, isLabId, type Lab } from "@/lib/labs";
 
 export const metadata: Metadata = { title: "Lab" };
 
@@ -41,7 +41,11 @@ async function LabView({ params }: Props) {
   // Ownership first: someone else's lab is simply not found.
   const lab = await getLab(sessionId);
   if (!lab) notFound();
-  const [snapshot, events] = await Promise.all([getSnapshot(sessionId), getRecentEvents(sessionId, 30)]);
+  const [snapshot, events, history] = await Promise.all([
+    getSnapshot(sessionId),
+    getRecentEvents(sessionId, 30),
+    getCommandHistory(sessionId),
+  ]);
   if (!snapshot) notFound();
   const lessonHref = `/learn/${lab.courseSlug}/${lab.lessonSlug}`;
   const active = lab.state === "active";
@@ -81,16 +85,16 @@ async function LabView({ params }: Props) {
         </div>
       )}
 
-      <Tabs defaultValue="cluster" className="min-w-0 rounded-xl border bg-card p-3">
+      <Tabs defaultValue="terminal" className="min-w-0 rounded-xl border bg-card p-3">
         <TabsList aria-label="Lab panels" className="h-auto max-w-full flex-wrap">
+          <TabsTrigger value="terminal">
+            <SquareTerminal aria-hidden /> Terminal
+          </TabsTrigger>
           <TabsTrigger value="cluster">
             <Network aria-hidden /> Cluster
           </TabsTrigger>
           <TabsTrigger value="events">
             <History aria-hidden /> Events
-          </TabsTrigger>
-          <TabsTrigger value="terminal">
-            <SquareTerminal aria-hidden /> Terminal
           </TabsTrigger>
         </TabsList>
         <TabsContent value="cluster" className="mt-3">
@@ -122,10 +126,17 @@ async function LabView({ params }: Props) {
           )}
         </TabsContent>
         <TabsContent value="terminal" className="mt-3">
-          <div className="grid min-h-60 place-items-center gap-3 rounded-lg border border-dashed bg-terminal p-6 text-center text-sm text-terminal-foreground">
-            <p className="max-w-sm">Run kubectl against your simulated cluster.</p>
-            <InDevelopmentBadge label="Terminal in progress" />
-          </div>
+          <Terminal
+            labId={lab.id}
+            active={active}
+            initial={history.map((c) => ({
+              key: c.requestId,
+              input: c.input,
+              stdout: c.stdout,
+              stderr: c.stderr,
+              exitCode: c.exitCode,
+            }))}
+          />
         </TabsContent>
       </Tabs>
     </div>

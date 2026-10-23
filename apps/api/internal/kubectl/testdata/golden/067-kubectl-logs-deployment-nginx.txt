@@ -1,0 +1,6 @@
+$ kubectl logs deployment/nginx
+--- exit 0
+--- stdout
+/docker-entrypoint.sh: Configuration complete; ready for start up
+nginx: start worker processes
+--- stderr

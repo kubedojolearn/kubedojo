@@ -1,0 +1,5 @@
+$ kubectl exec -it typo -- sh
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: 'kubectl exec' isn't supported: no containers actually run in the simulator, so there is nothing to exec into.

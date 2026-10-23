@@ -24,6 +24,7 @@ test("starting a lab loads the lesson's simulated cluster", async ({ page }) => 
   const header = page.getByRole("main").locator("header").first();
   await expect(header.getByText("Active", { exact: true })).toBeVisible();
   await expect(header.getByText("Version 1")).toBeVisible();
+  await page.getByRole("tab", { name: "Cluster" }).click();
   const cluster = page.getByRole("tabpanel", { name: "Cluster" });
   await expect(cluster.getByRole("heading", { name: /^Deployment/ })).toBeVisible();
   await expect(cluster.getByText("1/1 ready").first()).toBeVisible();
@@ -80,4 +81,38 @@ test("another learner's lab is not found", async ({ browser }) => {
   const api = await intruder.request.get(`/api/bff/v1/labs/${labId}/snapshot`);
   expect(api.status()).toBe(404);
   expect((await post(intruder, `labs/${labId}/finish`, { "Idempotency-Key": "intruder-key-1" })).status()).toBe(404);
+});
+
+test("the terminal runs read-only kubectl commands and keeps history", async ({ page }) => {
+  await signIn(page, testIdentity("term"));
+  await startLab(page);
+  const command = page.getByRole("textbox", { name: "Command" });
+  const output = page.getByRole("log", { name: "Terminal output" });
+
+  await command.fill("kubectl get pods");
+  await command.press("Enter");
+  await expect(output).toContainText(/nginx-[a-z0-9]+-[a-z0-9]{5}\s+1\/1\s+Running/);
+
+  await command.fill("kubectl get pods; rm -rf /");
+  await command.press("Enter");
+  await expect(output).toContainText("is shell syntax, and the simulator has no shell");
+
+  await command.fill("kubectl scale deploy nginx --replicas=3");
+  await command.press("Enter");
+  await expect(output).toContainText("changing the simulated cluster isn't available yet");
+
+  // Up arrow recalls the previous command.
+  await command.press("ArrowUp");
+  await expect(command).toHaveValue("kubectl scale deploy nginx --replicas=3");
+  await command.fill("");
+
+  // History survives a reload; the cluster didn't change.
+  await page.reload();
+  await expect(page.getByRole("log", { name: "Terminal output" })).toContainText("Command: kubectl get pods");
+  await expect(page.getByRole("main").locator("header").first().getByText("Version 1")).toBeVisible();
+
+  // clear only clears the screen.
+  await command.fill("clear");
+  await command.press("Enter");
+  await expect(page.getByRole("log", { name: "Terminal output" })).toContainText("Try: kubectl get pods");
 });

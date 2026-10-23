@@ -1,0 +1,5 @@
+$ kubectl get pods -w
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: -w isn't supported in the simulator: watching isn't needed: the simulated cluster is fully reconciled after every command

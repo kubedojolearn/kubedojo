@@ -1,0 +1,7 @@
+$ kubectl logs
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: expected 'logs [-p] (POD | TYPE/NAME) [-c CONTAINER]'.
+POD or TYPE/NAME is a required argument for the logs command
+See 'kubectl logs -h' for help and examples
