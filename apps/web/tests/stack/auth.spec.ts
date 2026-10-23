@@ -10,6 +10,12 @@ test("signed-out visitors are sent to sign-in, then back", async ({ page }) => {
   await page.getByLabel("GitHub ID").fill(who.githubId);
   await page.getByLabel("Login").fill(who.login);
   await page.getByRole("button", { name: "Sign in as test user" }).click();
+  // New accounts are onboarded first; skipping returns to the requested page.
+  await expect(page).toHaveURL(/\/(settings|onboarding)$/);
+  if (page.url().endsWith("/onboarding")) {
+    await page.getByRole("button", { name: "Skip for now" }).click();
+    await page.goto("/settings");
+  }
   await expect(page).toHaveURL(/\/settings$/);
   await expect(page.getByLabel("Handle")).toHaveValue(who.login);
 });
@@ -70,7 +76,7 @@ test("post-sign-in redirects stay on this site", async ({ page }) => {
   await page.getByLabel("GitHub ID").fill(who.githubId);
   await page.getByLabel("Login").fill(who.login);
   await page.getByRole("button", { name: "Sign in as test user" }).click();
-  await expect(page).toHaveURL(/localhost:8000\/dashboard$/);
+  await expect(page).toHaveURL(/localhost:8000\/(dashboard|onboarding)$/);
 });
 
 test("the BFF requires a session and rejects cross-site mutations", async ({ page, request }) => {

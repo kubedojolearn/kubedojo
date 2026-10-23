@@ -199,6 +199,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/users/me/progress/opened": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Record that the learner opened a published lesson
+     * @description Updates "continue learning". Never marks completion or awards XP. Adds a lesson-opened activity event unless the learner opted out of analytics.
+     */
+    post: operations["markLessonOpened"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/users/me/achievements": {
     parameters: {
       query?: never;
@@ -835,7 +855,18 @@ export interface components {
       /** Format: date-time */
       lastStartedAt: string | null;
     };
+    LessonPointer: {
+      courseSlug: components["schemas"]["Slug"];
+      slug: components["schemas"]["Slug"];
+      title: string;
+      /** Format: date-time */
+      lastActivityAt?: string;
+    };
     Progress: {
+      /** @description The most recently opened or started lesson that isn't completed. */
+      continueLesson: components["schemas"]["LessonPointer"] | null;
+      /** @description The first published lesson in curriculum order that isn't completed. */
+      recommendedLesson: components["schemas"]["LessonPointer"] | null;
       courses: {
         courseSlug: components["schemas"]["Slug"];
         completedLessons: number;
@@ -845,7 +876,9 @@ export interface components {
       totals: {
         totalXp: number;
         completedLessons: number;
+        /** @description 0 if the last completion was before yesterday in the learner's time zone. */
         currentStreak: number;
+        longestStreak: number;
         /** Format: date */
         lastCompletionDate: string | null;
       };
@@ -860,7 +893,7 @@ export interface components {
     };
     ActivityItem: {
       /** @enum {string} */
-      type: "lab-started" | "lesson-completed" | "achievement-earned" | "hint-revealed";
+      type: "lesson-opened" | "lab-started" | "lesson-completed" | "achievement-earned" | "hint-revealed";
       lessonId?: string;
       achievementKey?: string;
       xpDelta?: number;
@@ -1461,7 +1494,37 @@ export interface operations {
           };
         };
       };
+      400: components["responses"]["ValidationFailed"];
       401: components["responses"]["Unauthenticated"];
+      429: components["responses"]["RateLimited"];
+    };
+  };
+  markLessonOpened: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          courseSlug: components["schemas"]["Slug"];
+          lessonSlug: components["schemas"]["Slug"];
+        };
+      };
+    };
+    responses: {
+      /** @description Recorded. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      400: components["responses"]["ValidationFailed"];
+      401: components["responses"]["Unauthenticated"];
+      404: components["responses"]["NotFound"];
       429: components["responses"]["RateLimited"];
     };
   };
@@ -1515,6 +1578,7 @@ export interface operations {
           };
         };
       };
+      400: components["responses"]["ValidationFailed"];
       401: components["responses"]["Unauthenticated"];
       429: components["responses"]["RateLimited"];
     };
@@ -1570,6 +1634,7 @@ export interface operations {
           };
         };
       };
+      400: components["responses"]["ValidationFailed"];
       429: components["responses"]["RateLimited"];
     };
   };
@@ -1599,6 +1664,7 @@ export interface operations {
           };
         };
       };
+      400: components["responses"]["ValidationFailed"];
       401: components["responses"]["Unauthenticated"];
       429: components["responses"]["RateLimited"];
     };
@@ -1810,6 +1876,7 @@ export interface operations {
           };
         };
       };
+      400: components["responses"]["ValidationFailed"];
       401: components["responses"]["Unauthenticated"];
       404: components["responses"]["NotFound"];
       429: components["responses"]["RateLimited"];
@@ -1842,6 +1909,7 @@ export interface operations {
           };
         };
       };
+      400: components["responses"]["ValidationFailed"];
       401: components["responses"]["Unauthenticated"];
       404: components["responses"]["NotFound"];
       429: components["responses"]["RateLimited"];
@@ -2230,6 +2298,7 @@ export interface operations {
           };
         };
       };
+      400: components["responses"]["ValidationFailed"];
       401: components["responses"]["Unauthenticated"];
       403: components["responses"]["Forbidden"];
       429: components["responses"]["RateLimited"];

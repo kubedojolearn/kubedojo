@@ -13,6 +13,7 @@ import (
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/health"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/httpx"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/ratelimit"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/progress"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/users"
 )
 
@@ -24,6 +25,9 @@ type Deps struct {
 	Identities     auth.IdentityResolver
 	Users          users.Service
 	Catalog        courses.Catalog
+	Progress       progress.Reader
+	Settings       progress.SettingsReader
+	Cursors        *httpx.Cursors
 	Limiter        ratelimit.Limiter
 	RequestTimeout time.Duration
 	MaxBodyBytes   int64
@@ -59,6 +63,8 @@ func NewRouter(d Deps) http.Handler {
 
 		usersHandler := users.Handler{Users: d.Users}
 		catalog := courses.Handler{Catalog: d.Catalog}
+		progressHandler := progress.Handler{Progress: d.Progress, Settings: d.Settings, Cursors: d.Cursors}
+		r.Get("/profiles/{handle}", httpx.Handler(progressHandler.GetPublicProfile).ServeHTTP)
 
 		// Public catalog (published content only; hidden challenge fields are never mapped).
 		r.Get("/catalog/courses", httpx.Handler(catalog.ListCourses).ServeHTTP)
@@ -82,6 +88,10 @@ func NewRouter(d Deps) http.Handler {
 
 			r.Method(http.MethodGet, "/users/me", httpx.Handler(usersHandler.GetMe))
 			r.Method(http.MethodPatch, "/users/me", httpx.Handler(usersHandler.UpdateMe))
+			r.Method(http.MethodGet, "/users/me/progress", httpx.Handler(progressHandler.GetProgress))
+			r.Method(http.MethodPost, "/users/me/progress/opened", httpx.Handler(progressHandler.MarkOpened))
+			r.Method(http.MethodGet, "/users/me/achievements", httpx.Handler(progressHandler.GetAchievements))
+			r.Method(http.MethodGet, "/users/me/activity", httpx.Handler(progressHandler.GetActivity))
 		})
 	})
 	return r

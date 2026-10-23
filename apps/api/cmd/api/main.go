@@ -14,8 +14,7 @@ package main
 
 import (
 	"context"
-	// Embedded IANA time zone database: the distroless image has none, and user settings
-	// validate time zones.
+	"crypto/rand"
 	"fmt"
 	"log/slog"
 	"net"
@@ -25,6 +24,9 @@ import (
 	"strconv"
 	"syscall"
 	"time"
+
+	// Embedded IANA time zone database: the distroless image has none, and user settings
+	// validate time zones.
 	_ "time/tzdata"
 
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth"
@@ -35,9 +37,11 @@ import (
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/config"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/database"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/httpserver"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/httpx"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/logging"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/ratelimit"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/redis"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/progress"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/users"
 )
 
@@ -88,6 +92,11 @@ func serve() error {
 	defer func() { _ = rdb.Close() }()
 
 	userStore := users.NewStore(pool)
+	// Pagination cursors are signed per process; a restart only invalidates cursors in flight.
+	cursorKey := make([]byte, 32)
+	if _, err := rand.Read(cursorKey); err != nil {
+		return err
+	}
 	router := httpapi.NewRouter(httpapi.Deps{
 		Log: log,
 		Health: health.Handler{
@@ -98,6 +107,9 @@ func serve() error {
 		Identities:     userStore,
 		Users:          userStore,
 		Catalog:        courses.NewService(pool),
+		Progress:       progress.NewService(pool),
+		Settings:       userStore,
+		Cursors:        httpx.NewCursors(cursorKey),
 		Limiter:        ratelimit.NewRedis(rdb),
 		RequestTimeout: cfg.RequestTimeout,
 		MaxBodyBytes:   cfg.MaxBodyBytes,

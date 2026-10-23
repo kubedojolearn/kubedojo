@@ -7,6 +7,7 @@ import { InDevelopmentBadge } from "@/components/feedback/in-development";
 import { LoadingStatus } from "@/components/feedback/loading";
 import { UnavailableButton } from "@/components/feedback/unavailable-button";
 import { Container } from "@/components/layout/page-header";
+import { LessonOpened } from "@/components/learning/lesson-opened";
 import { LessonShortcuts } from "@/components/learning/lesson-shortcuts";
 import { Markdown } from "@/components/learning/markdown";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Kbd } from "@/components/ui/kbd";
 import { Skeleton } from "@/components/ui/skeleton";
+import { auth } from "@/lib/auth/config";
 import { getLesson, isSlug, NotPublishedError } from "@/lib/catalog";
 import { glossaryById } from "@/lib/glossary.generated";
 
@@ -55,7 +57,7 @@ const dateFormat = new Intl.DateTimeFormat("en-GB", {
 
 async function LessonView({ params }: Props) {
   const { course, lesson: slug } = await params;
-  const lesson = await load(course, slug);
+  const [lesson, session] = await Promise.all([load(course, slug), auth()]);
   const published = new Map(lesson.prerequisiteLessons.map((p) => [`${p.courseSlug}/${p.slug}`, p]));
   const terms = lesson.glossary.map((id) => glossaryById.get(id)).filter((t) => t !== undefined);
   const prev = lesson.navigation.previous;
@@ -64,6 +66,7 @@ async function LessonView({ params }: Props) {
 
   return (
     <article aria-labelledby="lesson-title">
+      {session?.subject && <LessonOpened courseSlug={lesson.courseSlug} lessonSlug={lesson.slug} />}
       <LessonShortcuts previous={prev ? href(prev) : undefined} next={next ? href(next) : undefined} />
       <Breadcrumb>
         <BreadcrumbList>

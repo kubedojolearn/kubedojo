@@ -39,10 +39,10 @@ func TestMigrationsUpDownUp(t *testing.T) {
 	if _, err := m.Up(ctx); err != nil {
 		t.Fatalf("up: %v", err)
 	}
-	if n := tableCount(t, pool); n != 21 {
-		t.Fatalf("expected 21 tables after up, got %d", n)
+	if n := tableCount(t, pool); n != 22 {
+		t.Fatalf("expected 22 tables after up, got %d", n)
 	}
-	if v, _ := m.Version(ctx); v != 6 {
+	if v, _ := m.Version(ctx); v != 7 {
 		t.Fatalf("version %d", v)
 	}
 	if _, err := m.DownTo(ctx, 0); err != nil {

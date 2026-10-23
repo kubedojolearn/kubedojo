@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppNav } from "@/components/layout/app-nav";
+import { ReducedMotion } from "@/components/layout/reduced-motion";
 import { UserMenu } from "@/components/layout/user-menu";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth/current-user";
@@ -33,8 +34,8 @@ export async function SessionHeaderAction() {
   );
 }
 
-export async function Greeting() {
+/** Applies the account's reduced-motion preference (the OS preference is honored in CSS). */
+export async function SessionPreferences() {
   const user = await getCurrentUser();
-  if (!user) return null;
-  return <p className="text-muted-foreground">Welcome back, {user.displayName || user.handle}.</p>;
+  return <ReducedMotion enabled={Boolean(user?.settings.reducedMotion)} />;
 }

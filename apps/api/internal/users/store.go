@@ -217,3 +217,8 @@ func sanitizeAvatarURL(raw string) *string {
 	clean := u.String()
 	return &clean
 }
+
+// AnalyticsOptOut reports whether the user opted out of learning analytics.
+func (s *Store) AnalyticsOptOut(ctx context.Context, id uuid.UUID) (bool, error) {
+	return dbgen.New(s.pool).GetAnalyticsOptOut(ctx, id)
+}

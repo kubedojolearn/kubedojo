@@ -14,7 +14,9 @@ import (
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth/authtest"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/courses"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/health"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/httpx"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/ratelimit"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/progress"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/users"
 )
 
@@ -93,6 +95,42 @@ func (catalog) GetLesson(_ context.Context, c, l string) (courses.LessonDetail, 
 	}, nil
 }
 
+type progressFake struct{}
+
+func (progressFake) Progress(context.Context, uuid.UUID, *string, *progress.LessonCursor, int32) (progress.Progress, *progress.LessonCursor, error) {
+	return progress.Progress{
+		Courses:           []progress.CourseProgress{{CourseSlug: "workloads", CompletedLessons: 0, TotalLessons: 2}},
+		Lessons:           []progress.LessonProgress{{LessonID: "workloads/scaling-deployments", CourseSlug: "workloads", LessonSlug: "scaling-deployments", Status: "not-started"}},
+		Totals:            progress.Totals{},
+		RecommendedLesson: &progress.LessonPointer{CourseSlug: "workloads", Slug: "scaling-deployments", Title: "Scale"},
+	}, &progress.LessonCursor{CourseOrder: 2, LessonOrder: 5}, nil
+}
+
+func (progressFake) MarkOpened(_ context.Context, _ uuid.UUID, c, l string, _ bool) error {
+	if c != "workloads" || l != "scaling-deployments" {
+		return progress.ErrNotFound
+	}
+	return nil
+}
+
+func (progressFake) Achievements(context.Context, uuid.UUID) ([]progress.Achievement, error) {
+	return []progress.Achievement{{Key: "first-lesson", Title: "First steps", Description: "d", Icon: "Footprints"}}, nil
+}
+
+func (progressFake) Activity(context.Context, uuid.UUID, *progress.ActivityCursor, int32) ([]progress.ActivityItem, *progress.ActivityCursor, error) {
+	id := "workloads/scaling-deployments"
+	return []progress.ActivityItem{{Type: "lesson-opened", LessonID: &id, OccurredAt: time.Date(2026, 10, 23, 9, 0, 0, 0, time.UTC)}}, nil, nil
+}
+
+func (progressFake) PublicProfile(_ context.Context, handle string) (progress.PublicProfile, error) {
+	if handle != "public-learner" {
+		return progress.PublicProfile{}, progress.ErrNotFound
+	}
+	return progress.PublicProfile{Handle: handle, DisplayName: "P", TotalXP: 10, CompletedLessons: 1, Achievements: []progress.Achievement{}, JoinedAt: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)}, nil
+}
+
+func (userStore) AnalyticsOptOut(context.Context, uuid.UUID) (bool, error) { return false, nil }
+
 type limiter struct{}
 
 func (limiter) Allow(ctx context.Context, key string, _ int, _ time.Duration) (ratelimit.Decision, error) {
@@ -121,6 +159,9 @@ func testRouter(t *testing.T, ready bool) (http.Handler, authtest.Signer) {
 		Identities:     identities{},
 		Users:          userStore{},
 		Catalog:        catalog{},
+		Progress:       progressFake{},
+		Settings:       userStore{},
+		Cursors:        httpx.NewCursors([]byte("0123456789abcdef0123456789abcdef")),
 		Limiter:        limiter{},
 		RequestTimeout: 5 * time.Second,
 		MaxBodyBytes:   128 << 10,

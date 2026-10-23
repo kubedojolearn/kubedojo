@@ -16,7 +16,7 @@ const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 /** Go paths (after /api/v1/) the browser may reach through the BFF. */
 const ALLOWED_PATHS: RegExp[] = [
-  /^users\/me(\/(progress|achievements|activity|export|deletion))?$/,
+  /^users\/me(\/(progress(\/opened)?|achievements|activity|export|deletion))?$/,
   /^profiles\/[A-Za-z0-9-]{1,39}$/,
   /^leaderboard$/,
   /^catalog\/courses(\/[a-z0-9-]+(\/lessons\/[a-z0-9-]+)?)?$/,

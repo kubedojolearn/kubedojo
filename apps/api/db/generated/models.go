@@ -21,6 +21,16 @@ type AchievementDefinition struct {
 	CreatedAt    time.Time
 }
 
+type ActivityEvent struct {
+	ID             uuid.UUID
+	UserID         uuid.UUID
+	Type           string
+	LessonID       *uuid.UUID
+	AchievementKey *string
+	XpDelta        *int32
+	OccurredAt     time.Time
+}
+
 type AuditLog struct {
 	ID          uuid.UUID
 	ActorUserID *uuid.UUID

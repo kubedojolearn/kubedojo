@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth/config";
  * Optimistic route protection: signed-out visitors are sent to /login before protected pages
  * render. The Go API is the real enforcement point; this only improves the experience.
  */
-const PROTECTED = [/^\/dashboard(\/|$)/, /^\/settings(\/|$)/, /^\/lab(\/|$)/, /^\/admin(\/|$)/];
+const PROTECTED = [/^\/dashboard(\/|$)/, /^\/settings(\/|$)/, /^\/lab(\/|$)/, /^\/admin(\/|$)/, /^\/onboarding(\/|$)/];
 
 export default auth((request) => {
   const { pathname, search } = request.nextUrl;
@@ -18,5 +18,5 @@ export default auth((request) => {
 });
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/settings/:path*", "/lab/:path*", "/admin/:path*"],
+  matcher: ["/dashboard/:path*", "/settings/:path*", "/lab/:path*", "/admin/:path*", "/onboarding/:path*"],
 };

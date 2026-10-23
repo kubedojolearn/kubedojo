@@ -8,6 +8,16 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-23",
+    title: "Your dashboard and profile",
+    items: [
+      "A short, skippable welcome when you first sign in.",
+      "Your dashboard shows where to continue, what to try next, course progress, your streak, XP and recent activity.",
+      "Public profiles, if you choose to have one. They stay private otherwise.",
+      "Reduced motion now follows your account setting on every device.",
+    ],
+  },
+  {
+    date: "2026-10-23",
     title: "First lessons published",
     items: [
       "Three lessons are live: how a cluster is put together, inspecting a running Pod, and scaling a Deployment.",

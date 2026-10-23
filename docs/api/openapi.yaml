@@ -290,7 +290,33 @@ paths:
                 properties:
                   data: { $ref: "#/components/schemas/Progress" }
                   meta: { $ref: "#/components/schemas/PageMeta" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/users/me/progress/opened:
+    post:
+      tags: [progress]
+      operationId: markLessonOpened
+      summary: Record that the learner opened a published lesson
+      description: Updates "continue learning". Never marks completion or awards XP. Adds a lesson-opened activity event unless the learner opted out of analytics.
+      x-kubedojo-part: 8
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [courseSlug, lessonSlug]
+              properties:
+                courseSlug: { $ref: "#/components/schemas/Slug" }
+                lessonSlug: { $ref: "#/components/schemas/Slug" }
+      responses:
+        "204": { description: Recorded. }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/RateLimited" }
 
   /api/v1/users/me/achievements:
@@ -337,6 +363,7 @@ paths:
                     type: array
                     items: { $ref: "#/components/schemas/ActivityItem" }
                   meta: { $ref: "#/components/schemas/PageMeta" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "429": { $ref: "#/components/responses/RateLimited" }
 
@@ -389,6 +416,7 @@ paths:
                     type: array
                     items: { $ref: "#/components/schemas/LeaderboardEntry" }
                   meta: { $ref: "#/components/schemas/PageMeta" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
         "429": { $ref: "#/components/responses/RateLimited" }
 
   /api/v1/labs:
@@ -417,6 +445,7 @@ paths:
                     type: array
                     items: { $ref: "#/components/schemas/Lab" }
                   meta: { $ref: "#/components/schemas/PageMeta" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "429": { $ref: "#/components/responses/RateLimited" }
     post:
@@ -579,6 +608,7 @@ paths:
                     type: array
                     items: { $ref: "#/components/schemas/SimEvent" }
                   meta: { $ref: "#/components/schemas/PageMeta" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/RateLimited" }
@@ -607,6 +637,7 @@ paths:
                     type: array
                     items: { $ref: "#/components/schemas/CommandResult" }
                   meta: { $ref: "#/components/schemas/PageMeta" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/RateLimited" }
@@ -956,6 +987,7 @@ paths:
                     type: array
                     items: { $ref: "#/components/schemas/AuditEntry" }
                   meta: { $ref: "#/components/schemas/PageMeta" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "429": { $ref: "#/components/responses/RateLimited" }
@@ -1347,10 +1379,29 @@ components:
         completedAt: { type: [string, "null"], format: date-time }
         lastStartedAt: { type: [string, "null"], format: date-time }
 
+    LessonPointer:
+      type: object
+      required: [courseSlug, slug, title]
+      properties:
+        courseSlug: { $ref: "#/components/schemas/Slug" }
+        slug: { $ref: "#/components/schemas/Slug" }
+        title: { type: string }
+        lastActivityAt: { type: string, format: date-time }
+
     Progress:
       type: object
-      required: [courses, lessons, totals]
+      required: [courses, lessons, totals, continueLesson, recommendedLesson]
       properties:
+        continueLesson:
+          description: The most recently opened or started lesson that isn't completed.
+          oneOf:
+            - $ref: "#/components/schemas/LessonPointer"
+            - type: "null"
+        recommendedLesson:
+          description: The first published lesson in curriculum order that isn't completed.
+          oneOf:
+            - $ref: "#/components/schemas/LessonPointer"
+            - type: "null"
         courses:
           type: array
           items:
@@ -1365,11 +1416,12 @@ components:
           items: { $ref: "#/components/schemas/LessonProgress" }
         totals:
           type: object
-          required: [totalXp, completedLessons, currentStreak, lastCompletionDate]
+          required: [totalXp, completedLessons, currentStreak, longestStreak, lastCompletionDate]
           properties:
             totalXp: { type: integer, minimum: 0 }
             completedLessons: { type: integer, minimum: 0 }
-            currentStreak: { type: integer, minimum: 0 }
+            currentStreak: { type: integer, minimum: 0, description: "0 if the last completion was before yesterday in the learner's time zone." }
+            longestStreak: { type: integer, minimum: 0 }
             lastCompletionDate: { type: [string, "null"], format: date }
 
     Achievement:
@@ -1386,7 +1438,7 @@ components:
       type: object
       required: [type, occurredAt]
       properties:
-        type: { type: string, enum: [lab-started, lesson-completed, achievement-earned, hint-revealed] }
+        type: { type: string, enum: [lesson-opened, lab-started, lesson-completed, achievement-earned, hint-revealed] }
         lessonId: { type: string }
         achievementKey: { type: string }
         xpDelta: { type: integer }

@@ -85,3 +85,6 @@ SET theme              = COALESCE(sqlc.narg(theme), theme),
     analytics_opt_out  = COALESCE(sqlc.narg(analytics_opt_out), analytics_opt_out),
     time_zone          = COALESCE(sqlc.narg(time_zone), time_zone)
 WHERE user_id = sqlc.arg(user_id);
+
+-- name: GetAnalyticsOptOut :one
+SELECT analytics_opt_out FROM user_settings WHERE user_id = $1;

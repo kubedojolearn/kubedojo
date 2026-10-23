@@ -12,6 +12,17 @@ import (
 	"github.com/google/uuid"
 )
 
+const getAnalyticsOptOut = `-- name: GetAnalyticsOptOut :one
+SELECT analytics_opt_out FROM user_settings WHERE user_id = $1
+`
+
+func (q *Queries) GetAnalyticsOptOut(ctx context.Context, userID uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, getAnalyticsOptOut, userID)
+	var analytics_opt_out bool
+	err := row.Scan(&analytics_opt_out)
+	return analytics_opt_out, err
+}
+
 const getIdentityForUpdate = `-- name: GetIdentityForUpdate :one
 SELECT i.user_id, u.deleted_at
 FROM oauth_identities i
