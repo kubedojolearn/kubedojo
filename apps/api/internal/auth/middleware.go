@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strings"
@@ -66,4 +67,34 @@ func bearerToken(r *http.Request) (string, bool) {
 	}
 	token = strings.TrimSpace(token)
 	return token, token != ""
+}
+
+type provisionKey struct{}
+
+// ProvisionClaimsFrom returns the verified provisioning claims, if any.
+func ProvisionClaimsFrom(ctx context.Context) (Claims, bool) {
+	c, ok := ctx.Value(provisionKey{}).(Claims)
+	return c, ok
+}
+
+// AuthenticateProvision accepts only provisioning assertions (aud=kubedojo-api-provision). It is
+// mounted on POST /auth/provision alone; request assertions are rejected here and provisioning
+// assertions are rejected everywhere else (threat T3).
+func AuthenticateProvision(v *Verifier) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			token, ok := bearerToken(r)
+			if !ok {
+				httpx.WriteError(w, r, httpx.Unauthenticated())
+				return
+			}
+			c, err := v.Verify(token, AudienceProvision)
+			if err != nil {
+				httpx.Logger(r.Context()).Info("provisioning assertion rejected", "reason", err.Error())
+				httpx.WriteError(w, r, httpx.Unauthenticated())
+				return
+			}
+			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), provisionKey{}, c)))
+		})
+	}
 }

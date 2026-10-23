@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-10-23",
+    title: "Sign in with GitHub",
+    items: [
+      "Sign in with your GitHub account. KubeDojo uses only your public profile and never asks for your email.",
+      "Choose your handle and display name, theme, time zone and privacy settings. Profiles and the leaderboard stay private unless you opt in.",
+    ],
+  },
+  {
     date: "2026-10-22",
     title: "Design system and site foundation",
     items: [

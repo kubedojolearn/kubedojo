@@ -33,6 +33,8 @@ jobs:
       - run: pnpm typecheck
       - run: make test-web
       - run: pnpm --filter @kubedojo/web build
+      - name: No server secrets in client bundles
+        run: pnpm --filter @kubedojo/web check:bundle
       - run: make licenses
 
   api:
@@ -120,15 +122,20 @@ jobs:
           retention-days: 7
 
   stack:
-    name: Container stack (images, compose, edge routing)
+    name: Container stack (images, compose, edge routing, signed-in flows)
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
-      - name: Create .env with throwaway secrets
-        run: node scripts/gen-env.mjs
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Create .env with throwaway secrets and test sign-in
+        run: |
+          node scripts/gen-env.mjs
+          sed -i 's/^AUTH_TEST_MODE=.*/AUTH_TEST_MODE=1/' .env
       - run: make up
       - name: Check edge routing
         run: |
@@ -139,6 +146,10 @@ jobs:
           expect /api/v1/healthz 404   # Go REST must not be reachable through the edge
           expect /api/v1/readyz 404
           docker compose exec -T edge wget -qO- http://api:8080/api/v1/readyz | grep -q '"status":"ready"'
+      - name: Signed-in end-to-end tests
+        run: |
+          pnpm --filter @kubedojo/web exec playwright install --with-deps chromium
+          make test-stack
       - if: always()
         run: docker compose --profile app logs --no-color | tail -n 200
       - if: always()

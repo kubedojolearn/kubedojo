@@ -37,25 +37,30 @@ test.describe("mobile", () => {
   });
 
   test("app navigation drawer works", async ({ page }) => {
-    await page.goto("/dashboard");
+    await page.goto("/paths");
     await page.getByRole("button", { name: "Open navigation" }).click();
     await page.getByRole("dialog").getByRole("link", { name: "Leaderboard" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Leaderboard" })).toBeVisible();
   });
 });
 
-test("app sidebar marks the current page", async ({ page }) => {
-  await page.goto("/admin/content");
+test("app sidebar marks the current page and hides admin links from signed-out visitors", async ({ page }) => {
+  await page.goto("/leaderboard");
   const nav = page.getByRole("navigation", { name: "App" });
-  await expect(nav.getByRole("link", { name: "Content" })).toHaveAttribute("aria-current", "page");
-  await expect(nav.getByRole("link", { name: "Overview" })).not.toHaveAttribute("aria-current", "page");
+  await expect(nav.getByRole("link", { name: "Leaderboard" })).toHaveAttribute("aria-current", "page");
+  await expect(nav.getByRole("link", { name: "Dashboard" })).not.toHaveAttribute("aria-current", "page");
+  await expect(nav.getByRole("link", { name: "Content" })).toHaveCount(0);
 });
 
-test("app sidebar marks the current page on dynamic routes", async ({ page }) => {
-  await page.goto("/lab/00000000-0000-4000-8000-000000000000");
-  await expect(page.getByRole("heading", { level: 1, name: "Lab" })).toBeVisible();
-  await expect(page.getByRole("note")).toContainText("under construction");
-});
+for (const path of ["/dashboard", "/settings", "/lab/00000000-0000-4000-8000-000000000000", "/admin/content"]) {
+  test(`${path} sends signed-out visitors to sign-in`, async ({ page }) => {
+    await page.goto(path);
+    await expect(page).toHaveURL(
+      new RegExp(`/login\\?callbackUrl=${encodeURIComponent(path).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`),
+    );
+    await expect(page.getByRole("heading", { level: 1, name: "Sign in to KubeDojo" })).toBeVisible();
+  });
+}
 
 test("unknown routes show the not-found page with a 404 status", async ({ page }) => {
   const res = await page.goto("/does-not-exist");

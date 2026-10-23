@@ -9,7 +9,9 @@ WORKDIR /repo
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/web/package.json apps/web/
 COPY packages/content-schema/package.json packages/content-schema/
+COPY packages/api-client/package.json packages/api-client/
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --ignore-scripts --filter @kubedojo/web...
+COPY packages/api-client packages/api-client
 COPY apps/web apps/web
 ARG VERSION=dev
 ARG COMMIT=unknown

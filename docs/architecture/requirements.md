@@ -41,7 +41,7 @@ Baseline: OWASP ASVS 5.0 level 2 for authentication, session management, access 
 | S3 | Go trusts identity only from a valid Ed25519 assertion; role only from PostgreSQL. |
 | S4 | Browser never receives internal assertions, OAuth tokens or WS tickets for labs it does not own. |
 | S5 | All mutating BFF routes check `Origin` against `WEB_ORIGIN` and require the Auth.js session; Auth.js's own CSRF protection covers sign-in/out. |
-| S6 | Rate limits (Redis): commands 100/min/user; lab creation 20/hour/user; validation 30/min/user; answer submissions 10/goal/session; WS upgrades 30/min/IP; provisioning 10/min/IP. |
+| S6 | Rate limits (Redis): commands 100/min/user; lab creation 20/hour/user; validation 30/min/user; answer submissions 10/goal/session; WS upgrades 30/min/IP; provisioning 10/min per GitHub identity (every request reaches the API from the BFF, so per-IP limits belong at the edge). |
 | S7 | Logs never contain: OAuth tokens, assertions, tickets, session cookies, Secret values, raw YAML file content. Command text is logged only as its parsed verb and kind. |
 | S8 | Security headers on web: CSP with nonces (no `unsafe-eval` outside Monaco's worker origin), `X-Content-Type-Options`, `Referrer-Policy: strict-origin-when-cross-origin`, `frame-ancestors 'none'`, HSTS in production. |
 | S9 | Dependencies scanned (Dependabot), secrets scanned (gitleaks) on every PR; known-critical CVEs block release. |

@@ -61,3 +61,27 @@ UPDATE users u SET role = sqlc.arg(role)
 FROM target
 WHERE u.id = target.id
 RETURNING u.id, target.old_role, u.role;
+
+-- name: UpdateProfile :exec
+-- Partial update; NULL arguments leave the column unchanged. Setting a display name marks it
+-- as chosen by the user so provider sign-ins stop overwriting it.
+UPDATE users
+SET display_name            = COALESCE(sqlc.narg(display_name), display_name),
+    display_name_customized = display_name_customized OR sqlc.narg(display_name)::text IS NOT NULL,
+    handle                  = COALESCE(sqlc.narg(handle), handle),
+    experience_level        = COALESCE(sqlc.narg(experience_level), experience_level),
+    learning_goal           = COALESCE(sqlc.narg(learning_goal), learning_goal),
+    onboarding_completed_at = CASE WHEN sqlc.arg(complete_onboarding)::boolean
+                                   THEN COALESCE(onboarding_completed_at, now())
+                                   ELSE onboarding_completed_at END
+WHERE id = sqlc.arg(id) AND deleted_at IS NULL;
+
+-- name: UpdateSettings :exec
+UPDATE user_settings
+SET theme              = COALESCE(sqlc.narg(theme), theme),
+    reduced_motion     = COALESCE(sqlc.narg(reduced_motion), reduced_motion),
+    leaderboard_opt_in = COALESCE(sqlc.narg(leaderboard_opt_in), leaderboard_opt_in),
+    profile_public     = COALESCE(sqlc.narg(profile_public), profile_public),
+    analytics_opt_out  = COALESCE(sqlc.narg(analytics_opt_out), analytics_opt_out),
+    time_zone          = COALESCE(sqlc.narg(time_zone), time_zone)
+WHERE user_id = sqlc.arg(user_id);

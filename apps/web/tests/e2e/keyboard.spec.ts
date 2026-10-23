@@ -48,16 +48,16 @@ test("shortcuts do not fire while typing", async ({ page }) => {
 });
 
 test("unavailable controls stay focusable and explain why", async ({ page }) => {
-  await page.goto("/login");
-  const button = page.getByRole("button", { name: "Continue with GitHub" });
+  await page.goto("/paths");
+  const button = page.getByRole("button", { name: "Notifications" });
   await expect(button).toHaveAttribute("aria-disabled", "true");
-  await expect(button).toHaveAccessibleDescription("Sign-in isn't available yet.");
+  await expect(button).toHaveAccessibleDescription("Notifications are coming soon.");
   await button.focus();
   await expect(button).toBeFocused();
   // Playwright refuses to click aria-disabled elements; activate it the way a keyboard user would.
   await page.keyboard.press("Enter");
   await page.keyboard.press("Space");
-  await expect(page).toHaveURL(/\/login$/);
+  await expect(page).toHaveURL(/\/paths$/);
   await expect(button).toBeFocused();
 });
 

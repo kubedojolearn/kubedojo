@@ -80,24 +80,38 @@ func TestResponsesMatchTheContract(t *testing.T) {
 	cases := []struct {
 		name    string
 		handler http.Handler
+		method  string
 		path    string
 		auth    string
+		body    string
 		status  int
 	}{
-		{"healthz", readyRouter, "/api/v1/healthz", "", 200},
-		{"readyz ready", readyRouter, "/api/v1/readyz", "", 200},
-		{"readyz unavailable", downRouter, "/api/v1/readyz", "", 503},
-		{"users/me", readyRouter, "/api/v1/users/me", token, 200},
-		{"users/me unauthenticated", readyRouter, "/api/v1/users/me", "", 401},
-		{"users/me rate limited", readyRouter, "/api/v1/users/me", s.Token(t, "429", time.Now()), 429},
+		{"provision", readyRouter, http.MethodPost, "/api/v1/auth/provision", provisionToken(t, s, "583231"), "", 200},
+		{"provision unauthenticated", readyRouter, http.MethodPost, "/api/v1/auth/provision", "", "", 401},
+		{"update me", readyRouter, http.MethodPatch, "/api/v1/users/me", token, `{"displayName":"Ada","settings":{"theme":"dark"}}`, 200},
+		{"update me invalid", readyRouter, http.MethodPatch, "/api/v1/users/me", token, `{"handle":"-x-"}`, 400},
+		{"update me conflict", readyRouter, http.MethodPatch, "/api/v1/users/me", token, `{"handle":"taken"}`, 409},
+		{"healthz", readyRouter, "", "/api/v1/healthz", "", "", 200},
+		{"readyz ready", readyRouter, "", "/api/v1/readyz", "", "", 200},
+		{"readyz unavailable", downRouter, "", "/api/v1/readyz", "", "", 503},
+		{"users/me", readyRouter, "", "/api/v1/users/me", token, "", 200},
+		{"users/me unauthenticated", readyRouter, "", "/api/v1/users/me", "", "", 401},
+		{"users/me rate limited", readyRouter, "", "/api/v1/users/me", s.Token(t, "429", time.Now()), "", 429},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			srv := httptest.NewServer(tc.handler)
 			defer srv.Close()
-			req, _ := http.NewRequest(http.MethodGet, srv.URL+tc.path, nil)
+			method := tc.method
+			if method == "" {
+				method = http.MethodGet
+			}
+			req, _ := http.NewRequest(method, srv.URL+tc.path, strings.NewReader(tc.body))
 			if tc.auth != "" {
 				req.Header.Set("Authorization", "Bearer "+tc.auth)
+			}
+			if tc.body != "" {
+				req.Header.Set("Content-Type", "application/json")
 			}
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
@@ -108,8 +122,17 @@ func TestResponsesMatchTheContract(t *testing.T) {
 				t.Fatalf("status %d, want %d", resp.StatusCode, tc.status)
 			}
 			// Validate against the spec using the same path the server saw.
-			specReq, _ := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
+			specReq, _ := http.NewRequest(method, "http://localhost:8080"+tc.path, strings.NewReader(tc.body))
 			specReq.Header = req.Header.Clone()
+			if tc.body != "" && tc.status < 300 {
+				if ok, errs := v.ValidateHttpRequest(specReq); !ok {
+					for _, e := range errs {
+						t.Errorf("request: %s: %s", e.Message, e.Reason)
+					}
+				}
+				specReq, _ = http.NewRequest(method, "http://localhost:8080"+tc.path, strings.NewReader(tc.body))
+				specReq.Header = req.Header.Clone()
+			}
 			if ok, errs := v.ValidateHttpResponse(specReq, resp); !ok {
 				for _, e := range errs {
 					t.Errorf("%s: %s (%s)", e.Message, e.Reason, e.HowToFix)

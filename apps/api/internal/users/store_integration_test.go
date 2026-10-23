@@ -250,3 +250,53 @@ func TestSignInAfterAccountDeletionCreatesFreshAccount(t *testing.T) {
 		t.Fatal("the deleted user's handle must stay reserved")
 	}
 }
+
+func ptr[T any](v T) *T { return &v }
+
+func TestUpdateMe(t *testing.T) {
+	pool := testdb.New(t)
+	s := users.NewStore(pool)
+	a, _ := s.Provision(ctx, input("1", "alice"))
+	_, _ = s.Provision(ctx, input("2", "bob"))
+
+	req := users.UpdateMeRequest{
+		DisplayName:        ptr("Alice L."),
+		Handle:             ptr("Alice-Learns"),
+		Settings:           &users.SettingsPatch{Theme: ptr("dark"), TimeZone: ptr("Asia/Colombo"), LeaderboardOptIn: ptr(true)},
+		Onboarding:         &users.OnboardingInfo{ExperienceLevel: ptr("some")},
+		CompleteOnboarding: ptr(true),
+	}
+	if err := req.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.UpdateMe(ctx, a.UserID, req); err != nil {
+		t.Fatal(err)
+	}
+	me, _ := s.GetMe(ctx, a.UserID)
+	if me.DisplayName != "Alice L." || me.Handle != "Alice-Learns" || me.Settings.Theme != "dark" ||
+		me.Settings.TimeZone != "Asia/Colombo" || !me.Settings.LeaderboardOptIn || me.Settings.ProfilePublic || me.OnboardingCompletedAt == nil {
+		t.Fatalf("after update: %+v", me)
+	}
+	firstCompleted := *me.OnboardingCompletedAt
+
+	// Completing onboarding again keeps the original timestamp; partial updates touch nothing else.
+	if err := s.UpdateMe(ctx, a.UserID, users.UpdateMeRequest{CompleteOnboarding: ptr(true)}); err != nil {
+		t.Fatal(err)
+	}
+	me, _ = s.GetMe(ctx, a.UserID)
+	if !me.OnboardingCompletedAt.Equal(firstCompleted) || me.Settings.Theme != "dark" {
+		t.Fatalf("partial update changed other fields: %+v", me)
+	}
+
+	// The chosen display name survives the next GitHub sign-in.
+	if _, err := s.Provision(ctx, input("1", "alice")); err != nil {
+		t.Fatal(err)
+	}
+	if me, _ = s.GetMe(ctx, a.UserID); me.DisplayName != "Alice L." {
+		t.Fatalf("display name overwritten by sign-in: %q", me.DisplayName)
+	}
+
+	if err := s.UpdateMe(ctx, a.UserID, users.UpdateMeRequest{Handle: ptr("BOB")}); !errors.Is(err, users.ErrHandleTaken) {
+		t.Fatalf("case-insensitive handle conflict: %v", err)
+	}
+}

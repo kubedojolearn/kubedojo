@@ -45,6 +45,20 @@ func (userStore) GetMe(_ context.Context, id uuid.UUID) (users.Me, error) {
 	}, nil
 }
 
+func (userStore) UpdateMe(_ context.Context, _ uuid.UUID, r users.UpdateMeRequest) error {
+	if r.Handle != nil && *r.Handle == "taken" {
+		return users.ErrHandleTaken
+	}
+	return nil
+}
+
+func (s userStore) Provision(_ context.Context, in users.ProvisionInput) (users.ProvisionResult, error) {
+	if in.ProviderSubject == "100" {
+		return users.ProvisionResult{UserID: testUserID}, nil
+	}
+	return users.ProvisionResult{UserID: testUserID, Created: true}, nil
+}
+
 type limiter struct{}
 
 func (limiter) Allow(ctx context.Context, key string, _ int, _ time.Duration) (ratelimit.Decision, error) {

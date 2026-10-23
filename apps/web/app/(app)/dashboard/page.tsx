@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
+import { Greeting } from "@/components/layout/session-slots";
 import { Flame, PlayCircle, Sparkles, Trophy } from "lucide-react";
 import { EmptyState } from "@/components/feedback/states";
 import { PageHeader } from "@/components/layout/page-header";
@@ -11,7 +13,14 @@ export const metadata: Metadata = { title: "Dashboard" };
 export default function DashboardPage() {
   return (
     <>
-      <PageHeader title="Dashboard" description="Your learning at a glance." />
+      <PageHeader
+        title="Dashboard"
+        description={
+          <Suspense fallback={<span>Your learning at a glance.</span>}>
+            <Greeting />
+          </Suspense>
+        }
+      />
       <div className="grid gap-6 lg:grid-cols-3">
         <section aria-labelledby="continue-heading" className="lg:col-span-2">
           <h2 id="continue-heading" className="sr-only">

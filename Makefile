@@ -132,6 +132,12 @@ test-e2e: ## Playwright end-to-end tests (builds and starts the web app)
 	pnpm --filter @kubedojo/web exec playwright install chromium
 	pnpm --filter @kubedojo/web test:e2e
 
+.PHONY: test-stack
+test-stack: ## End-to-end tests against the running container stack (needs AUTH_TEST_MODE=1 in .env)
+	@grep -q '^AUTH_TEST_MODE=1' .env || { echo "Set AUTH_TEST_MODE=1 in .env and run make up first."; exit 1; }
+	pnpm --filter @kubedojo/web exec playwright install chromium
+	E2E_BASE_URL=http://localhost:$${EDGE_PORT:-8000} pnpm --filter @kubedojo/web test:stack
+
 PLAYWRIGHT_IMAGE := mcr.microsoft.com/playwright:v1.64.1-noble
 VISUAL_RUN := docker run --rm --ipc=host -v "$(CURDIR):/repo" -w /repo/apps/web -e CI=1 -e E2E_SKIP_BUILD=1 \
   $(PLAYWRIGHT_IMAGE) node node_modules/@playwright/test/cli.js test --project=visual

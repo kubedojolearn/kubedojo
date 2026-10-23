@@ -22,6 +22,7 @@
 | Design | [design/tokens.md](design/tokens.md), [brand.md](design/brand.md) | Colors, type, spacing, terminal and graph styles; logo and voice |
 | Design | [design/baseline.md](design/baseline.md) | Lighthouse and accessibility baseline |
 | Operations | [operations/keys.md](operations/keys.md) | Secrets, key generation and rotation |
+| Operations | [operations/auth.md](operations/auth.md) | Sign-in flow, BFF rules, GitHub OAuth setup, test sign-in, secret rotation |
 | Operations | [operations/database.md](operations/database.md) | Migrations, seeds, initial admin, retention and account deletion |
 | Content | [../packages/content-schema/](../packages/content-schema/README.md) | JSON Schemas for courses, challenges and fixtures |
 

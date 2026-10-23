@@ -6,8 +6,8 @@ import { expect, test } from "@playwright/test";
 const pages = [
   { name: "design-system", path: "/design-system", fullPage: true },
   { name: "home", path: "/", fullPage: true },
-  { name: "dashboard", path: "/dashboard", fullPage: false },
-  { name: "lab", path: "/lab/00000000-0000-4000-8000-000000000000", fullPage: false },
+  { name: "login", path: "/login", fullPage: false },
+  { name: "paths", path: "/paths", fullPage: false },
 ];
 
 for (const scheme of ["dark", "light"] as const) {

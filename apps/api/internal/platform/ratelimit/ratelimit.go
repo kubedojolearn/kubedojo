@@ -110,3 +110,17 @@ func PerIP(l Limiter, rule Rule, ips *ClientIPResolver) func(http.Handler) http.
 		})
 	}
 }
+
+// PerKey limits by a key derived from the request (e.g. the verified provisioning subject).
+func PerKey(l Limiter, rule Rule, key func(*http.Request) (string, bool)) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			k, ok := key(r)
+			if !ok {
+				httpx.WriteError(w, r, httpx.Unauthenticated())
+				return
+			}
+			apply(l, rule, k, w, r, next)
+		})
+	}
+}

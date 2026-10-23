@@ -13,6 +13,8 @@ package main
 
 import (
 	"context"
+	// Embedded IANA time zone database: the distroless image has none, and user settings
+	// validate time zones.
 	"fmt"
 	"log/slog"
 	"net"
@@ -22,6 +24,7 @@ import (
 	"strconv"
 	"syscall"
 	"time"
+	_ "time/tzdata"
 
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/health"

@@ -244,3 +244,73 @@ func (q *Queries) TouchIdentity(ctx context.Context, arg TouchIdentityParams) er
 	_, err := q.db.Exec(ctx, touchIdentity, arg.ProviderLogin, arg.Provider, arg.ProviderSubject)
 	return err
 }
+
+const updateProfile = `-- name: UpdateProfile :exec
+UPDATE users
+SET display_name            = COALESCE($1, display_name),
+    display_name_customized = display_name_customized OR $1::text IS NOT NULL,
+    handle                  = COALESCE($2, handle),
+    experience_level        = COALESCE($3, experience_level),
+    learning_goal           = COALESCE($4, learning_goal),
+    onboarding_completed_at = CASE WHEN $5::boolean
+                                   THEN COALESCE(onboarding_completed_at, now())
+                                   ELSE onboarding_completed_at END
+WHERE id = $6 AND deleted_at IS NULL
+`
+
+type UpdateProfileParams struct {
+	DisplayName        *string
+	Handle             *string
+	ExperienceLevel    *string
+	LearningGoal       *string
+	CompleteOnboarding bool
+	ID                 uuid.UUID
+}
+
+// Partial update; NULL arguments leave the column unchanged. Setting a display name marks it
+// as chosen by the user so provider sign-ins stop overwriting it.
+func (q *Queries) UpdateProfile(ctx context.Context, arg UpdateProfileParams) error {
+	_, err := q.db.Exec(ctx, updateProfile,
+		arg.DisplayName,
+		arg.Handle,
+		arg.ExperienceLevel,
+		arg.LearningGoal,
+		arg.CompleteOnboarding,
+		arg.ID,
+	)
+	return err
+}
+
+const updateSettings = `-- name: UpdateSettings :exec
+UPDATE user_settings
+SET theme              = COALESCE($1, theme),
+    reduced_motion     = COALESCE($2, reduced_motion),
+    leaderboard_opt_in = COALESCE($3, leaderboard_opt_in),
+    profile_public     = COALESCE($4, profile_public),
+    analytics_opt_out  = COALESCE($5, analytics_opt_out),
+    time_zone          = COALESCE($6, time_zone)
+WHERE user_id = $7
+`
+
+type UpdateSettingsParams struct {
+	Theme            *string
+	ReducedMotion    *bool
+	LeaderboardOptIn *bool
+	ProfilePublic    *bool
+	AnalyticsOptOut  *bool
+	TimeZone         *string
+	UserID           uuid.UUID
+}
+
+func (q *Queries) UpdateSettings(ctx context.Context, arg UpdateSettingsParams) error {
+	_, err := q.db.Exec(ctx, updateSettings,
+		arg.Theme,
+		arg.ReducedMotion,
+		arg.LeaderboardOptIn,
+		arg.ProfilePublic,
+		arg.AnalyticsOptOut,
+		arg.TimeZone,
+		arg.UserID,
+	)
+	return err
+}

@@ -19,11 +19,18 @@ export default defineConfig({
   projects: [
     { name: "chromium", testMatch: "e2e/**/*.spec.ts", use: { ...devices["Desktop Chrome"] } },
     { name: "visual", testMatch: "visual/**/*.spec.ts", use: { ...devices["Desktop Chrome"] } },
+    // Full stack (edge + web + API + Postgres + Redis) with AUTH_TEST_MODE=1; run via `make test-stack`.
+    { name: "stack", testMatch: "stack/**/*.spec.ts", use: { ...devices["Desktop Chrome"] } },
   ],
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
         command: process.env.E2E_SKIP_BUILD ? serve : `pnpm build && ${serve}`,
+        // Signed-out browsing needs only a session secret; no API is running for these tests.
+        env: {
+          AUTH_SECRET: process.env.AUTH_SECRET ?? "playwright-only-secret-not-used-anywhere-else",
+          WEB_ORIGIN: baseURL,
+        },
         url: `${baseURL}/api/healthz`,
         reuseExistingServer: !process.env.CI,
         timeout: 180_000,

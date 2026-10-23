@@ -20,14 +20,6 @@ test("theme choice persists across reloads", async ({ page }) => {
   await expect(page.locator("html")).toHaveClass(/\blight\b/);
 });
 
-test("settings theme picker changes the theme", async ({ page }) => {
-  await page.emulateMedia({ colorScheme: "light" });
-  await page.goto("/settings");
-  await page.getByText("Dark", { exact: true }).click();
-  await expect(page.locator("html")).toHaveClass(/\bdark\b/);
-  await expect(page.getByRole("radio", { name: "Dark" })).toBeChecked();
-});
-
 test("honors reduced motion", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");

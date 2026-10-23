@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Suspense } from "react";
+import { SessionHeaderAction } from "@/components/layout/session-slots";
 import { GithubIcon } from "@/components/brand/github-icon";
 import { Logo } from "@/components/brand/logo";
 import { NavLink } from "@/components/layout/nav-link";
@@ -37,9 +39,15 @@ export function SiteHeader() {
             </a>
           </Button>
           <ThemeToggle />
-          <Button asChild size="sm" className="hidden sm:inline-flex">
-            <Link href="/login">Sign in</Link>
-          </Button>
+          <Suspense
+            fallback={
+              <Button asChild size="sm" className="hidden sm:inline-flex">
+                <Link href="/login">Sign in</Link>
+              </Button>
+            }
+          >
+            <SessionHeaderAction />
+          </Suspense>
           <MobileNav />
         </div>
       </Container>

@@ -21,7 +21,7 @@ type Deps struct {
 	Health         health.Handler
 	Verifier       *auth.Verifier
 	Identities     auth.IdentityResolver
-	Users          users.Reader
+	Users          users.Service
 	Limiter        ratelimit.Limiter
 	RequestTimeout time.Duration
 	MaxBodyBytes   int64
@@ -29,7 +29,11 @@ type Deps struct {
 
 // Rate limits for authenticated API traffic (requirements S6). Route-specific limits for
 // commands, labs and validation are added with those routes.
-var userGeneralLimit = ratelimit.Rule{Name: "api", Limit: 300, Window: time.Minute}
+var (
+	userGeneralLimit = ratelimit.Rule{Name: "api", Limit: 300, Window: time.Minute}
+	// Sign-in provisioning, per GitHub identity; fails closed (requirements S6).
+	provisionLimit = ratelimit.Rule{Name: "provision", Limit: 10, Window: time.Minute, FailClosed: true}
+)
 
 // NewRouter builds the handler. Middleware order (outermost first): request ID, panic recovery,
 // deadline, body cap, access log, security headers; then per route group: authentication,
@@ -51,12 +55,25 @@ func NewRouter(d Deps) http.Handler {
 		r.Get("/healthz", d.Health.Live)
 		r.Get("/readyz", d.Health.Ready)
 
+		usersHandler := users.Handler{Users: d.Users}
+
+		// Provisioning: only the BFF's provisioning assertion is accepted here.
+		r.Group(func(r chi.Router) {
+			r.Use(auth.AuthenticateProvision(d.Verifier))
+			r.Use(ratelimit.PerKey(d.Limiter, provisionLimit, func(r *http.Request) (string, bool) {
+				c, ok := auth.ProvisionClaimsFrom(r.Context())
+				return c.Provider + ":" + c.ProviderSubject, ok
+			}))
+			r.Method(http.MethodPost, "/auth/provision", httpx.Handler(usersHandler.Provision))
+		})
+
 		// Authenticated with a request assertion.
 		r.Group(func(r chi.Router) {
 			r.Use(auth.Authenticate(d.Verifier, d.Identities))
 			r.Use(ratelimit.PerUser(d.Limiter, userGeneralLimit))
 
-			r.Method(http.MethodGet, "/users/me", httpx.Handler(users.Handler{Users: d.Users}.GetMe))
+			r.Method(http.MethodGet, "/users/me", httpx.Handler(usersHandler.GetMe))
+			r.Method(http.MethodPatch, "/users/me", httpx.Handler(usersHandler.UpdateMe))
 		})
 	})
 	return r

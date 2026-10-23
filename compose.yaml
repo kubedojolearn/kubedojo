@@ -91,8 +91,16 @@ services:
         VERSION: ${KUBEDOJO_VERSION:-dev}
         COMMIT: ${KUBEDOJO_COMMIT:-unknown}
     environment:
+      APP_ENV: ${APP_ENV:-development}
       API_INTERNAL_URL: http://api:8080
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8000}
+      AUTH_SECRET: ${AUTH_SECRET:?run make setup}
+      AUTH_GITHUB_ID: ${AUTH_GITHUB_ID:-}
+      AUTH_GITHUB_SECRET: ${AUTH_GITHUB_SECRET:-}
+      BFF_SIGNING_PRIVATE_KEY: ${BFF_SIGNING_PRIVATE_KEY:?run make setup}
+      BFF_SIGNING_KID: ${BFF_SIGNING_KID:?run make setup}
+      # Test sign-in for automated tests only; refused when APP_ENV=production.
+      AUTH_TEST_MODE: ${AUTH_TEST_MODE:-0}
     depends_on:
       api: { condition: service_healthy }
     read_only: true
