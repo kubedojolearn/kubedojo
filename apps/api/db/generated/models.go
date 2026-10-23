@@ -77,16 +77,17 @@ type CommandExecution struct {
 }
 
 type Course struct {
-	ID           uuid.UUID
-	Slug         string
-	Title        string
-	Summary      string
-	Description  string
-	Difficulty   string
-	DisplayOrder int32
-	Published    bool
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID            uuid.UUID
+	Slug          string
+	Title         string
+	Summary       string
+	Description   string
+	Difficulty    string
+	DisplayOrder  int32
+	Published     bool
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	Prerequisites []string
 }
 
 type HintUsage struct {

@@ -99,7 +99,7 @@ func Run(ctx context.Context, pool *pgxpool.Pool) (Counts, error) {
 		for i, co := range courses {
 			courseID, err := q.UpsertCourse(ctx, dbgen.UpsertCourseParams{
 				Slug: co.slug, Title: co.title, Summary: co.summary, Description: "",
-				Difficulty: co.difficulty, DisplayOrder: int32(i + 1),
+				Difficulty: co.difficulty, DisplayOrder: int32(i + 1), Prerequisites: []string{},
 			})
 			if err != nil {
 				return fmt.Errorf("course %s: %w", co.slug, err)

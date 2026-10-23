@@ -10,7 +10,7 @@
   },
   "scripts": {
     "generate": "openapi-typescript ../../docs/api/openapi.yaml -o src/schema.d.ts && prettier --write src/schema.d.ts --log-level warn",
-    "check:generated": "pnpm generate && git diff --exit-code -- src/schema.d.ts",
+    "check:generated": "openapi-typescript ../../docs/api/openapi.yaml -o .schema.check.d.ts --silent && prettier --log-level warn --stdin-filepath src/schema.d.ts < .schema.check.d.ts > .schema.check.formatted.d.ts && cmp -s .schema.check.formatted.d.ts src/schema.d.ts; status=$?; rm -f .schema.check.d.ts .schema.check.formatted.d.ts; if [ $status -ne 0 ]; then echo 'src/schema.d.ts is stale: run pnpm --filter @kubedojo/api-client generate'; exit 1; fi; echo '\u2713 generated client is up to date'",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

@@ -8,6 +8,7 @@
 //	api migrate down|reset                         roll back one / all migrations (not in production)
 //	api seed                                       upsert reference data (idempotent)
 //	api bootstrap                                  migrate up, then seed (container start-up)
+//	api content import [-publish] DIR              import validated lesson content (operator)
 //	api admin set-role -handle H -role R -reason T change a user's role (audited)
 package main
 
@@ -27,6 +28,7 @@ import (
 	_ "time/tzdata"
 
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/courses"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/health"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/httpapi"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/buildinfo"
@@ -50,10 +52,10 @@ func main() {
 		err = serve()
 	case "healthcheck":
 		err = healthcheck()
-	case "migrate", "seed", "bootstrap", "admin":
+	case "migrate", "seed", "bootstrap", "admin", "content":
 		err = runOperator(cmd, os.Args[2:])
 	default:
-		err = fmt.Errorf("unknown command %q (want serve, healthcheck, migrate, seed, bootstrap or admin)", cmd)
+		err = fmt.Errorf("unknown command %q (want serve, healthcheck, migrate, seed, bootstrap, content or admin)", cmd)
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "api:", err)
@@ -95,6 +97,7 @@ func serve() error {
 		Verifier:       auth.NewVerifier(cfg.JWTPublicKeys, nil),
 		Identities:     userStore,
 		Users:          userStore,
+		Catalog:        courses.NewService(pool),
 		Limiter:        ratelimit.NewRedis(rdb),
 		RequestTimeout: cfg.RequestTimeout,
 		MaxBodyBytes:   cfg.MaxBodyBytes,

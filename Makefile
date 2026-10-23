@@ -38,6 +38,7 @@ dev: ## Postgres/Redis/edge in Docker, API + web on the host -> http://localhost
 up: ## Build and run the full stack in Docker -> http://localhost:8000
 	VERSION=$(VERSION) COMMIT=$(COMMIT) KUBEDOJO_VERSION=$(VERSION) KUBEDOJO_COMMIT=$(COMMIT) \
 	  $(COMPOSE) --profile app up -d --build --wait
+	@$(MAKE) content-import
 	@echo "KubeDojo is running at http://localhost:$${EDGE_PORT:-8000}"
 
 .PHONY: down
@@ -68,6 +69,14 @@ migrate-status: deps-up ## Show applied and pending migrations
 seed: migrate-up ## Upsert reference data (courses, lessons, achievements); idempotent
 	$(API_CLI) seed
 
+.PHONY: content-validate
+content-validate: ## Validate content/ against the JSON Schemas and cross-file rules
+	node packages/content-schema/bin/validate.js content
+
+.PHONY: content-import
+content-import: content-validate migrate-up ## Validate, then import and publish content/ into the database (development)
+	$(API_CLI) content import -publish ../../content
+
 .PHONY: sqlc
 sqlc: ## Regenerate the type-safe query layer from db/queries
 	cd $(API_DIR) && go tool -modfile=tools/go.mod sqlc generate
@@ -87,6 +96,7 @@ lint: lint-web lint-api lint-contracts ## All linters
 .PHONY: lint-web
 lint-web:
 	pnpm lint
+	pnpm --filter @kubedojo/web check:glossary
 
 .PHONY: lint-api
 lint-api:

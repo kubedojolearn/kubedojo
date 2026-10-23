@@ -28,6 +28,7 @@ export function createValidators() {
     course: ajv.compile(loadSchema("course.schema.json")),
     challenge: ajv.compile(loadSchema("challenge.schema.json")),
     fixture: ajv.compile(loadSchema("fixture.schema.json")),
+    glossary: ajv.compile(loadSchema("glossary.schema.json")),
   };
 }
 
@@ -78,10 +79,11 @@ function targets(goal) {
 
 /**
  * Validates a content tree: <root>/courses, <root>/challenges/<course>/<lesson>.yaml, <root>/fixtures.
- * With partial=true, courses may list lessons whose challenge files are absent and challenges may
- * belong to courses that are absent (used for the examples directory).
+ * Courses may list lessons that aren't written yet; they are returned in `problems.planned`
+ * unless complete=true, which makes them errors. With partial=true challenges may also belong to
+ * absent courses and reference absent prerequisites (used for the examples directory).
  */
-export function validateTree(root, { partial = false } = {}) {
+export function validateTree(root, { partial = false, complete = false } = {}) {
   const validators = createValidators();
   const problems = [];
   const report = (file, message) => problems.push({ file: relative(process.cwd(), file), message });
@@ -114,6 +116,20 @@ export function validateTree(root, { partial = false } = {}) {
     }
   }
 
+  let glossaryIds;
+  const glossaryFile = join(root, "glossary.yaml");
+  if (existsSync(glossaryFile)) {
+    const { doc, errors } = validateFile(validators, "glossary", glossaryFile);
+    errors.forEach((m) => report(glossaryFile, m));
+    if (doc && !errors.length) {
+      glossaryIds = new Set();
+      for (const term of doc.terms) {
+        if (glossaryIds.has(term.id)) report(glossaryFile, `duplicate term ${term.id}`);
+        glossaryIds.add(term.id);
+      }
+    }
+  }
+
   const lessonIds = new Set();
   const challenges = [];
   for (const file of walkYaml(join(root, "challenges"))) {
@@ -123,6 +139,9 @@ export function validateTree(root, { partial = false } = {}) {
     challenges.push({ file, doc });
     lessonIds.add(doc.id);
   }
+
+  // Every lesson listed by a course, written or planned.
+  const courseLessonIds = new Set([...courses.values()].flatMap((c) => c.lessons.map((l) => `${c.slug}/${l}`)));
 
   for (const { file, doc } of challenges) {
     const expectedId = `${doc.course}/${doc.lesson}`;
@@ -139,7 +158,7 @@ export function validateTree(root, { partial = false } = {}) {
     if (!fixtures.has(doc.initialFixture)) report(file, `fixture ${doc.initialFixture} not found`);
 
     for (const p of doc.prerequisites ?? []) {
-      if (!lessonIds.has(p) && !partial) report(file, `prerequisite ${p} not found`);
+      if (!courseLessonIds.has(p) && !partial) report(file, `prerequisite ${p} is not a lesson in any course`);
       if (p === doc.id) report(file, "lesson cannot be its own prerequisite");
     }
 
@@ -152,7 +171,8 @@ export function validateTree(root, { partial = false } = {}) {
           report(file, `goal ${goal.id}: ${t.kind} is cluster-scoped; remove namespace`);
       }
       if (goal.type === "answer") {
-        if (!(goal.id in (doc.solution.answers ?? {})))
+        // Path and count answers are computed from the replayed state; static ones must be given.
+        if ("static" in goal.expected && !(goal.id in (doc.solution.answers ?? {})))
           report(file, `goal ${goal.id}: solution.answers must include an answer`);
         if (goal.input === "choice" && !goal.choices.includes(String(goal.expected.static))) {
           report(file, `goal ${goal.id}: expected answer must be one of the choices`);
@@ -162,18 +182,25 @@ export function validateTree(root, { partial = false } = {}) {
     for (const id of Object.keys(doc.solution.answers ?? {})) {
       if (!goalIds.has(id)) report(file, `solution.answers.${id} does not match an answer goal`);
     }
+    for (const term of doc.glossary ?? []) {
+      if (glossaryIds && !glossaryIds.has(term)) report(file, `glossary term ${term} is not in glossary.yaml`);
+    }
+    if (doc.glossary?.length && !glossaryIds && !partial)
+      report(file, "glossary terms used but glossary.yaml is missing");
   }
 
+  const planned = [];
   if (!partial) {
     for (const course of courses.values()) {
       for (const lesson of course.lessons) {
         if (!lessonIds.has(`${course.slug}/${lesson}`)) {
-          report(join(root, "courses", `${course.slug}.yaml`), `lesson ${lesson} has no challenge file`);
+          if (complete) report(join(root, "courses", `${course.slug}.yaml`), `lesson ${lesson} has no challenge file`);
+          else planned.push(`${course.slug}/${lesson}`);
         }
       }
     }
   }
-
+  problems.planned = planned;
   return problems;
 }
 

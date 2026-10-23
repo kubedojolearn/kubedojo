@@ -57,7 +57,7 @@ func CreatePublishedLesson(t testing.TB, pool *pgxpool.Pool, slug string) Lesson
 	ctx := context.Background()
 	q := dbgen.New(pool)
 	courseID, err := q.UpsertCourse(ctx, dbgen.UpsertCourseParams{
-		Slug: "course-" + slug, Title: "Course " + slug, Summary: "A test course.", Difficulty: "beginner", DisplayOrder: 1,
+		Slug: "course-" + slug, Title: "Course " + slug, Summary: "A test course.", Difficulty: "beginner", DisplayOrder: 1, Prerequisites: []string{},
 	})
 	if err != nil {
 		t.Fatal(err)

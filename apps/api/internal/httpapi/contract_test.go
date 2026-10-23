@@ -86,6 +86,11 @@ func TestResponsesMatchTheContract(t *testing.T) {
 		body    string
 		status  int
 	}{
+		{"catalog courses", readyRouter, "", "/api/v1/catalog/courses", "", "", 200},
+		{"catalog course", readyRouter, "", "/api/v1/catalog/courses/workloads", "", "", 200},
+		{"catalog course missing", readyRouter, "", "/api/v1/catalog/courses/nope", "", "", 404},
+		{"catalog lesson", readyRouter, "", "/api/v1/catalog/courses/workloads/lessons/scaling-deployments", "", "", 200},
+		{"catalog lesson missing", readyRouter, "", "/api/v1/catalog/courses/workloads/lessons/launch-a-pod", "", "", 404},
 		{"provision", readyRouter, http.MethodPost, "/api/v1/auth/provision", provisionToken(t, s, "583231"), "", 200},
 		{"provision unauthenticated", readyRouter, http.MethodPost, "/api/v1/auth/provision", "", "", 401},
 		{"update me", readyRouter, http.MethodPatch, "/api/v1/users/me", token, `{"displayName":"Ada","settings":{"theme":"dark"}}`, 200},

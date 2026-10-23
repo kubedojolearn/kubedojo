@@ -1,7 +1,7 @@
 {
   "name": "kubedojo",
   "private": true,
-  "description": "KubeDojo — master Kubernetes, one command at a time.",
+  "description": "KubeDojo \u2014 master Kubernetes, one command at a time.",
   "license": "Apache-2.0",
   "packageManager": "pnpm@10.34.5",
   "engines": {
@@ -16,7 +16,7 @@
     "test": "pnpm -r run test",
     "build": "pnpm -r run build",
     "openapi:lint": "redocly lint docs/api/openapi.yaml",
-    "content:validate": "pnpm --filter @kubedojo/content-schema run validate:examples",
+    "content:validate": "pnpm --filter @kubedojo/content-schema run validate:examples && node packages/content-schema/bin/validate.js content",
     "licenses:check": "node scripts/check-licenses.mjs"
   },
   "devDependencies": {

@@ -15,6 +15,8 @@ WEB_UPSTREAM=host.docker.internal:3000 API_UPSTREAM=host.docker.internal:8080 \
 
 echo "→ applying migrations and seeds"
 (cd apps/api && go run ./cmd/api bootstrap)
+node packages/content-schema/bin/validate.js content
+(cd apps/api && go run ./cmd/api content import -publish ../../content)
 
 pids=()
 cleanup() {

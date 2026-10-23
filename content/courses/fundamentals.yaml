@@ -1,0 +1,15 @@
+schemaVersion: 1
+slug: fundamentals
+title: Kubernetes fundamentals
+summary: How a cluster is put together, how to find your way around it, and how to describe what you want.
+description: |
+  Start here. You'll meet the parts of a cluster, learn to read what's running in it, and see the idea that makes Kubernetes predictable: you describe the state you want, and controllers work to make it so.
+difficulty: beginner
+displayOrder: 1
+prerequisites: []
+lessons:
+  - cluster-architecture
+  - namespace-navigation
+  - listing-resources
+  - labels-and-selectors
+  - declarative-vs-imperative

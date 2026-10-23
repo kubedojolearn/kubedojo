@@ -753,7 +753,10 @@ export interface components {
       title: string;
       summary: string;
       difficulty: components["schemas"]["Difficulty"];
+      /** @description Published lessons. */
       lessonCount: number;
+      /** @description All lessons the course will have, published or not. */
+      plannedLessonCount: number;
       estimatedMinutes: number;
       displayOrder: number;
     };
@@ -788,6 +791,8 @@ export interface components {
       contentSha256: string;
       objectives: string[];
       prerequisites: string[];
+      /** @description The prerequisites that are published, with titles. Others are not available yet. */
+      prerequisiteLessons: components["schemas"]["LessonRef"][];
       /** @description Trusted Markdown (rendered with the safe pipeline). */
       body: string;
       references: {
@@ -795,6 +800,8 @@ export interface components {
         /** Format: uri */
         url: string;
       }[];
+      /** @description Glossary term IDs related to this lesson. */
+      glossary: components["schemas"]["Slug"][];
       goals: components["schemas"]["PublicGoal"][];
       hintCount: number;
       reward: {
@@ -805,6 +812,15 @@ export interface components {
       simulatorVersion: string;
       /** Format: date */
       lastReviewedAt: string;
+      navigation: {
+        previous: components["schemas"]["LessonRef"] | null;
+        next: components["schemas"]["LessonRef"] | null;
+      };
+    };
+    LessonRef: {
+      courseSlug: components["schemas"]["Slug"];
+      slug: components["schemas"]["Slug"];
+      title: string;
     };
     LessonProgress: {
       /** @description course/lesson */

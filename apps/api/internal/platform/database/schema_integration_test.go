@@ -42,7 +42,7 @@ func TestMigrationsUpDownUp(t *testing.T) {
 	if n := tableCount(t, pool); n != 21 {
 		t.Fatalf("expected 21 tables after up, got %d", n)
 	}
-	if v, _ := m.Version(ctx); v != 5 {
+	if v, _ := m.Version(ctx); v != 6 {
 		t.Fatalf("version %d", v)
 	}
 	if _, err := m.DownTo(ctx, 0); err != nil {

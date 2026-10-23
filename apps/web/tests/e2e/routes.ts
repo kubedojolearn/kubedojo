@@ -1,5 +1,5 @@
 /** Every page route in the app, used by the accessibility and responsive suites. */
-export const marketingRoutes = ["/", "/learn", "/about", "/faq", "/privacy", "/terms", "/changelog"];
+export const marketingRoutes = ["/", "/learn", "/learn/glossary", "/about", "/faq", "/privacy", "/terms", "/changelog"];
 export const appRoutes = [
   "/dashboard",
   "/paths",

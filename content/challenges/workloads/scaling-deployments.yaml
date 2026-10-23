@@ -1,0 +1,119 @@
+schemaVersion: 1
+id: workloads/scaling-deployments
+version: 1
+course: workloads
+lesson: scaling-deployments
+title: Scale a Deployment
+summary: Change how many copies of an app run, and watch the ReplicaSet create Pods to match.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 8
+lastReviewed: 2026-10-23
+objectives:
+  - Read a Deployment's desired and ready replica counts
+  - Change the desired replica count imperatively or declaratively
+  - Explain which controller creates the new Pods
+prerequisites:
+  - workloads/create-a-deployment
+glossary: [deployment, replicaset, pod, desired-state, controller, label]
+body: |
+  A **Deployment** stores the number of Pods you *want* in `spec.replicas`. It doesn't create Pods
+  itself. It owns a **ReplicaSet**, and the ReplicaSet controller compares the Pods that *exist*
+  with the number wanted, then creates or deletes Pods until they match.
+
+  That loop, *observe, compare, act*, is how almost everything in Kubernetes works. You change the
+  desired state; controllers do the rest.
+
+  ## Read the current state
+
+  ```sh
+  kubectl get deployment nginx
+  ```
+
+  ```text
+  NAME    READY   UP-TO-DATE   AVAILABLE   AGE
+  nginx   1/1     1            1           1h
+  ```
+
+  `READY 1/1` means one Pod is ready out of one wanted.
+
+  ## Change the desired state
+
+  There are two ways, and both are correct:
+
+  - **Imperatively**, by telling kubectl what to change:
+
+    ```sh
+    kubectl scale deployment nginx --replicas=3
+    ```
+
+  - **Declaratively**, by editing the manifest so it says `replicas: 3` and applying it with
+    `kubectl apply -f`.
+
+  KubeDojo checks the cluster you end up with, not the command you typed, so use whichever you prefer.
+
+  ## Your task
+
+  Traffic to `nginx` is growing. Make it run **three** ready replicas, then look at the ReplicaSet
+  and the Pods to see what the controllers did.
+
+  > **Simulated cluster:** new Pods become ready as soon as they're scheduled. On a real cluster
+  > this takes a few seconds while images are pulled and containers start.
+references:
+  - title: Scaling a Deployment (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#scaling-a-deployment
+  - title: ReplicaSet (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
+initialFixture: fixtures/nginx-one-replica.yaml
+terminal:
+  allowedFamilies: [get, describe, scale, rollout, apply, events, explain]
+initialFiles:
+  - path: manifests/nginx.yaml
+    content: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: nginx
+        labels:
+          app: nginx
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: nginx
+        template:
+          metadata:
+            labels:
+              app: nginx
+          spec:
+            containers:
+              - name: nginx
+                image: nginx:1.27
+                ports:
+                  - containerPort: 80
+goals:
+  - id: deployment-replicas
+    type: state
+    description: The nginx Deployment wants 3 replicas and all 3 are ready.
+    failureMessage: Check `kubectl get deployment nginx`. Compare READY with what you asked for.
+    target:
+      kind: Deployment
+      namespace: default
+      name: nginx
+    assertions:
+      - path: spec.replicas
+        operator: equals
+        value: 3
+      - path: status.readyReplicas
+        operator: equals
+        value: 3
+hints:
+  - Try `kubectl get deployments`.
+  - "`kubectl scale` changes the desired replica count."
+  - "Try: kubectl scale deployment nginx --replicas=3"
+solution:
+  commands:
+    - kubectl scale deployment nginx --replicas=3
+reward:
+  baseXP: 100
+  firstTryBonusXP: 25
+  hintPenaltyPerHintXP: 10

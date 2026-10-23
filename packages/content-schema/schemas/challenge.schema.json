@@ -171,7 +171,7 @@
           }
         },
         "answers": {
-          "description": "goalId -> answer for answer goals",
+          "description": "goalId -> answer. Required for answer goals with a static expected value; path and count answers are computed from the replayed state.",
           "type": "object",
           "additionalProperties": {
             "type": "string",
@@ -200,6 +200,15 @@
           "minimum": 0,
           "maximum": 500
         }
+      }
+    },
+    "glossary": {
+      "description": "Glossary term IDs (content/glossary.yaml) shown with the lesson.",
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 20,
+      "items": {
+        "$ref": "common.schema.json#/$defs/slug"
       }
     }
   },

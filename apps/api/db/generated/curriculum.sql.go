@@ -12,6 +12,79 @@ import (
 	"github.com/google/uuid"
 )
 
+const getChallengeVersionByNumber = `-- name: GetChallengeVersionByNumber :one
+SELECT id, content_sha256, status FROM challenge_versions WHERE lesson_id = $1 AND version = $2
+`
+
+type GetChallengeVersionByNumberParams struct {
+	LessonID uuid.UUID
+	Version  int32
+}
+
+type GetChallengeVersionByNumberRow struct {
+	ID            uuid.UUID
+	ContentSha256 string
+	Status        string
+}
+
+func (q *Queries) GetChallengeVersionByNumber(ctx context.Context, arg GetChallengeVersionByNumberParams) (GetChallengeVersionByNumberRow, error) {
+	row := q.db.QueryRow(ctx, getChallengeVersionByNumber, arg.LessonID, arg.Version)
+	var i GetChallengeVersionByNumberRow
+	err := row.Scan(&i.ID, &i.ContentSha256, &i.Status)
+	return i, err
+}
+
+const getChallengeVersionBySHA = `-- name: GetChallengeVersionBySHA :one
+SELECT id, version, status FROM challenge_versions WHERE lesson_id = $1 AND content_sha256 = $2
+`
+
+type GetChallengeVersionBySHAParams struct {
+	LessonID      uuid.UUID
+	ContentSha256 string
+}
+
+type GetChallengeVersionBySHARow struct {
+	ID      uuid.UUID
+	Version int32
+	Status  string
+}
+
+func (q *Queries) GetChallengeVersionBySHA(ctx context.Context, arg GetChallengeVersionBySHAParams) (GetChallengeVersionBySHARow, error) {
+	row := q.db.QueryRow(ctx, getChallengeVersionBySHA, arg.LessonID, arg.ContentSha256)
+	var i GetChallengeVersionBySHARow
+	err := row.Scan(&i.ID, &i.Version, &i.Status)
+	return i, err
+}
+
+const getLessonBySlugs = `-- name: GetLessonBySlugs :one
+SELECT l.id, l.course_id, l.slug, l.title, l.summary, l.lesson_type, l.display_order, l.estimated_minutes, l.current_challenge_version_id, l.created_at, l.updated_at FROM lessons l JOIN courses c ON c.id = l.course_id
+WHERE c.slug = $1 AND l.slug = $2
+`
+
+type GetLessonBySlugsParams struct {
+	CourseSlug string
+	LessonSlug string
+}
+
+func (q *Queries) GetLessonBySlugs(ctx context.Context, arg GetLessonBySlugsParams) (Lesson, error) {
+	row := q.db.QueryRow(ctx, getLessonBySlugs, arg.CourseSlug, arg.LessonSlug)
+	var i Lesson
+	err := row.Scan(
+		&i.ID,
+		&i.CourseID,
+		&i.Slug,
+		&i.Title,
+		&i.Summary,
+		&i.LessonType,
+		&i.DisplayOrder,
+		&i.EstimatedMinutes,
+		&i.CurrentChallengeVersionID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const insertChallengeVersion = `-- name: InsertChallengeVersion :one
 INSERT INTO challenge_versions (lesson_id, version, content_sha256, spec, simulator_version)
 VALUES ($1, $2, $3, $4, $5)
@@ -41,6 +114,117 @@ func (q *Queries) InsertChallengeVersion(ctx context.Context, arg InsertChalleng
 	return id, err
 }
 
+const listPublishedCourses = `-- name: ListPublishedCourses :many
+SELECT c.id, c.slug, c.title, c.summary, c.description, c.difficulty, c.display_order, c.prerequisites,
+       count(l.id) FILTER (WHERE l.current_challenge_version_id IS NOT NULL)::int AS published_lessons,
+       count(l.id)::int AS planned_lessons,
+       COALESCE(sum(l.estimated_minutes) FILTER (WHERE l.current_challenge_version_id IS NOT NULL), 0)::int AS estimated_minutes
+FROM courses c
+LEFT JOIN lessons l ON l.course_id = c.id
+WHERE c.published
+GROUP BY c.id
+HAVING count(l.id) FILTER (WHERE l.current_challenge_version_id IS NOT NULL) > 0
+ORDER BY c.display_order
+`
+
+type ListPublishedCoursesRow struct {
+	ID               uuid.UUID
+	Slug             string
+	Title            string
+	Summary          string
+	Description      string
+	Difficulty       string
+	DisplayOrder     int32
+	Prerequisites    []string
+	PublishedLessons int32
+	PlannedLessons   int32
+	EstimatedMinutes int32
+}
+
+// Courses with at least one published lesson, in display order.
+func (q *Queries) ListPublishedCourses(ctx context.Context) ([]ListPublishedCoursesRow, error) {
+	rows, err := q.db.Query(ctx, listPublishedCourses)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPublishedCoursesRow{}
+	for rows.Next() {
+		var i ListPublishedCoursesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Slug,
+			&i.Title,
+			&i.Summary,
+			&i.Description,
+			&i.Difficulty,
+			&i.DisplayOrder,
+			&i.Prerequisites,
+			&i.PublishedLessons,
+			&i.PlannedLessons,
+			&i.EstimatedMinutes,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPublishedLessons = `-- name: ListPublishedLessons :many
+SELECT l.id, l.slug, l.display_order, l.estimated_minutes, c.slug AS course_slug,
+       cv.id AS version_id, cv.content_sha256, cv.spec
+FROM lessons l
+JOIN courses c ON c.id = l.course_id
+JOIN challenge_versions cv ON cv.id = l.current_challenge_version_id
+WHERE c.published AND ($1::uuid IS NULL OR l.course_id = $1::uuid)
+ORDER BY c.display_order, l.display_order
+`
+
+type ListPublishedLessonsRow struct {
+	ID               uuid.UUID
+	Slug             string
+	DisplayOrder     int32
+	EstimatedMinutes int32
+	CourseSlug       string
+	VersionID        uuid.UUID
+	ContentSha256    string
+	Spec             json.RawMessage
+}
+
+// Published lessons with their current version's spec (mapped to public fields in Go).
+func (q *Queries) ListPublishedLessons(ctx context.Context, courseID *uuid.UUID) ([]ListPublishedLessonsRow, error) {
+	rows, err := q.db.Query(ctx, listPublishedLessons, courseID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPublishedLessonsRow{}
+	for rows.Next() {
+		var i ListPublishedLessonsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Slug,
+			&i.DisplayOrder,
+			&i.EstimatedMinutes,
+			&i.CourseSlug,
+			&i.VersionID,
+			&i.ContentSha256,
+			&i.Spec,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const publishChallengeVersion = `-- name: PublishChallengeVersion :execrows
 UPDATE challenge_versions SET status = 'published', published_at = now()
 WHERE id = $1 AND status = 'draft'
@@ -54,6 +238,29 @@ func (q *Queries) PublishChallengeVersion(ctx context.Context, id uuid.UUID) (in
 	return result.RowsAffected(), nil
 }
 
+const retireChallengeVersion = `-- name: RetireChallengeVersion :exec
+UPDATE challenge_versions SET status = 'retired', retired_at = now() WHERE id = $1 AND status = 'published'
+`
+
+func (q *Queries) RetireChallengeVersion(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, retireChallengeVersion, id)
+	return err
+}
+
+const setCoursePublished = `-- name: SetCoursePublished :exec
+UPDATE courses SET published = $2 WHERE id = $1
+`
+
+type SetCoursePublishedParams struct {
+	ID        uuid.UUID
+	Published bool
+}
+
+func (q *Queries) SetCoursePublished(ctx context.Context, arg SetCoursePublishedParams) error {
+	_, err := q.db.Exec(ctx, setCoursePublished, arg.ID, arg.Published)
+	return err
+}
+
 const setLessonCurrentVersion = `-- name: SetLessonCurrentVersion :exec
 UPDATE lessons SET current_challenge_version_id = $1 WHERE id = $2
 `
@@ -65,6 +272,20 @@ type SetLessonCurrentVersionParams struct {
 
 func (q *Queries) SetLessonCurrentVersion(ctx context.Context, arg SetLessonCurrentVersionParams) error {
 	_, err := q.db.Exec(ctx, setLessonCurrentVersion, arg.ChallengeVersionID, arg.LessonID)
+	return err
+}
+
+const setLessonDisplayOrder = `-- name: SetLessonDisplayOrder :exec
+UPDATE lessons SET display_order = $2 WHERE id = $1
+`
+
+type SetLessonDisplayOrderParams struct {
+	ID           uuid.UUID
+	DisplayOrder int32
+}
+
+func (q *Queries) SetLessonDisplayOrder(ctx context.Context, arg SetLessonDisplayOrderParams) error {
+	_, err := q.db.Exec(ctx, setLessonDisplayOrder, arg.ID, arg.DisplayOrder)
 	return err
 }
 
@@ -98,21 +319,22 @@ func (q *Queries) UpsertAchievementDefinition(ctx context.Context, arg UpsertAch
 }
 
 const upsertCourse = `-- name: UpsertCourse :one
-INSERT INTO courses (slug, title, summary, description, difficulty, display_order)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO courses (slug, title, summary, description, difficulty, display_order, prerequisites)
+VALUES ($1, $2, $3, $4, $5, $6, $7::text[])
 ON CONFLICT (slug) DO UPDATE
 SET title = EXCLUDED.title, summary = EXCLUDED.summary, description = EXCLUDED.description,
-    difficulty = EXCLUDED.difficulty, display_order = EXCLUDED.display_order
+    difficulty = EXCLUDED.difficulty, display_order = EXCLUDED.display_order, prerequisites = EXCLUDED.prerequisites
 RETURNING id
 `
 
 type UpsertCourseParams struct {
-	Slug         string
-	Title        string
-	Summary      string
-	Description  string
-	Difficulty   string
-	DisplayOrder int32
+	Slug          string
+	Title         string
+	Summary       string
+	Description   string
+	Difficulty    string
+	DisplayOrder  int32
+	Prerequisites []string
 }
 
 func (q *Queries) UpsertCourse(ctx context.Context, arg UpsertCourseParams) (uuid.UUID, error) {
@@ -123,6 +345,7 @@ func (q *Queries) UpsertCourse(ctx context.Context, arg UpsertCourseParams) (uui
 		arg.Description,
 		arg.Difficulty,
 		arg.DisplayOrder,
+		arg.Prerequisites,
 	)
 	var id uuid.UUID
 	err := row.Scan(&id)

@@ -8,6 +8,15 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-23",
+    title: "First lessons published",
+    items: [
+      "Three lessons are live: how a cluster is put together, inspecting a running Pod, and scaling a Deployment.",
+      "Search and filter the curriculum, read lessons with copyable commands and key terms, and move between lessons with [ and ].",
+      "A glossary of the Kubernetes terms used in lessons.",
+    ],
+  },
+  {
+    date: "2026-10-23",
     title: "Sign in with GitHub",
     items: [
       "Sign in with your GitHub account. KubeDojo uses only your public profile and never asks for your email.",

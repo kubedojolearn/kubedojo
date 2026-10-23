@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/courses"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/health"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/httpx"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/ratelimit"
@@ -22,6 +23,7 @@ type Deps struct {
 	Verifier       *auth.Verifier
 	Identities     auth.IdentityResolver
 	Users          users.Service
+	Catalog        courses.Catalog
 	Limiter        ratelimit.Limiter
 	RequestTimeout time.Duration
 	MaxBodyBytes   int64
@@ -56,6 +58,12 @@ func NewRouter(d Deps) http.Handler {
 		r.Get("/readyz", d.Health.Ready)
 
 		usersHandler := users.Handler{Users: d.Users}
+		catalog := courses.Handler{Catalog: d.Catalog}
+
+		// Public catalog (published content only; hidden challenge fields are never mapped).
+		r.Get("/catalog/courses", httpx.Handler(catalog.ListCourses).ServeHTTP)
+		r.Get("/catalog/courses/{courseSlug}", httpx.Handler(catalog.GetCourse).ServeHTTP)
+		r.Get("/catalog/courses/{courseSlug}/lessons/{lessonSlug}", httpx.Handler(catalog.GetLesson).ServeHTTP)
 
 		// Provisioning: only the BFF's provisioning assertion is accepted here.
 		r.Group(func(r chi.Router) {

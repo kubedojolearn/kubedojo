@@ -1,0 +1,103 @@
+schemaVersion: 1
+id: workloads/inspect-a-pod
+version: 1
+course: workloads
+lesson: inspect-a-pod
+title: Inspect a running Pod
+summary: Use describe, logs and YAML output to find out what a Pod is, where it runs and what it's saying.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 10
+lastReviewed: 2026-10-23
+objectives:
+  - Read a Pod's details with kubectl describe
+  - Read a container's logs with kubectl logs
+  - Find specific fields, like the Pod's IP address, in kubectl's output
+prerequisites:
+  - workloads/launch-a-pod
+glossary: [pod, container, namespace, event, kubectl]
+body: |
+  `kubectl get pods` tells you *that* a Pod exists and whether it's running. When you need to know
+  *why* it's in that state, or what it's doing, you need three more tools.
+
+  ## `kubectl describe`: the full story
+
+  ```sh
+  kubectl describe pod api
+  ```
+
+  `describe` prints a readable summary of one object: its labels, which node it was scheduled to,
+  its IP address, each container's image and state, and, at the bottom, the **Events** that
+  happened to it. Events are the cluster's diary: *Scheduled*, *Pulled*, *Started*, and, when things
+  go wrong, warnings that explain why.
+
+  ## `kubectl logs`: what the container says
+
+  ```sh
+  kubectl logs api
+  ```
+
+  Applications write logs to standard output, and Kubernetes keeps them per container. Reading logs
+  is usually the fastest way to learn what an application is doing, or why it crashed.
+
+  ## `-o yaml`: every field
+
+  ```sh
+  kubectl get pod api -o yaml
+  ```
+
+  This prints the whole object as Kubernetes stores it: `metadata`, the `spec` you asked for, and
+  the `status` the cluster reports back. `status.podIP` is the address other Pods use to reach this one.
+
+  ## Your task
+
+  A Pod called `api` is running in the `default` namespace. Describe it, read its logs, and answer
+  the questions in the goals panel.
+
+  > **Simulated cluster:** logs here come from the simulator, not a real process. The commands and
+  > the shape of the output are the same as on a real cluster.
+references:
+  - title: Debug running Pods (Kubernetes docs)
+    url: https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/
+  - title: kubectl logs (Kubernetes docs)
+    url: https://kubernetes.io/docs/reference/kubectl/generated/kubectl_logs/
+initialFixture: fixtures/api-pod.yaml
+terminal:
+  allowedFamilies: [get, describe, logs, events, explain]
+goals:
+  - id: described-api
+    type: observation
+    description: Describe the api Pod.
+    failureMessage: Run `kubectl describe pod api`.
+    command: { verb: describe, kind: Pod, name: api }
+  - id: api-ip
+    type: answer
+    description: Find the Pod's IP address.
+    prompt: What is the IP address of the Pod `api`?
+    input: text
+    failureMessage: Look for the IP line in `kubectl describe pod api`, or `status.podIP` in the YAML.
+    expected:
+      path:
+        target: { kind: Pod, namespace: default, name: api }
+        path: status.podIP
+  - id: api-port
+    type: answer
+    description: Find the port the application listens on, from its logs.
+    prompt: According to its logs, which port is the api application listening on?
+    input: number
+    failureMessage: Run `kubectl logs api` and look for the line about listening.
+    expected:
+      static: 8080
+hints:
+  - Start with `kubectl describe pod api`.
+  - The IP address is near the top of the describe output.
+  - "`kubectl logs api` shows what the application printed when it started."
+solution:
+  commands:
+    - kubectl describe pod api
+    - kubectl logs api
+  answers:
+    api-port: "8080"
+reward:
+  baseXP: 75
+  firstTryBonusXP: 15
+  hintPenaltyPerHintXP: 5

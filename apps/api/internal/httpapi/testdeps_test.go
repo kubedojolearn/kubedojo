@@ -12,6 +12,7 @@ import (
 
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth/authtest"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/courses"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/health"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/ratelimit"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/users"
@@ -59,6 +60,39 @@ func (s userStore) Provision(_ context.Context, in users.ProvisionInput) (users.
 	return users.ProvisionResult{UserID: testUserID, Created: true}, nil
 }
 
+type catalog struct{}
+
+func (catalog) ListCourses(context.Context) ([]courses.CourseSummary, error) {
+	return []courses.CourseSummary{{Slug: "workloads", Title: "Pods and workloads", Summary: "Run apps.", Difficulty: "beginner", LessonCount: 1, PlannedLessonCount: 6, EstimatedMinutes: 8, DisplayOrder: 2}}, nil
+}
+
+func (catalog) GetCourse(_ context.Context, slug string) (courses.CourseDetail, error) {
+	if slug != "workloads" {
+		return courses.CourseDetail{}, courses.ErrNotFound
+	}
+	list, _ := catalog{}.ListCourses(context.Background())
+	return courses.CourseDetail{CourseSummary: list[0], Description: "x", Prerequisites: []string{"fundamentals"}, Lessons: []courses.LessonSummary{
+		{Slug: "scaling-deployments", CourseSlug: "workloads", Title: "Scale", Summary: "s", EstimatedMinutes: 8, DisplayOrder: 5, GoalTypes: []string{"state"}},
+	}}, nil
+}
+
+func (catalog) GetLesson(_ context.Context, c, l string) (courses.LessonDetail, error) {
+	if c != "workloads" || l != "scaling-deployments" {
+		return courses.LessonDetail{}, courses.ErrNotFound
+	}
+	return courses.LessonDetail{
+		LessonSummary:      courses.LessonSummary{Slug: l, CourseSlug: c, Title: "Scale", Summary: "s", EstimatedMinutes: 8, DisplayOrder: 5, GoalTypes: []string{"answer"}},
+		ChallengeVersionID: uuid.MustParse("55555555-5555-4555-8555-555555555555"),
+		ContentSHA256:      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+		Objectives:         []string{"o"}, Prerequisites: []string{"workloads/create-a-deployment"}, PrereqLessons: []courses.LessonRef{}, Body: "# hi",
+		References: []courses.Reference{{Title: "docs", URL: "https://kubernetes.io/"}}, Glossary: []string{"pod"},
+		Goals:     []courses.PublicGoal{{ID: "q", Type: "answer", Description: "Pick.", Input: "choice", Choices: []string{"a", "b"}}},
+		HintCount: 3, Reward: courses.Reward{BaseXP: 100, FirstTryBonusXP: 25, HintPenaltyPerHintXP: 10},
+		SimulatorVersion: "kubernetes-1.37-subset-1", LastReviewedAt: "2026-10-23",
+		Navigation: courses.Navigation{Previous: &courses.LessonRef{CourseSlug: c, Slug: "inspect-a-pod", Title: "Inspect"}},
+	}, nil
+}
+
 type limiter struct{}
 
 func (limiter) Allow(ctx context.Context, key string, _ int, _ time.Duration) (ratelimit.Decision, error) {
@@ -86,6 +120,7 @@ func testRouter(t *testing.T, ready bool) (http.Handler, authtest.Signer) {
 		Verifier:       auth.NewVerifier(s.Keys(), nil),
 		Identities:     identities{},
 		Users:          userStore{},
+		Catalog:        catalog{},
 		Limiter:        limiter{},
 		RequestTimeout: 5 * time.Second,
 		MaxBodyBytes:   128 << 10,

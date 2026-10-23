@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Validates KubeDojo content against the JSON Schemas plus cross-file rules.
 //
-//   kubedojo-content-validate <content-dir> [--partial]
+//   kubedojo-content-validate <content-dir> [--partial] [--complete]
 //   kubedojo-content-validate --expect-invalid <dir>   (every file must fail; type from name prefix)
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -48,10 +48,12 @@ if (!root) {
   console.error("usage: kubedojo-content-validate <content-dir> [--partial]");
   process.exit(2);
 }
-const problems = validateTree(root, { partial: args.includes("--partial") });
+const problems = validateTree(root, { partial: args.includes("--partial"), complete: args.includes("--complete") });
 for (const p of problems) console.error(`✗ ${p.file}: ${p.message}`);
 if (problems.length) {
   console.error(`\n${problems.length} problem(s) found.`);
   process.exit(1);
 }
 console.log(`✓ ${root}: all content valid`);
+if (problems.planned.length)
+  console.log(`  ${problems.planned.length} planned lesson(s) not written yet (use --complete to require them)`);

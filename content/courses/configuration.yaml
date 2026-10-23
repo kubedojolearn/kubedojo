@@ -1,0 +1,14 @@
+schemaVersion: 1
+slug: configuration
+title: Configuration
+summary: Keep configuration out of images with ConfigMaps, edit manifests safely, and understand Secrets.
+description: |
+  Good images don't hard-code settings. You'll store configuration in **ConfigMaps**, feed it to containers, edit manifests and re-apply them, and learn what Kubernetes Secrets do and don't protect.
+difficulty: intermediate
+displayOrder: 4
+prerequisites: [workloads]
+lessons:
+  - configmaps
+  - editing-manifests
+  - environment-from-configmaps
+  - secrets-awareness

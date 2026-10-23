@@ -12,6 +12,7 @@ import (
 
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/admin"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/content"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/config"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/database"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/logging"
@@ -100,6 +101,33 @@ func runOperator(cmd string, args []string) error {
 			return err
 		}
 		log.Info("seed complete", "courses", c.Courses, "lessons", c.Lessons, "achievements", c.Achievements)
+		return nil
+
+	case "content":
+		if len(args) == 0 || args[0] != "import" {
+			return errors.New("usage: api content import [-publish] <content-dir>")
+		}
+		fs := flag.NewFlagSet("import", flag.ContinueOnError)
+		publish := fs.Bool("publish", false, "publish each lesson's imported version (audited)")
+		if err := fs.Parse(args[1:]); err != nil {
+			return err
+		}
+		if fs.NArg() != 1 {
+			return errors.New("usage: api content import [-publish] <content-dir>")
+		}
+		bundle, err := content.Load(fs.Arg(0))
+		if err != nil {
+			return err
+		}
+		rep, err := content.Import(ctx, pool, bundle, *publish)
+		if err != nil {
+			return err
+		}
+		log.Info("content imported", "courses", rep.Courses, "new_versions", rep.NewVersions, "unchanged", rep.Unchanged,
+			"published", rep.Published, "planned_lessons", rep.PlannedLessons)
+		for _, p := range rep.PublishedLabels {
+			log.Info("published", "lesson", p)
+		}
 		return nil
 
 	case "admin":

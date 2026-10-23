@@ -1218,13 +1218,14 @@ components:
 
     CourseSummary:
       type: object
-      required: [slug, title, summary, difficulty, lessonCount, estimatedMinutes, displayOrder]
+      required: [slug, title, summary, difficulty, lessonCount, plannedLessonCount, estimatedMinutes, displayOrder]
       properties:
         slug: { $ref: "#/components/schemas/Slug" }
         title: { type: string }
         summary: { type: string }
         difficulty: { $ref: "#/components/schemas/Difficulty" }
-        lessonCount: { type: integer, minimum: 0 }
+        lessonCount: { type: integer, minimum: 0, description: Published lessons. }
+        plannedLessonCount: { type: integer, minimum: 0, description: "All lessons the course will have, published or not." }
         estimatedMinutes: { type: integer, minimum: 0 }
         displayOrder: { type: integer }
 
@@ -1273,7 +1274,7 @@ components:
       allOf:
         - $ref: "#/components/schemas/LessonSummary"
         - type: object
-          required: [challengeVersionId, contentSha256, objectives, prerequisites, body, references, goals, hintCount, reward, simulatorVersion, lastReviewedAt]
+          required: [challengeVersionId, contentSha256, objectives, prerequisites, prerequisiteLessons, body, references, glossary, goals, hintCount, reward, simulatorVersion, lastReviewedAt, navigation]
           properties:
             challengeVersionId: { type: string, format: uuid }
             contentSha256: { type: string, pattern: "^[a-f0-9]{64}$" }
@@ -1283,6 +1284,10 @@ components:
             prerequisites:
               type: array
               items: { type: string, description: "Lesson ID (course/lesson)" }
+            prerequisiteLessons:
+              type: array
+              description: The prerequisites that are published, with titles. Others are not available yet.
+              items: { $ref: "#/components/schemas/LessonRef" }
             body: { type: string, description: Trusted Markdown (rendered with the safe pipeline). }
             references:
               type: array
@@ -1292,6 +1297,10 @@ components:
                 properties:
                   title: { type: string }
                   url: { type: string, format: uri }
+            glossary:
+              type: array
+              description: Glossary term IDs related to this lesson.
+              items: { $ref: "#/components/schemas/Slug" }
             goals:
               type: array
               items: { $ref: "#/components/schemas/PublicGoal" }
@@ -1305,6 +1314,26 @@ components:
                 hintPenaltyPerHintXp: { type: integer, minimum: 0 }
             simulatorVersion: { type: string }
             lastReviewedAt: { type: string, format: date }
+            navigation:
+              type: object
+              required: [previous, next]
+              properties:
+                previous:
+                  oneOf:
+                    - $ref: "#/components/schemas/LessonRef"
+                    - type: "null"
+                next:
+                  oneOf:
+                    - $ref: "#/components/schemas/LessonRef"
+                    - type: "null"
+
+    LessonRef:
+      type: object
+      required: [courseSlug, slug, title]
+      properties:
+        courseSlug: { $ref: "#/components/schemas/Slug" }
+        slug: { $ref: "#/components/schemas/Slug" }
+        title: { type: string }
 
     LessonProgress:
       type: object

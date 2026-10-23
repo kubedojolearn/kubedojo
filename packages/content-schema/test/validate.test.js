@@ -8,7 +8,7 @@ import { createValidators, validateFile, validateTree, typeFromName } from "../s
 const examples = new URL("../examples/", import.meta.url).pathname;
 
 test("example content is valid", () => {
-  assert.deepEqual(validateTree(examples, { partial: true }), []);
+  assert.deepEqual([...validateTree(examples, { partial: true })], []);
 });
 
 test("every invalid example is rejected", () => {
@@ -30,10 +30,18 @@ function scratchTree() {
   return root;
 }
 
-test("full mode reports lessons without challenge files", () => {
+test("unwritten lessons are planned by default and errors with complete", () => {
   const problems = validateTree(scratchTree());
-  assert.ok(problems.some((p) => p.message === "lesson launch-a-pod has no challenge file"));
+  assert.ok(problems.planned.includes("workloads/launch-a-pod"));
+  assert.ok(!problems.some((p) => p.message.includes("has no challenge file")));
   assert.ok(problems.some((p) => p.message === "course fundamentals not found"));
+  const strict = validateTree(scratchTree(), { complete: true });
+  assert.ok(strict.some((p) => p.message === "lesson launch-a-pod has no challenge file"));
+});
+
+test("the repository's content is valid", () => {
+  const content = new URL("../../../content/", import.meta.url).pathname;
+  assert.deepEqual([...validateTree(content)], []);
 });
 
 test("cross-file rules catch mismatched ids, missing fixtures and answers", () => {
@@ -42,12 +50,12 @@ test("cross-file rules catch mismatched ids, missing fixtures and answers", () =
   const text = readFileSync(file, "utf8")
     .replace("id: fundamentals/cluster-architecture", "id: fundamentals/wrong-id")
     .replace("initialFixture: fixtures/three-node-cluster.yaml", "initialFixture: fixtures/missing.yaml")
-    .replace('    node-count: "3"\n', "");
+    .replace("    state-store: etcd\n", "");
   writeFileSync(file, text);
   const messages = validateTree(root, { partial: true }).map((p) => p.message);
   assert.ok(messages.includes("id must be fundamentals/cluster-architecture"));
   assert.ok(messages.includes("fixture fixtures/missing.yaml not found"));
-  assert.ok(messages.includes("goal node-count: solution.answers must include an answer"));
+  assert.ok(messages.includes("goal state-store: solution.answers must include an answer"));
 });
 
 test("choice answers must be one of the choices", () => {

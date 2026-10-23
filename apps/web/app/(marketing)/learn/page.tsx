@@ -1,36 +1,69 @@
 import type { Metadata } from "next";
-import { Info } from "lucide-react";
+import Link from "next/link";
+import { unstable_rethrow } from "next/navigation";
+import { Suspense } from "react";
+import { CardListSkeleton, LoadingStatus } from "@/components/feedback/loading";
+import { ErrorState } from "@/components/feedback/states";
 import { Container, PageHeader } from "@/components/layout/page-header";
-import { CourseCard } from "@/components/marketing/course-card";
-import { plannedCourses, totalPlannedLessons } from "@/lib/curriculum";
+import { CourseFilter } from "@/components/learning/course-filter";
+import { Button } from "@/components/ui/button";
+import { listCourses } from "@/lib/catalog";
 
 export const metadata: Metadata = {
   title: "Curriculum",
-  description: `Six Kubernetes courses and ${totalPlannedLessons} hands-on lessons, from your first Pod to recovering a broken application.`,
+  description: "Hands-on Kubernetes courses, from your first Pod to recovering a broken application.",
 };
 
+async function Catalog() {
+  let courses;
+  try {
+    courses = await listCourses();
+  } catch (err) {
+    unstable_rethrow(err);
+    return (
+      <ErrorState
+        title="Couldn't load the curriculum"
+        description="The course catalog is temporarily unavailable. Please try again in a moment."
+        action={
+          <Button asChild variant="outline">
+            <Link href="/learn">Try again</Link>
+          </Button>
+        }
+      />
+    );
+  }
+  return <CourseFilter courses={courses} />;
+}
+
 export default function LearnPage() {
-  const beginner = plannedCourses.filter((c) => c.difficulty === "beginner").length;
   return (
     <Container className="py-12 sm:py-16">
       <PageHeader
         title="Curriculum"
-        description={`Six courses and ${totalPlannedLessons} lessons. Start with the ${beginner} beginner courses in order, then pick any intermediate course.`}
+        description={
+          <>
+            Short lessons with hands-on labs. Lessons open as they&apos;re published; the{" "}
+            <Link href="/paths" className="text-link underline underline-offset-4">
+              learning path
+            </Link>{" "}
+            shows the full plan. New terms are explained in the{" "}
+            <Link href="/learn/glossary" className="text-link underline underline-offset-4">
+              glossary
+            </Link>
+            .
+          </>
+        }
       />
-      <div role="note" className="mb-10 flex gap-3 rounded-xl border bg-card p-4 text-sm">
-        <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-highlight" />
-        <p>
-          Lessons open as they are published. This page shows the full plan; lesson pages, progress tracking and labs
-          arrive as each lesson is finished.
-        </p>
-      </div>
-      <ol className="grid gap-6 md:grid-cols-2">
-        {plannedCourses.map((course, i) => (
-          <li key={course.slug}>
-            <CourseCard course={course} index={i} showLessons />
-          </li>
-        ))}
-      </ol>
+      <Suspense
+        fallback={
+          <>
+            <LoadingStatus label="Loading courses" />
+            <CardListSkeleton count={4} />
+          </>
+        }
+      >
+        <Catalog />
+      </Suspense>
     </Container>
   );
 }

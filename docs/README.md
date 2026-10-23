@@ -24,6 +24,7 @@
 | Operations | [operations/keys.md](operations/keys.md) | Secrets, key generation and rotation |
 | Operations | [operations/auth.md](operations/auth.md) | Sign-in flow, BFF rules, GitHub OAuth setup, test sign-in, secret rotation |
 | Operations | [operations/database.md](operations/database.md) | Migrations, seeds, initial admin, retention and account deletion |
+| Content | [content/authoring.md](content/authoring.md) | How to write, validate, preview and publish a lesson |
 | Content | [../packages/content-schema/](../packages/content-schema/README.md) | JSON Schemas for courses, challenges and fixtures |
 
 ## Where truth lives (one-paragraph version)
