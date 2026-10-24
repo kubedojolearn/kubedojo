@@ -47,18 +47,22 @@ test("shortcuts do not fire while typing", async ({ page }) => {
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
-test("unavailable controls stay focusable and explain why", async ({ page }) => {
+test("Ctrl+K opens search and choosing a result navigates to it", async ({ page }) => {
   await page.goto("/paths");
-  const button = page.getByRole("button", { name: "Notifications" });
-  await expect(button).toHaveAttribute("aria-disabled", "true");
-  await expect(button).toHaveAccessibleDescription("Notifications are coming soon.");
-  await button.focus();
-  await expect(button).toBeFocused();
-  // Playwright refuses to click aria-disabled elements; activate it the way a keyboard user would.
-  await page.keyboard.press("Enter");
-  await page.keyboard.press("Space");
-  await expect(page).toHaveURL(/\/paths$/);
-  await expect(button).toBeFocused();
+  await page.keyboard.press("ControlOrMeta+k");
+  const dialog = page.getByRole("dialog", { name: "Search KubeDojo" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("combobox").fill("scheduler");
+  await dialog.getByRole("option", { name: "Scheduler" }).click();
+  await expect(page).toHaveURL(/\/learn\/glossary#scheduler$/);
+});
+
+test("the search button opens the same search", async ({ page }) => {
+  await page.goto("/leaderboard");
+  await page.getByRole("button", { name: /Search lessons and terms/ }).click();
+  await expect(page.getByRole("dialog", { name: "Search KubeDojo" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "Search KubeDojo" })).toBeHidden();
 });
 
 test("confirm dialog starts focus on Cancel", async ({ page }) => {

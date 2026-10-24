@@ -11,7 +11,8 @@ import {
   Waypoints,
   type LucideIcon,
 } from "lucide-react";
-import { Logo, LogoMark } from "@/components/brand/logo";
+import { Logo, LogoLockup, LogoMark } from "@/components/brand/logo";
+import { Belt, beltNames } from "@/components/brand/belt";
 import { ConfirmDemo, ToastDemo } from "@/components/design-system/interactive-demos";
 import { InDevelopmentBadge } from "@/components/feedback/in-development";
 import { CardListSkeleton } from "@/components/feedback/loading";
@@ -117,8 +118,23 @@ export default function DesignSystemPage() {
               <Logo />
               <LogoMark className="size-16" title="KubeDojo mark" />
               <LogoMark className="size-6" />
-              <InDevelopmentBadge label="Provisional logo" />
+              <LogoLockup className="w-32" />
             </div>
+          </Section>
+
+          <Section id="belts" title="Belts">
+            <p className="mb-4 max-w-prose text-sm text-muted-foreground">
+              One belt per course, in curriculum order. Belts are decorative and always appear next to the course title
+              or the belt name.
+            </p>
+            <ul className="flex flex-wrap gap-6">
+              {beltNames.map((name, i) => (
+                <li key={name} className="flex items-center gap-2 text-sm">
+                  <Belt order={i + 1} className="h-4 w-10" />
+                  {name}
+                </li>
+              ))}
+            </ul>
           </Section>
 
           <Section id="color" title="Color">
@@ -217,6 +233,9 @@ export default function DesignSystemPage() {
 
           <Section id="terminal" title="Terminal palette">
             <pre
+              tabIndex={0}
+              role="group"
+              aria-label="Terminal colors"
               className="overflow-x-auto rounded-xl p-4 font-mono text-sm"
               style={{ background: terminal.background, color: terminal.foreground }}
             >

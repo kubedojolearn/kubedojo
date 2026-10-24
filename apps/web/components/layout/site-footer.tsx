@@ -19,7 +19,7 @@ function FooterLink({ href, label }: { href: string; label: string }) {
 
 export function SiteFooter() {
   return (
-    <footer className="mt-24 border-t">
+    <footer className="mt-16 border-t bg-card/40">
       <Container className="grid gap-10 py-12 md:grid-cols-[2fr_repeat(3,1fr)]">
         <div className="space-y-3">
           <Logo />

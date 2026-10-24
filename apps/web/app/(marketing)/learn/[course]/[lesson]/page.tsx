@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
-import { ArrowLeft, ArrowRight, BookOpen, Clock, ExternalLink, FlaskConical, Target } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock, ExternalLink, FlaskConical } from "lucide-react";
+import { Belt, beltName } from "@/components/brand/belt";
 import { InDevelopmentBadge } from "@/components/feedback/in-development";
 import { LoadingStatus } from "@/components/feedback/loading";
 import { StartLabButton } from "@/components/lab/start-lab-button";
@@ -24,6 +25,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { Skeleton } from "@/components/ui/skeleton";
 import { auth } from "@/lib/auth/config";
 import { getLesson, isSlug, NotPublishedError } from "@/lib/catalog";
+import { courseOrder, courseTitle } from "@/lib/curriculum";
 import { glossaryById } from "@/lib/glossary.generated";
 
 type Props = PageProps<"/learn/[course]/[lesson]">;
@@ -64,6 +66,7 @@ async function LessonView({ params }: Props) {
   const prev = lesson.navigation.previous;
   const next = lesson.navigation.next;
   const href = (r: { courseSlug: string; slug: string }) => `/learn/${r.courseSlug}/${r.slug}`;
+  const order = courseOrder(lesson.courseSlug) ?? 1;
 
   return (
     <article aria-labelledby="lesson-title">
@@ -79,7 +82,7 @@ async function LessonView({ params }: Props) {
           <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
-              <Link href={`/learn/${lesson.courseSlug}`}>{lesson.courseSlug.replace(/-/g, " ")}</Link>
+              <Link href={`/learn/${lesson.courseSlug}`}>{courseTitle(lesson.courseSlug)}</Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
@@ -90,7 +93,11 @@ async function LessonView({ params }: Props) {
       </Breadcrumb>
 
       <header className="mt-6 space-y-3">
-        <h1 id="lesson-title" className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+        <p className="flex items-center gap-3 font-mono text-xs text-muted-foreground">
+          <Belt order={order} />
+          {beltName(order).toLowerCase()} belt · lesson {lesson.displayOrder}
+        </p>
+        <h1 id="lesson-title" className="text-3xl font-bold text-balance sm:text-5xl">
           {lesson.title}
         </h1>
         <p className="max-w-3xl text-lg text-muted-foreground">{lesson.summary}</p>
@@ -107,9 +114,9 @@ async function LessonView({ params }: Props) {
 
       <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_18rem]">
         <div className="min-w-0">
-          <section aria-labelledby="objectives-heading" className="rounded-xl border bg-card p-5">
-            <h2 id="objectives-heading" className="flex items-center gap-2 font-semibold">
-              <Target aria-hidden className="size-4 text-highlight" /> You will learn to
+          <section aria-labelledby="objectives-heading" className="border-l-2 border-highlight py-1 pl-5">
+            <h2 id="objectives-heading" className="font-semibold">
+              By the end you&apos;ll be able to
             </h2>
             <ul className="mt-3 list-disc space-y-1 pl-6 text-sm">
               {lesson.objectives.map((o) => (
@@ -143,10 +150,14 @@ async function LessonView({ params }: Props) {
 
           <Markdown className="mt-6">{lesson.body}</Markdown>
 
-          <section aria-labelledby="goals-heading" className="mt-10 rounded-xl border bg-card p-5">
-            <h2 id="goals-heading" className="font-semibold">
+          <section aria-labelledby="goals-heading" className="mt-12 rounded-lg border bg-card p-5 sm:p-6">
+            <h2 id="goals-heading" className="text-lg font-bold">
               Lab goals
             </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Your lab has its own simulated cluster. Use the terminal to find each answer; automatic goal checks and
+              hints arrive with the next release.
+            </p>
             <ol className="mt-3 list-decimal space-y-1 pl-6 text-sm">
               {lesson.goals.map((g) => (
                 <li key={g.id}>{g.description}</li>
@@ -199,8 +210,8 @@ async function LessonView({ params }: Props) {
         <aside className="space-y-8 text-sm">
           {terms.length > 0 && (
             <section aria-labelledby="terms-heading">
-              <h2 id="terms-heading" className="flex items-center gap-2 font-semibold">
-                <BookOpen aria-hidden className="size-4" /> Key terms
+              <h2 id="terms-heading" className="font-semibold">
+                Key terms
               </h2>
               <dl className="mt-3 space-y-3">
                 {terms.map((t) => (
@@ -249,7 +260,6 @@ async function LessonView({ params }: Props) {
               <li>
                 Simulator: <Badge variant="outline">{lesson.simulatorVersion}</Badge>
               </li>
-              <li>{lesson.hintCount} hints available in the lab</li>
             </ul>
           </section>
         </aside>

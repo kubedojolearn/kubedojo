@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/account"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/labs"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/buildinfo"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/config"
@@ -63,7 +64,7 @@ func run() error {
 	defer func() { _ = rdb.Close() }()
 
 	// Jobs are registered here as their parts land (outbox publishing: Part 14 with the
-	// WebSocket gateway; retention: Part 19).
+	// WebSocket gateway; other retention: Part 19).
 	runner := worker.NewRunner(log)
 	runner.Register(worker.Job{Name: "lab-expiry", Interval: time.Minute, Run: func(ctx context.Context) error {
 		n, err := labs.ExpireIdle(ctx, pool)
@@ -74,6 +75,14 @@ func run() error {
 	}})
 	runner.Register(worker.Job{Name: "idempotency-retention", Interval: time.Hour, Run: func(ctx context.Context) error {
 		_, err := labs.PruneIdempotency(ctx, pool, time.Now())
+		return err
+	}})
+	accounts := account.NewService(pool)
+	runner.Register(worker.Job{Name: "account-erasure", Interval: time.Hour, Run: func(ctx context.Context) error {
+		n, err := accounts.EraseDue(ctx, time.Now(), 100)
+		if n > 0 {
+			log.Info("erased deleted accounts", "count", n)
+		}
 		return err
 	}})
 	runner.Run(ctx)

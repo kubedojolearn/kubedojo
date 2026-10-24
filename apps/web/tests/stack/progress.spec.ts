@@ -46,7 +46,7 @@ test("opening a lesson updates continue-learning and activity", async ({ page })
   await page.goto("/dashboard");
   await expect(page.getByText("Continue where you left off")).toBeVisible();
   await expect(page.getByRole("heading", { level: 3, name: "Scale a Deployment" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Recent activity" })).toContainText("Opened scaling deployments");
+  await expect(page.getByRole("region", { name: "Recent activity" })).toContainText("Opened Scale a Deployment");
   // Opening is not completing.
   await expect(page.getByText("0 of 2 lessons")).toBeVisible();
 });
@@ -86,7 +86,7 @@ test("profiles are private until their owner opts in", async ({ browser }) => {
   await signIn(visitor, testIdentity("visitor"));
 
   await visitor.goto(`/profile/${owner.login}`);
-  await expect(visitor.getByRole("heading", { name: "We couldn't find that page" })).toBeVisible();
+  await expect(visitor.getByRole("heading", { level: 1, name: "Page not found" })).toBeVisible();
   await ownerPage.goto(`/profile/${owner.login}`);
   await expect(ownerPage.getByText("Your profile is private")).toBeVisible();
 

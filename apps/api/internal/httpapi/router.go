@@ -8,6 +8,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/account"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/admin"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/courses"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/health"
@@ -28,6 +30,8 @@ type Deps struct {
 	Catalog        courses.Catalog
 	Progress       progress.Reader
 	Labs           labs.Lifecycle
+	Accounts       account.Accounts
+	Admin          admin.Reader
 	Settings       progress.SettingsReader
 	Cursors        *httpx.Cursors
 	Limiter        ratelimit.Limiter
@@ -45,6 +49,9 @@ var (
 	labLifecycleLimit = ratelimit.Rule{Name: "lab-lifecycle", Limit: 30, Window: time.Hour}
 	// Terminal commands (simulator-compatibility.md §5).
 	commandLimit = ratelimit.Rule{Name: "commands", Limit: 100, Window: time.Minute}
+	// A full export reads every row the learner has; deletion is once per account.
+	exportLimit   = ratelimit.Rule{Name: "export", Limit: 10, Window: time.Hour}
+	deletionLimit = ratelimit.Rule{Name: "deletion", Limit: 5, Window: time.Hour, FailClosed: true}
 )
 
 // NewRouter builds the handler. Middleware order (outermost first): request ID, panic recovery,
@@ -70,7 +77,9 @@ func NewRouter(d Deps) http.Handler {
 		usersHandler := users.Handler{Users: d.Users}
 		catalog := courses.Handler{Catalog: d.Catalog}
 		progressHandler := progress.Handler{Progress: d.Progress, Settings: d.Settings, Cursors: d.Cursors}
+		accountHandler := account.Handler{Accounts: d.Accounts, Cursors: d.Cursors}
 		r.Get("/profiles/{handle}", httpx.Handler(progressHandler.GetPublicProfile).ServeHTTP)
+		r.Get("/leaderboard", httpx.Handler(accountHandler.GetLeaderboard).ServeHTTP)
 
 		// Public catalog (published content only; hidden challenge fields are never mapped).
 		r.Get("/catalog/courses", httpx.Handler(catalog.ListCourses).ServeHTTP)
@@ -98,6 +107,8 @@ func NewRouter(d Deps) http.Handler {
 			r.Method(http.MethodPost, "/users/me/progress/opened", httpx.Handler(progressHandler.MarkOpened))
 			r.Method(http.MethodGet, "/users/me/achievements", httpx.Handler(progressHandler.GetAchievements))
 			r.Method(http.MethodGet, "/users/me/activity", httpx.Handler(progressHandler.GetActivity))
+			r.With(ratelimit.PerUser(d.Limiter, exportLimit)).Method(http.MethodGet, "/users/me/export", httpx.Handler(accountHandler.ExportMe))
+			r.With(ratelimit.PerUser(d.Limiter, deletionLimit)).Method(http.MethodPost, "/users/me/deletion", httpx.Handler(accountHandler.RequestDeletion))
 
 			// Labs: ownership is enforced in every query; another user's lab is a 404.
 			labsHandler := labs.Handler{Labs: d.Labs, Cursors: d.Cursors}
@@ -112,6 +123,14 @@ func NewRouter(d Deps) http.Handler {
 			r.Method(http.MethodGet, "/labs/{labId}/events", httpx.Handler(labsHandler.ListEvents))
 			r.Method(http.MethodGet, "/labs/{labId}/commands", httpx.Handler(labsHandler.ListCommands))
 			r.With(ratelimit.PerUser(d.Limiter, commandLimit)).Method(http.MethodPost, "/labs/{labId}/commands", httpx.Handler(labsHandler.RunCommand))
+
+			// Admin: the role is read from the database for every request (never from the assertion).
+			r.Group(func(r chi.Router) {
+				r.Use(auth.RequireRole(auth.RoleAdmin))
+				adminHandler := admin.Handler{Admin: d.Admin, Cursors: d.Cursors}
+				r.Method(http.MethodGet, "/admin/content", httpx.Handler(adminHandler.ListContent))
+				r.Method(http.MethodGet, "/admin/audit", httpx.Handler(adminHandler.ListAudit))
+			})
 		})
 	})
 	return r

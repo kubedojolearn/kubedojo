@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { LoadingStatus } from "@/components/feedback/loading";
 import { OnboardingForm } from "@/components/onboarding/onboarding-form";
-import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/auth/current-user";
 
@@ -18,23 +17,23 @@ async function Loader() {
 
 export default function OnboardingPage() {
   return (
-    <Card className="w-full max-w-lg">
-      <CardHeader>
-        <h1 className="text-xl font-semibold">Welcome to KubeDojo</h1>
-        <CardDescription>Three quick questions so we can suggest where to start. All optional.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Suspense
-          fallback={
-            <>
-              <LoadingStatus label="Loading" />
-              <Skeleton className="h-64 w-full" aria-hidden />
-            </>
-          }
-        >
-          <Loader />
-        </Suspense>
-      </CardContent>
-    </Card>
+    <div className="grid w-full max-w-lg gap-6">
+      <header>
+        <h1 className="text-3xl font-bold">Welcome to KubeDojo</h1>
+        <p className="mt-2 text-muted-foreground">
+          Three quick questions so we can suggest where to start. All optional.
+        </p>
+      </header>
+      <Suspense
+        fallback={
+          <>
+            <LoadingStatus label="Loading" />
+            <Skeleton className="h-64 w-full" aria-hidden />
+          </>
+        }
+      >
+        <Loader />
+      </Suspense>
+    </div>
   );
 }

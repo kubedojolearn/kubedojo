@@ -8,6 +8,18 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-24",
+    title: "A new look, search, and your data",
+    items: [
+      "KubeDojo has its own logo and look: every course is now a belt, from white to black.",
+      "The curriculum page shows all six courses and every lesson, with the ones you can open today linked.",
+      "Search lessons, glossary terms and pages from anywhere in the app with Ctrl+K (⌘K on a Mac).",
+      "Labs show their goals next to the terminal, and your dashboard lists labs you can pick up again.",
+      "The leaderboard is live for learners who opt in, in settings.",
+      "Settings now let you download everything we store about you, or delete your account.",
+    ],
+  },
+  {
+    date: "2026-10-24",
     title: "A kubectl terminal in every lab",
     items: [
       "Run kubectl get, describe, logs, events, explain, rollout status and history against your simulated cluster.",

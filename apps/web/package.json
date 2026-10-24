@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev --port 3000",
     "build": "next build",
+    "brand:assets": "node scripts/brand-assets.mjs",
     "start": "node scripts/start-standalone.mjs 3000",
     "lint": "eslint --max-warnings=0 .",
     "typecheck": "next typegen && tsc --noEmit",
@@ -15,6 +16,7 @@
     "test:visual": "playwright test --project=visual",
     "check:bundle": "node scripts/check-client-bundle.mjs",
     "test:stack": "playwright test --project=stack",
+    "test:ui": "playwright test --project=ui",
     "gen:glossary": "node scripts/generate-glossary.mjs",
     "check:glossary": "node scripts/generate-glossary.mjs --check"
   },
@@ -51,6 +53,7 @@
     "eslint-config-next": "16.4.2",
     "jsdom": "30.1.3",
     "shadcn": "4.22.1",
+    "sharp": "0.35.5",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3",
     "vitest": "5.0.5",
