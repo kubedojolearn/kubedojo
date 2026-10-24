@@ -49,9 +49,12 @@ test("shortcuts do not fire while typing", async ({ page }) => {
 
 test("Ctrl+K opens search and choosing a result navigates to it", async ({ page }) => {
   await page.goto("/paths");
-  await page.keyboard.press("ControlOrMeta+k");
   const dialog = page.getByRole("dialog", { name: "Search KubeDojo" });
-  await expect(dialog).toBeVisible();
+  // The shortcut listener attaches after hydration; a key pressed before that is lost, so retry.
+  await expect(async () => {
+    if (!(await dialog.isVisible())) await page.keyboard.press("ControlOrMeta+k");
+    await expect(dialog).toBeVisible({ timeout: 1_000 });
+  }).toPass();
   await dialog.getByRole("combobox").fill("scheduler");
   await dialog.getByRole("option", { name: "Scheduler" }).click();
   await expect(page).toHaveURL(/\/learn\/glossary#scheduler$/);
@@ -59,10 +62,14 @@ test("Ctrl+K opens search and choosing a result navigates to it", async ({ page 
 
 test("the search button opens the same search", async ({ page }) => {
   await page.goto("/leaderboard");
-  await page.getByRole("button", { name: /Search lessons and terms/ }).click();
-  await expect(page.getByRole("dialog", { name: "Search KubeDojo" })).toBeVisible();
+  const dialog = page.getByRole("dialog", { name: "Search KubeDojo" });
+  // A click before hydration does nothing; retry until the button is live.
+  await expect(async () => {
+    if (!(await dialog.isVisible())) await page.getByRole("button", { name: /Search lessons and terms/ }).click();
+    await expect(dialog).toBeVisible({ timeout: 1_000 });
+  }).toPass();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog", { name: "Search KubeDojo" })).toBeHidden();
+  await expect(dialog).toBeHidden();
 });
 
 test("confirm dialog starts focus on Cancel", async ({ page }) => {
