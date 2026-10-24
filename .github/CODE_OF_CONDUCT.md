@@ -14,4 +14,4 @@ The full text, including scope and enforcement guidelines, is at the link above 
 
 ## Reporting
 
-Report incidents privately to the project maintainers listed in [.github/CODEOWNERS](.github/CODEOWNERS). All reports are reviewed promptly and confidentially.
+Report incidents privately to the project maintainers listed in [.github/CODEOWNERS](CODEOWNERS). All reports are reviewed promptly and confidentially.

@@ -2,6 +2,9 @@ packages:
   - apps/web
   - packages/*
 
+# Pin exact versions on `pnpm add`.
+saveExact: true
+
 # Dependencies allowed to run install scripts. Everything else is blocked (pnpm 10 default).
 onlyBuiltDependencies: []
 ignoredBuiltDependencies:

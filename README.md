@@ -12,7 +12,7 @@ KubeDojo is an independent project and is not affiliated with the Cloud Native C
 
 ## Quick start
 
-Requirements: **Node.js 24 LTS**, **pnpm 10**, **Go 1.26+**, **Docker** (Desktop or Engine with the Compose plugin), `make`. Versions are pinned in [mise.toml](mise.toml) if you use [mise](https://mise.jdx.dev).
+Requirements: **Node.js 24 LTS**, **pnpm 10**, **Go 1.26+**, **Docker** (Desktop or Engine with the Compose plugin), `make`. Versions are pinned in [.config/mise.toml](.config/mise.toml) if you use [mise](https://mise.jdx.dev).
 
 ```sh
 git clone https://github.com/kubedojolearn/kubedojo.git
@@ -57,7 +57,7 @@ scripts                 Setup, dev runner, env generation, license check
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Report security issues privately as described in [SECURITY.md](SECURITY.md).
+See [CONTRIBUTING.md](.github/CONTRIBUTING.md). Report security issues privately as described in [SECURITY.md](.github/SECURITY.md).
 
 ## License
 

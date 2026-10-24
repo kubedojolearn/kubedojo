@@ -91,7 +91,7 @@ services:
         VERSION: ${KUBEDOJO_VERSION:-dev}
         COMMIT: ${KUBEDOJO_COMMIT:-unknown}
     entrypoint: ["/usr/local/bin/worker"]
-    command: []
+    command: ["run"]
     environment:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-info}
@@ -99,8 +99,13 @@ services:
       REDIS_URL: redis://redis:6379/0
     depends_on:
       api: { condition: service_started }
+    # `up --wait` needs a healthcheck on every long-running service (older Compose fails without one).
     healthcheck:
-      disable: true
+      test: ["CMD", "/usr/local/bin/worker", "healthcheck"]
+      interval: 10s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
     read_only: true
     cap_drop: [ALL]
 

@@ -11,7 +11,8 @@ if (!existsSync(`${standalone}/server.js`)) {
   process.exit(1);
 }
 cpSync(`${root}.next/static`, `${standalone}/.next/static`, { recursive: true });
-cpSync(`${root}public`, `${standalone}/public`, { recursive: true });
+// public/ is optional (icons live in app/), and git does not keep it when empty.
+if (existsSync(`${root}public`)) cpSync(`${root}public`, `${standalone}/public`, { recursive: true });
 
 const port = process.argv[2] ?? process.env.PORT ?? "3000";
 const child = spawn(process.execPath, ["server.js"], {

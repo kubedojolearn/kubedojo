@@ -1,12 +1,13 @@
 # syntax=docker/dockerfile:1.7
 # Build context is the repository root (pnpm workspace). See compose.yaml.
+# Ignore rules: Dockerfile.dockerignore next to this file.
 FROM node:24-alpine AS base
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH NEXT_TELEMETRY_DISABLED=1
 RUN corepack enable
 
 FROM base AS build
 WORKDIR /repo
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json apps/web/
 COPY packages/content-schema/package.json packages/content-schema/
 COPY packages/api-client/package.json packages/api-client/
@@ -15,7 +16,8 @@ COPY packages/api-client packages/api-client
 COPY apps/web apps/web
 ARG VERSION=dev
 ARG COMMIT=unknown
-RUN pnpm --filter @kubedojo/web build
+# public/ is optional and git does not keep it when empty; the runtime stage copies it.
+RUN mkdir -p apps/web/public && pnpm --filter @kubedojo/web build
 
 FROM node:24-alpine AS runtime
 WORKDIR /app

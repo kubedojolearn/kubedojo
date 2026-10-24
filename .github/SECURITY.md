@@ -20,4 +20,4 @@ Until the first release, only the `main` branch is supported.
 
 ## Design
 
-The threat model is public: [docs/security/threat-model.md](docs/security/threat-model.md).
+The threat model is public: [docs/security/threat-model.md](../docs/security/threat-model.md).
