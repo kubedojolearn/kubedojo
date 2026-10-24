@@ -70,7 +70,7 @@ async function CourseView({ params }: Props) {
             {beltName(order).toLowerCase()} belt · course {order} · {course.difficulty}
           </span>
         </div>
-        <h1 className="text-3xl font-bold text-balance sm:text-5xl">{course.title}</h1>
+        <h1 className="text-h2 font-semibold tracking-tight text-balance sm:text-h1">{course.title}</h1>
         <p className="text-sm text-muted-foreground tabular-nums">
           {course.lessonCount} of {course.plannedLessonCount} lessons open · about {course.estimatedMinutes} minutes
         </p>

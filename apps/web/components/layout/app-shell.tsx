@@ -1,47 +1,26 @@
-import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
-import { Logo } from "@/components/brand/logo";
-import { AppNav } from "@/components/layout/app-nav";
-import { AppTopbar } from "@/components/layout/app-topbar";
 import { OfflineBanner } from "@/components/layout/offline-banner";
-import { SessionAppNav, SessionPreferences, SessionUserMenu } from "@/components/layout/session-slots";
-import { UserMenu } from "@/components/layout/user-menu";
-import { SiteSearch } from "@/components/layout/site-search";
-import { SiteSearchWithIndex } from "@/components/layout/search-index";
+import { SessionPreferences } from "@/components/layout/session-slots";
+import { SiteFooter } from "@/components/layout/site-footer";
+import { SiteHeader } from "@/components/layout/site-header";
 
-/** Layout for signed-in pages: sidebar on large screens, drawer on small ones. */
+/** Layout for signed-in pages: the same header and footer as the rest of the site. */
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-svh">
-      <aside className="sticky top-0 hidden h-svh w-64 shrink-0 flex-col gap-6 border-r bg-sidebar p-4 lg:flex">
-        <Link href="/" aria-label="KubeDojo home" className="self-start rounded-md px-2 py-1">
-          <Logo />
-        </Link>
-        <Suspense fallback={<AppNav />}>
-          <SessionAppNav />
-        </Suspense>
-      </aside>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <AppTopbar
-          search={
-            <Suspense fallback={<SiteSearch lessons={null} className="w-72" />}>
-              <SiteSearchWithIndex className="w-72" />
-            </Suspense>
-          }
-          userMenu={
-            <Suspense fallback={<UserMenu user={null} />}>
-              <SessionUserMenu />
-            </Suspense>
-          }
-        />
-        <OfflineBanner />
-        <Suspense fallback={null}>
-          <SessionPreferences />
-        </Suspense>
-        <main id="main" tabIndex={-1} className="flex-1 px-4 py-8 outline-none lg:px-10 lg:py-10">
-          {children}
-        </main>
-      </div>
-    </div>
+    <>
+      <SiteHeader />
+      <OfflineBanner />
+      <Suspense fallback={null}>
+        <SessionPreferences />
+      </Suspense>
+      <main
+        id="main"
+        tabIndex={-1}
+        className="mx-auto w-full max-w-[1280px] flex-1 px-4 py-12 outline-none sm:px-6 sm:py-16"
+      >
+        {children}
+      </main>
+      <SiteFooter />
+    </>
   );
 }

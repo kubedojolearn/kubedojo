@@ -18,22 +18,22 @@ export default async function OpenGraphImage() {
         flexDirection: "column",
         justifyContent: "space-between",
         padding: 72,
-        background: "#040D1D",
-        color: "#E8EEF8",
-        borderTop: "12px solid #0165F6",
+        background: "#0B0D10",
+        color: "#F4F7FB",
+        borderTop: "12px solid #4A67E0",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
         <img src={markSrc} width={96} height={96} alt="" style={{ borderRadius: 12 }} />
         <div style={{ display: "flex", fontSize: 52, fontWeight: 700 }}>
-          Kube<span style={{ color: "#22E2F9" }}>Dojo</span>
+          Kube<span style={{ color: "#6C8CFF" }}>Dojo</span>
         </div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         <div style={{ fontSize: 68, fontWeight: 700, lineHeight: 1.1, maxWidth: 980 }}>
           Master Kubernetes, one command at a time.
         </div>
-        <div style={{ fontSize: 30, color: "#97A7C0", maxWidth: 980 }}>
+        <div style={{ fontSize: 30, color: "#AEB6C2", maxWidth: 980 }}>
           Short lessons and real kubectl against a simulated cluster. Free and open source.
         </div>
       </div>

@@ -71,7 +71,7 @@ async function LabView({ params }: Props) {
           <Link href={lessonHref} className="inline-flex items-center gap-1 text-sm text-link hover:underline">
             <ArrowLeft aria-hidden className="size-4" /> Back to the lesson
           </Link>
-          <h1 className="text-2xl font-bold text-balance sm:text-3xl">{lab.title}</h1>
+          <h1 className="text-h3 font-semibold tracking-tight text-balance sm:text-h2">{lab.title}</h1>
           <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <Badge variant={active ? "default" : "secondary"}>{stateLabel[lab.state]}</Badge>
             <span className="inline-flex items-center gap-1">

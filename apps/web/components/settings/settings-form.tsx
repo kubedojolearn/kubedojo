@@ -190,7 +190,7 @@ export function SettingsForm({ me }: { me: Me }) {
               id={`${ids}-tz`}
               value={settings.timeZone}
               onChange={(e) => setSettings({ ...settings, timeZone: e.target.value })}
-              className="h-9 rounded-lg border border-input bg-background px-2 text-sm"
+              className="h-9 rounded-md border border-input bg-background px-2 text-small"
               aria-describedby={`${ids}-tz-help${err("settings.timeZone") ? ` ${errId("settings.timeZone")}` : ""}`}
             >
               {timeZones.map((z) => (

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { GithubIcon } from "@/components/brand/github-icon";
+import { LogoMark } from "@/components/brand/logo";
 import { ErrorState } from "@/components/feedback/states";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,10 +71,14 @@ async function LoginForm({ searchParams }: { searchParams: PageProps<"/login">["
 
 export default function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
-    <div className="grid w-full max-w-sm gap-6">
+    <div className="grid gap-6">
       <header>
-        <h1 className="text-3xl font-bold">Sign in</h1>
-        <p className="mt-2 text-muted-foreground">Save your progress, pick labs up where you left them, and earn XP.</p>
+        <LogoMark className="size-9" />
+        <h1 className="mt-5 text-h2 font-bold tracking-tight">Sign in</h1>
+        <p className="mt-2 text-body text-foreground-secondary">
+          Save your progress, pick labs up where you left them, and earn XP. Lessons are free to read without an
+          account.
+        </p>
       </header>
       <div className="grid gap-4">
         <Suspense
@@ -86,13 +91,16 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
           <LoginForm searchParams={searchParams} />
         </Suspense>
       </div>
-      <p className="border-t pt-4 text-xs text-muted-foreground">
+      <p className="border-t border-border-subtle pt-4 text-caption text-muted-foreground">
         We only use your GitHub ID, username, name and avatar, never your email. See the{" "}
         <Link href="/privacy" className="text-link underline underline-offset-4">
           privacy policy
         </Link>
         .
       </p>
+      <Link href="/learn" className="text-small text-foreground-secondary hover:text-foreground hover:underline">
+        Continue learning without an account
+      </Link>
     </div>
   );
 }

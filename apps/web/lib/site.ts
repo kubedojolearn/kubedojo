@@ -5,6 +5,7 @@ export const site = {
   description:
     "Learn Kubernetes by doing: run kubectl against a safe simulated cluster, see what changed, and get instant feedback on every challenge. Free and open source.",
   repoUrl: "https://github.com/kubedojolearn/kubedojo",
+  docsUrl: "https://github.com/kubedojolearn/kubedojo/tree/main/docs",
   compatibilityUrl: "https://github.com/kubedojolearn/kubedojo/blob/main/docs/architecture/simulator-compatibility.md",
   securityUrl: "https://github.com/kubedojolearn/kubedojo/security/advisories/new",
   kubernetesVersion: "1.37",
@@ -15,11 +16,14 @@ export interface NavItem {
   label: string;
 }
 
-export const marketingNav: NavItem[] = [
-  { href: "/learn", label: "Curriculum" },
-  { href: "/about", label: "About" },
-  { href: "/faq", label: "FAQ" },
+/** The header's links, on every page (ordered like GitDojo's: learning first, docs last). About and FAQ live in the footer. */
+export const mainNav: NavItem[] = [
+  { href: "/learn", label: "Learn" },
+  { href: "/paths", label: "Learning path" },
+  { href: "/leaderboard", label: "Leaderboard" },
+  { href: "/dashboard", label: "Dashboard" },
   { href: "/changelog", label: "Changelog" },
+  { href: site.docsUrl, label: "Docs" },
 ];
 
 export const footerNav: Array<{ title: string; items: NavItem[] }> = [
@@ -27,15 +31,20 @@ export const footerNav: Array<{ title: string; items: NavItem[] }> = [
     title: "Learn",
     items: [
       { href: "/learn", label: "Curriculum" },
-      { href: "/faq", label: "FAQ" },
-      { href: "/changelog", label: "Changelog" },
+      { href: "/paths", label: "Learning path" },
+      { href: "/learn/glossary", label: "Glossary" },
+      { href: "/leaderboard", label: "Leaderboard" },
+      { href: "/dashboard", label: "Your dashboard" },
     ],
   },
   {
     title: "Project",
     items: [
       { href: "/about", label: "About" },
-      { href: site.repoUrl, label: "Source code" },
+      { href: "/faq", label: "FAQ" },
+      { href: "/changelog", label: "Changelog" },
+      { href: site.docsUrl, label: "Documentation" },
+      { href: site.repoUrl, label: "GitHub" },
       { href: site.compatibilityUrl, label: "Simulator coverage" },
     ],
   },
@@ -49,22 +58,9 @@ export const footerNav: Array<{ title: string; items: NavItem[] }> = [
   },
 ];
 
-export const appNav: Array<{ title?: string; items: Array<NavItem & { icon: string }> }> = [
-  {
-    items: [
-      { href: "/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
-      { href: "/learn", label: "Curriculum", icon: "BookOpen" },
-      { href: "/paths", label: "Learning path", icon: "Route" },
-      { href: "/leaderboard", label: "Leaderboard", icon: "Trophy" },
-      { href: "/settings", label: "Settings", icon: "Settings" },
-    ],
-  },
-  {
-    title: "Admin",
-    items: [
-      { href: "/admin", label: "Overview", icon: "Shield" },
-      { href: "/admin/content", label: "Content", icon: "FileStack" },
-      { href: "/admin/audit", label: "Audit log", icon: "ScrollText" },
-    ],
-  },
+/** Admin pages, listed in the account menu for admins only. The API enforces the role regardless. */
+export const adminNav: NavItem[] = [
+  { href: "/admin", label: "Admin overview" },
+  { href: "/admin/content", label: "Content" },
+  { href: "/admin/audit", label: "Audit log" },
 ];

@@ -26,10 +26,11 @@ test("sign-in provisions one account and repeat sign-in reuses it", async ({ pag
   await expect(page.getByRole("heading", { level: 1, name: "Dashboard" })).toBeVisible();
   await expect(page.getByText(`Welcome back, ${who.login}.`)).toBeVisible();
   await expect(page.getByRole("button", { name: `Account menu for ${who.login}` })).toBeVisible();
-  // Learners don't see admin navigation.
-  await expect(page.getByRole("navigation", { name: "App" }).getByRole("link", { name: "Content" })).toHaveCount(0);
 
   await page.getByRole("button", { name: `Account menu for ${who.login}` }).click();
+  // Learners don't see admin pages in the account menu.
+  await expect(page.getByRole("menuitem", { name: "Settings" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Content" })).toHaveCount(0);
   await page.getByRole("menuitem", { name: "Sign out" }).click();
   await expect(page).toHaveURL(/\/$/);
   await context.clearCookies();

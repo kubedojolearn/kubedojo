@@ -17,10 +17,10 @@ async function Loader() {
 
 export default function OnboardingPage() {
   return (
-    <div className="grid w-full max-w-lg gap-6">
+    <div className="grid gap-6">
       <header>
-        <h1 className="text-3xl font-bold">Welcome to KubeDojo</h1>
-        <p className="mt-2 text-muted-foreground">
+        <h1 className="text-h2 font-bold tracking-tight">Welcome to KubeDojo</h1>
+        <p className="mt-2 text-body text-foreground-secondary">
           Three quick questions so we can suggest where to start. All optional.
         </p>
       </header>

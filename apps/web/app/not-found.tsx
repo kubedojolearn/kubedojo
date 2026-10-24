@@ -10,7 +10,7 @@ export default function NotFound() {
       <SiteHeader />
       <main id="main" tabIndex={-1} className="flex-1 outline-none">
         <Container className="max-w-3xl py-20 sm:py-28">
-          <h1 className="text-4xl font-bold sm:text-5xl">Page not found</h1>
+          <h1 className="text-h2 font-bold tracking-tight sm:text-h1">Page not found</h1>
           <pre
             tabIndex={0}
             role="group"

@@ -2,6 +2,9 @@
  * KubeDojo design tokens: the single source of truth for color values.
  * app/globals.css declares the same values as CSS variables; tests/unit/design-tokens.test.ts
  * fails if the two drift or if any text/background pair drops below WCAG 2.2 AA contrast.
+ *
+ * The palette is shared with GitDojo, KubeDojo's sister project: deep neutral surfaces, thin
+ * borders and one restrained blue accent, so the two products read as one family.
  */
 
 export type ThemeName = "dark" | "light";
@@ -10,8 +13,16 @@ export type ThemeName = "dark" | "light";
 export interface ThemeColors {
   background: string;
   foreground: string;
+  /** Body copy that sits under a heading: one step quieter than `foreground`. */
+  "foreground-secondary": string;
+  /** Banded page sections and quiet wells. */
+  surface: string;
   card: string;
   "card-foreground": string;
+  /** Raised controls: chips, keycaps, popovers. */
+  elevated: string;
+  /** Hover fill for rows, nav links and ghost buttons. */
+  hover: string;
   popover: string;
   "popover-foreground": string;
   primary: string;
@@ -20,10 +31,14 @@ export interface ThemeColors {
   "secondary-foreground": string;
   muted: string;
   "muted-foreground": string;
+  /** Non-text only (icons, markers, rules): 3:1 on every surface. Use muted-foreground for text. */
+  faint: string;
   accent: string;
   "accent-foreground": string;
   destructive: string;
   border: string;
+  "border-subtle": string;
+  "border-strong": string;
   input: string;
   ring: string;
   link: string;
@@ -38,84 +53,102 @@ export interface ThemeColors {
 /** Brand palette, sampled from the logo artwork (brand/kubedojo-logo-source.png). */
 export const brand = {
   ink: "#040D1D",
-  surface: "#0A1629",
   blue: "#0165F6",
   brightBlue: "#0381FD",
   cyan: "#22E2F9",
-  green: "#3CCF7D",
-  amber: "#F5B83D",
-  red: "#FF8A80",
 } as const;
 
 export const themes: Record<ThemeName, ThemeColors> = {
   dark: {
-    background: brand.ink,
-    foreground: "#E8EEF8",
-    card: brand.surface,
-    "card-foreground": "#E8EEF8",
-    popover: "#0C1A30",
-    "popover-foreground": "#E8EEF8",
-    primary: brand.blue,
+    background: "#0B0D10",
+    foreground: "#F4F7FB",
+    "foreground-secondary": "#AEB6C2",
+    surface: "#111419",
+    card: "#151920",
+    "card-foreground": "#F4F7FB",
+    elevated: "#1A1F27",
+    hover: "#202630",
+    popover: "#1A1F27",
+    "popover-foreground": "#F4F7FB",
+    // Filled accent under white text: deep enough for 4.5:1.
+    primary: "#4A67E0",
     "primary-foreground": "#FFFFFF",
-    secondary: "#12213A",
-    "secondary-foreground": "#E8EEF8",
-    muted: "#11203A",
-    "muted-foreground": "#97A7C0",
-    accent: "#142849",
-    "accent-foreground": "#E8EEF8",
-    destructive: brand.red,
-    border: "#1A2B48",
-    input: "#5A7096",
-    ring: brand.cyan,
-    link: "#7DB9FF",
-    highlight: brand.cyan,
-    success: brand.green,
-    warning: brand.amber,
-    danger: brand.red,
-    "sim-badge": "#33280A",
-    "sim-badge-foreground": "#FCD34D",
+    secondary: "#1A1F27",
+    "secondary-foreground": "#F4F7FB",
+    muted: "#111419",
+    "muted-foreground": "#8A93A1",
+    faint: "#6F7886",
+    accent: "#202630",
+    "accent-foreground": "#F4F7FB",
+    destructive: "#F06A78",
+    border: "#262C35",
+    "border-subtle": "#1D222A",
+    "border-strong": "#343C48",
+    input: "#6F7886",
+    ring: "#6C8CFF",
+    link: "#6C8CFF",
+    highlight: "#6C8CFF",
+    success: "#4FD18B",
+    warning: "#F5C451",
+    danger: "#F06A78",
+    "sim-badge": "#2B2414",
+    "sim-badge-foreground": "#F5C451",
   },
   light: {
-    background: "#F4F2EC",
-    foreground: "#0B1324",
-    card: "#FFFDF8",
-    "card-foreground": "#0B1324",
-    popover: "#FFFDF8",
-    "popover-foreground": "#0B1324",
-    primary: "#0157D6",
+    background: "#F4F6F9",
+    foreground: "#111827",
+    "foreground-secondary": "#3D4756",
+    surface: "#F9FAFB",
+    card: "#FFFFFF",
+    "card-foreground": "#111827",
+    elevated: "#EEF1F5",
+    hover: "#E5E9EF",
+    popover: "#FFFFFF",
+    "popover-foreground": "#111827",
+    primary: "#3A5AD6",
     "primary-foreground": "#FFFFFF",
-    secondary: "#E9E5DC",
-    "secondary-foreground": "#0B1324",
-    muted: "#EBE7DE",
-    "muted-foreground": "#52565E",
-    accent: "#E2E8F4",
-    "accent-foreground": "#0B1324",
-    destructive: "#B42318",
-    border: "#D9D3C6",
-    input: "#8A8F98",
-    ring: "#0B6E86",
-    link: "#0450C2",
-    highlight: "#0B6E86",
-    success: "#17773B",
-    warning: "#A14A06",
-    danger: "#B42318",
-    "sim-badge": "#F8EBC4",
-    "sim-badge-foreground": "#6B3A0B",
+    secondary: "#EEF1F5",
+    "secondary-foreground": "#111827",
+    muted: "#F9FAFB",
+    "muted-foreground": "#556070",
+    faint: "#78828F",
+    accent: "#E5E9EF",
+    "accent-foreground": "#111827",
+    destructive: "#C0263A",
+    border: "#D6DCE4",
+    "border-subtle": "#E4E8EE",
+    "border-strong": "#C2C9D3",
+    input: "#78828F",
+    ring: "#3A5AD6",
+    link: "#3A5AD6",
+    highlight: "#3A5AD6",
+    success: "#11703A",
+    warning: "#8A5A00",
+    danger: "#C0263A",
+    "sim-badge": "#FBF1D9",
+    "sim-badge-foreground": "#6B4500",
   },
 };
 
 /** Text-on-background pairs that must meet WCAG AA (4.5:1 for normal text). */
 export const textContrastPairs: Array<[keyof ThemeColors, keyof ThemeColors]> = [
   ["foreground", "background"],
+  ["foreground-secondary", "background"],
+  ["foreground-secondary", "surface"],
+  ["foreground-secondary", "card"],
   ["card-foreground", "card"],
   ["popover-foreground", "popover"],
   ["primary-foreground", "primary"],
   ["secondary-foreground", "secondary"],
   ["muted-foreground", "background"],
+  ["muted-foreground", "surface"],
   ["muted-foreground", "card"],
   ["muted-foreground", "muted"],
+  ["muted-foreground", "elevated"],
+  ["muted-foreground", "hover"],
   ["accent-foreground", "accent"],
   ["link", "background"],
+  ["link", "surface"],
   ["link", "card"],
   ["destructive", "background"],
   ["destructive", "card"],
@@ -128,29 +161,30 @@ export const textContrastPairs: Array<[keyof ThemeColors, keyof ThemeColors]> = 
   ["sim-badge-foreground", "sim-badge"],
 ];
 
-/** Non-text UI pairs that must meet 3:1 (focus indicators, input borders). */
+/** Non-text UI pairs that must meet 3:1 (focus indicators, input borders, icons). */
 export const uiContrastPairs: Array<[keyof ThemeColors, keyof ThemeColors]> = [
   ["ring", "background"],
   ["ring", "card"],
   ["input", "card"],
-  ["primary", "background"],
+  ["faint", "background"],
+  ["faint", "card"],
 ];
 
 /** Terminal palette (xterm.js theme, Part 14). Dark in both app themes, like most terminals. */
 export const terminal = {
-  background: "#050B16",
-  foreground: "#D6E2F5",
-  cursor: brand.cyan,
-  selectionBackground: "#24406E",
-  black: "#1B2436",
-  red: "#FF7B7B",
-  green: "#4ADE80",
-  yellow: "#FACC15",
-  blue: "#7AA7FF",
-  magenta: "#D8A1FF",
+  background: "#080A0D",
+  foreground: "#D6DCE5",
+  cursor: "#6C8CFF",
+  selectionBackground: "#26365F",
+  black: "#1B2028",
+  red: "#F06A78",
+  green: "#4FD18B",
+  yellow: "#F5C451",
+  blue: "#7C9AFF",
+  magenta: "#C4A5FF",
   cyan: "#5EEAD4",
-  white: "#D6E2F5",
-  brightBlack: "#8293B0",
+  white: "#D6DCE5",
+  brightBlack: "#8A93A1",
 } as const;
 
 /** Terminal colors that are used as text on the terminal background. */
