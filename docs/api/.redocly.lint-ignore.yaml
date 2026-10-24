@@ -1,5 +1,5 @@
 # Intentional exceptions to the recommended ruleset. Each entry is reviewed; do not add without a reason.
-docs/api/openapi.yaml:
+openapi.yaml:
   no-server-example.com:
     # The only server is local development; production URLs are private and environment-specific.
     - "#/servers/0/url"

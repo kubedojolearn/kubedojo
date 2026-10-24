@@ -1,5 +1,5 @@
 # Toolchain versions for local development (https://mise.jdx.dev). CI reads the same versions
-# from .nvmrc, package.json#packageManager and apps/api/go.mod.
+# from NODE_VERSION in .github/workflows/ci.yml, package.json#packageManager and apps/api/go.mod.
 [tools]
 node = "24"
 pnpm = "10.34.5"

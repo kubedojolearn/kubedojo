@@ -10,7 +10,7 @@ need() {
     fail=1
   fi
 }
-need node "install Node.js 24 LTS (https://nodejs.org or mise/nvm; see .nvmrc)"
+need node "install Node.js 24 LTS (https://nodejs.org or mise/nvm; see .config/mise.toml)"
 need pnpm "install pnpm 10 (corepack enable, or https://pnpm.io/installation)"
 need go "install Go 1.26+ (https://go.dev/dl)"
 need docker "install Docker Desktop or Docker Engine with the compose plugin"
