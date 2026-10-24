@@ -54,7 +54,7 @@ export const appNav: Array<{ title?: string; items: Array<NavItem & { icon: stri
     items: [
       { href: "/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
       { href: "/learn", label: "Curriculum", icon: "BookOpen" },
-      { href: "/paths", label: "Learning paths", icon: "Route" },
+      { href: "/paths", label: "Learning path", icon: "Route" },
       { href: "/leaderboard", label: "Leaderboard", icon: "Trophy" },
       { href: "/settings", label: "Settings", icon: "Settings" },
     ],

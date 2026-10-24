@@ -45,7 +45,13 @@ const components: Components = {
     const text = textOf(children).replace(/\n$/, "");
     return (
       <div className="relative mt-4">
-        <pre className="overflow-x-auto rounded-lg bg-terminal p-4 pr-12 font-mono text-sm text-terminal-foreground">
+        {/* Focusable so keyboard users can scroll long lines (WCAG 2.1.1). */}
+        <pre
+          tabIndex={0}
+          role="group"
+          aria-label="Code example"
+          className="overflow-x-auto rounded-lg bg-terminal p-4 pr-12 font-mono text-sm text-terminal-foreground"
+        >
           {children}
         </pre>
         <div className="absolute top-2 right-2">

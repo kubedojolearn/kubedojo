@@ -2,20 +2,28 @@ import { expect, test } from "@playwright/test";
 
 test.skip(!process.env.E2E_BASE_URL, "stack tests need E2E_BASE_URL and imported content (make up)");
 
-test("the curriculum lists published courses and filters them", async ({ page }) => {
+test("the curriculum shows every belt and links only published lessons", async ({ page }) => {
   await page.goto("/learn");
-  const courses = page.getByRole("list").filter({ has: page.getByRole("heading", { name: "Pods and workloads" }) });
-  await expect(courses.getByRole("heading", { level: 2 })).toHaveText([
+  const courses = page.getByRole("main").getByRole("heading", { level: 2 });
+  await expect(courses).toHaveText([
     "Kubernetes fundamentals",
     "Pods and workloads",
+    "Networking",
+    "Configuration",
+    "Cluster operations",
+    "Troubleshooting",
   ]);
-  await expect(page.getByText("2 of 6 lessons available")).toBeVisible();
-
-  await page.getByLabel("Search courses").fill("pods");
-  await expect(page.getByRole("status")).toHaveText("1 of 2 courses");
-  await page.getByLabel("Search courses").fill("");
-  await page.getByLabel("intermediate").check();
-  await expect(page.getByText("No courses match")).toBeVisible();
+  const workloads = page.getByRole("region", { name: "Pods and workloads" });
+  await expect(workloads).toContainText("yellow belt");
+  await expect(workloads).toContainText("2 of 6 lessons open");
+  await expect(workloads.getByRole("link", { name: "Scale a Deployment" })).toHaveAttribute(
+    "href",
+    "/learn/workloads/scaling-deployments",
+  );
+  // Unpublished lessons are listed but not linked.
+  await expect(workloads.getByText("Launch your first Pod")).toBeVisible();
+  await expect(workloads.getByRole("link", { name: "Launch your first Pod" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Networking" })).toContainText("Being written");
 });
 
 test("a course lists its published lessons in order", async ({ page }) => {
@@ -39,7 +47,7 @@ test("a lesson shows learner content and nothing hidden", async ({ page, context
   }
 
   await expect(page.getByRole("heading", { level: 1, name: "Scale a Deployment" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "You will learn to" })).toContainText(
+  await expect(page.getByRole("region", { name: "By the end you'll be able to" })).toContainText(
     "Change the desired replica count",
   );
   await expect(page.getByText("create a deployment (coming soon)")).toBeVisible();
@@ -69,7 +77,7 @@ test("unpublished and unknown lessons are not found", async ({ page }) => {
     "/learn/Bad_Slug",
   ]) {
     await page.goto(path);
-    await expect(page.getByRole("heading", { name: "We couldn't find that page" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Page not found" })).toBeVisible();
   }
 });
 

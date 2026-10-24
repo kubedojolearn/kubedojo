@@ -94,3 +94,21 @@ export const plannedCourses: PlannedCourse[] = [
 ];
 
 export const totalPlannedLessons = plannedCourses.reduce((n, c) => n + c.lessons.length, 0);
+
+/** A course's 1-based position in the curriculum (its belt), or undefined for unknown slugs. */
+export function courseOrder(slug: string): number | undefined {
+  const i = plannedCourses.findIndex((c) => c.slug === slug);
+  return i < 0 ? undefined : i + 1;
+}
+
+/** The course title for a slug, falling back to the slug in words. */
+export function courseTitle(slug: string): string {
+  return plannedCourses.find((c) => c.slug === slug)?.title ?? slug.replace(/-/g, " ");
+}
+
+/** The lesson title for "course/lesson", falling back to the lesson slug in words. */
+export function lessonTitle(lessonId: string): string {
+  const [course, lesson] = lessonId.split("/");
+  const found = plannedCourses.find((c) => c.slug === course)?.lessons.find((l) => l.slug === lesson);
+  return found?.title ?? (lesson ?? lessonId).replace(/-/g, " ");
+}

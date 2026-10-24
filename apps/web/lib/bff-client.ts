@@ -29,6 +29,9 @@ export async function bff<T>(
     error?: { code?: string; message?: string };
   } | null;
   if (res.ok && payload && "data" in payload) return { ok: true, status: res.status, data: payload.data as T };
+  // 202/204 carry no body.
+  if (res.ok && (res.status === 202 || res.status === 204))
+    return { ok: true, status: res.status, data: undefined as T };
   return {
     ok: false,
     status: res.status,

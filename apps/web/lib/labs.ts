@@ -68,3 +68,12 @@ export async function getCommandHistory(labId: string, limit = 50): Promise<Comm
   if (!data) throw new Error(`command history request failed (${response.status})`);
   return [...data.data].reverse();
 }
+
+/** The learner's active labs, most recently used first. */
+export async function listActiveLabs(limit = 5): Promise<Lab[]> {
+  const { data, response } = await apiClient(await subject()).GET("/api/v1/labs", {
+    params: { query: { state: "active", limit } },
+  });
+  if (!data) throw new Error(`lab list request failed (${response.status})`);
+  return data.data;
+}

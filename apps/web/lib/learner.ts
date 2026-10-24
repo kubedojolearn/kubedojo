@@ -45,3 +45,17 @@ export async function getPublicProfile(handle: string): Promise<PublicProfile | 
   if (!data) throw new Error(`profile request failed (${response.status})`);
   return data.data;
 }
+
+export type LeaderboardEntry = Schemas["LeaderboardEntry"];
+
+/** One page of the public, opt-in leaderboard. */
+export async function getLeaderboard(
+  cursor?: string,
+  limit = 25,
+): Promise<{ entries: LeaderboardEntry[]; nextCursor: string | null }> {
+  const { data, response } = await apiClient().GET("/api/v1/leaderboard", {
+    params: { query: { limit, ...(cursor ? { cursor } : {}) } },
+  });
+  if (!data) throw new Error(`leaderboard request failed (${response.status})`);
+  return { entries: data.data, nextCursor: data.meta.nextCursor ?? null };
+}

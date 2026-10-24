@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { GithubIcon } from "@/components/brand/github-icon";
 import { ErrorState } from "@/components/feedback/states";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signInAsTestUser, signInWithGitHub } from "@/lib/auth/actions";
@@ -71,12 +70,12 @@ async function LoginForm({ searchParams }: { searchParams: PageProps<"/login">["
 
 export default function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader className="text-center">
-        <h1 className="text-xl font-semibold">Sign in to KubeDojo</h1>
-        <CardDescription>Save your progress, resume labs and earn XP.</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
+    <div className="grid w-full max-w-sm gap-6">
+      <header>
+        <h1 className="text-3xl font-bold">Sign in</h1>
+        <p className="mt-2 text-muted-foreground">Save your progress, pick labs up where you left them, and earn XP.</p>
+      </header>
+      <div className="grid gap-4">
         <Suspense
           fallback={
             <Button size="lg" className="w-full" disabled>
@@ -86,16 +85,14 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
         >
           <LoginForm searchParams={searchParams} />
         </Suspense>
-      </CardContent>
-      <CardFooter className="justify-center text-center text-xs text-muted-foreground">
-        <p>
-          We only use your GitHub ID, username, name and avatar, never your email. See the{" "}
-          <Link href="/privacy" className="text-link underline underline-offset-4">
-            privacy policy
-          </Link>
-          .
-        </p>
-      </CardFooter>
-    </Card>
+      </div>
+      <p className="border-t pt-4 text-xs text-muted-foreground">
+        We only use your GitHub ID, username, name and avatar, never your email. See the{" "}
+        <Link href="/privacy" className="text-link underline underline-offset-4">
+          privacy policy
+        </Link>
+        .
+      </p>
+    </div>
   );
 }

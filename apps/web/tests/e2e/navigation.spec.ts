@@ -58,14 +58,14 @@ for (const path of ["/dashboard", "/settings", "/lab/00000000-0000-4000-8000-000
     await expect(page).toHaveURL(
       new RegExp(`/login\\?callbackUrl=${encodeURIComponent(path).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`),
     );
-    await expect(page.getByRole("heading", { level: 1, name: "Sign in to KubeDojo" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Sign in" })).toBeVisible();
   });
 }
 
 test("unknown routes show the not-found page with a 404 status", async ({ page }) => {
   const res = await page.goto("/does-not-exist");
   expect(res?.status()).toBe(404);
-  await expect(page.getByRole("heading", { name: "We couldn't find that page" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Page not found" })).toBeVisible();
 });
 
 test("pages have titles and social metadata", async ({ page }) => {

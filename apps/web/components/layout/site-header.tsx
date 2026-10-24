@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { SessionHeaderAction } from "@/components/layout/session-slots";
+import { SessionHeaderAction, SessionMobileNav } from "@/components/layout/session-slots";
 import { GithubIcon } from "@/components/brand/github-icon";
 import { Logo } from "@/components/brand/logo";
 import { NavLink } from "@/components/layout/nav-link";
@@ -12,7 +12,7 @@ import { marketingNav, site } from "@/lib/site";
 
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+    <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
       <Container className="flex h-16 items-center gap-4">
         <Link href="/" aria-label="KubeDojo home" className="rounded-md">
           <Logo />
@@ -23,8 +23,8 @@ export function SiteHeader() {
               <li key={item.href}>
                 <NavLink
                   href={item.href}
-                  className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  activeClassName="text-foreground font-medium"
+                  className="relative rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  activeClassName="text-foreground font-medium after:absolute after:inset-x-3 after:-bottom-[13px] after:h-0.5 after:bg-highlight"
                 >
                   {item.label}
                 </NavLink>
@@ -48,7 +48,9 @@ export function SiteHeader() {
           >
             <SessionHeaderAction />
           </Suspense>
-          <MobileNav />
+          <Suspense fallback={<MobileNav signedIn={false} />}>
+            <SessionMobileNav />
+          </Suspense>
         </div>
       </Container>
     </header>

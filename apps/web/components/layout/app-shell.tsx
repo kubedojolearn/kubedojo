@@ -6,7 +6,8 @@ import { AppTopbar } from "@/components/layout/app-topbar";
 import { OfflineBanner } from "@/components/layout/offline-banner";
 import { SessionAppNav, SessionPreferences, SessionUserMenu } from "@/components/layout/session-slots";
 import { UserMenu } from "@/components/layout/user-menu";
-import { InDevelopmentBadge } from "@/components/feedback/in-development";
+import { SiteSearch } from "@/components/layout/site-search";
+import { SiteSearchWithIndex } from "@/components/layout/search-index";
 
 /** Layout for signed-in pages: sidebar on large screens, drawer on small ones. */
 export function AppShell({ children }: { children: ReactNode }) {
@@ -22,6 +23,11 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
         <AppTopbar
+          search={
+            <Suspense fallback={<SiteSearch lessons={null} className="w-72" />}>
+              <SiteSearchWithIndex className="w-72" />
+            </Suspense>
+          }
           userMenu={
             <Suspense fallback={<UserMenu user={null} />}>
               <SessionUserMenu />
@@ -32,17 +38,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Suspense fallback={null}>
           <SessionPreferences />
         </Suspense>
-        <div
-          role="note"
-          className="flex flex-wrap items-center gap-2 border-b bg-sim-badge/40 px-4 py-2 text-sm lg:px-6"
-        >
-          <InDevelopmentBadge label="Preview" />
-          <span>
-            The signed-in app is under construction. Screens show their layout and empty states; nothing is connected to
-            an account yet.
-          </span>
-        </div>
-        <main id="main" tabIndex={-1} className="flex-1 px-4 py-8 outline-none lg:px-8">
+        <main id="main" tabIndex={-1} className="flex-1 px-4 py-8 outline-none lg:px-10 lg:py-10">
           {children}
         </main>
       </div>

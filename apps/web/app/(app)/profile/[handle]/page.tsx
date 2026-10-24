@@ -27,7 +27,7 @@ async function ProfileView({ params }: Props) {
     if (me?.handle.toLowerCase() !== handle.toLowerCase()) notFound();
     return (
       <>
-        <h1 className="text-3xl font-semibold tracking-tight">@{me.handle}</h1>
+        <h1 className="text-3xl font-bold">@{me.handle}</h1>
         <EmptyState
           icon={Lock}
           className="mt-8"
@@ -50,32 +50,32 @@ async function ProfileView({ params }: Props) {
           <AvatarFallback>{(profile.displayName || profile.handle).slice(0, 2).toUpperCase()}</AvatarFallback>
         </Avatar>
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">{profile.displayName || profile.handle}</h1>
+          <h1 className="text-3xl font-bold">{profile.displayName || profile.handle}</h1>
           <p className="text-muted-foreground">
             @{profile.handle} · joined {joined.format(new Date(profile.joinedAt))}
           </p>
         </div>
       </header>
-      <dl className="mt-8 grid max-w-md grid-cols-2 gap-4">
-        <div className="rounded-xl border bg-card p-4">
-          <dt className="text-sm text-muted-foreground">Experience</dt>
-          <dd className="text-2xl font-semibold">{profile.totalXp} XP</dd>
+      <dl className="mt-8 grid max-w-md grid-cols-2 divide-x rounded-lg border bg-card">
+        <div className="p-5">
+          <dt className="text-xs text-muted-foreground">Experience</dt>
+          <dd className="mt-1 text-2xl font-bold tabular-nums">{profile.totalXp} XP</dd>
         </div>
-        <div className="rounded-xl border bg-card p-4">
-          <dt className="text-sm text-muted-foreground">Lessons completed</dt>
-          <dd className="text-2xl font-semibold">{profile.completedLessons}</dd>
+        <div className="p-5">
+          <dt className="text-xs text-muted-foreground">Lessons completed</dt>
+          <dd className="mt-1 text-2xl font-bold tabular-nums">{profile.completedLessons}</dd>
         </div>
       </dl>
       <section aria-labelledby="achievements-heading" className="mt-8">
-        <h2 id="achievements-heading" className="text-lg font-semibold">
+        <h2 id="achievements-heading" className="text-lg font-bold">
           Achievements
         </h2>
         {profile.achievements.length === 0 ? (
           <EmptyState icon={Trophy} className="mt-3" title="No achievements yet" headingLevel={3} />
         ) : (
-          <ul className="mt-3 flex flex-wrap gap-3">
+          <ul className="mt-3 divide-y rounded-lg border bg-card text-sm">
             {profile.achievements.map((a) => (
-              <li key={a.key} className="rounded-lg border bg-card px-4 py-3 text-sm">
+              <li key={a.key} className="px-4 py-3">
                 <p className="font-medium">{a.title}</p>
                 <p className="text-muted-foreground">{a.description}</p>
               </li>

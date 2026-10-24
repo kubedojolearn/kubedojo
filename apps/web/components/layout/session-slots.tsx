@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppNav } from "@/components/layout/app-nav";
+import { MobileNav } from "@/components/layout/mobile-nav";
 import { ReducedMotion } from "@/components/layout/reduced-motion";
 import { UserMenu } from "@/components/layout/user-menu";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,11 @@ export async function SessionHeaderAction() {
       {user ? <Link href="/dashboard">Dashboard</Link> : <Link href="/login">Sign in</Link>}
     </Button>
   );
+}
+
+export async function SessionMobileNav() {
+  const user = await getCurrentUser();
+  return <MobileNav signedIn={Boolean(user)} />;
 }
 
 /** Applies the account's reduced-motion preference (the OS preference is honored in CSS). */

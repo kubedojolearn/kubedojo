@@ -10,7 +10,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { marketingNav, site } from "@/lib/site";
 
 /** Drawer navigation for small screens. Focus is trapped while open and returns to the trigger. */
-export function MobileNav() {
+export function MobileNav({ signedIn }: { signedIn: boolean }) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
   return (
@@ -59,9 +59,15 @@ export function MobileNav() {
             </li>
           </ul>
           <Button asChild className="mt-4 w-full">
-            <Link href="/login" onClick={close}>
-              Sign in
-            </Link>
+            {signedIn ? (
+              <Link href="/dashboard" onClick={close}>
+                Dashboard
+              </Link>
+            ) : (
+              <Link href="/login" onClick={close}>
+                Sign in
+              </Link>
+            )}
           </Button>
         </nav>
       </SheetContent>

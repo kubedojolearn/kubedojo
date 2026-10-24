@@ -24,18 +24,13 @@ export function EmptyState({
 }: StateProps) {
   const Heading = `h${headingLevel}` as const;
   return (
-    <div
-      className={cn(
-        "flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed p-8 text-center",
-        className,
-      )}
-    >
-      <span className="grid size-10 place-items-center rounded-full bg-muted text-muted-foreground">
-        <Icon aria-hidden className="size-5" />
-      </span>
-      <Heading className="text-base font-semibold">{title}</Heading>
-      {description && <div className="max-w-md text-sm text-muted-foreground">{description}</div>}
-      {action && <div className="mt-1">{action}</div>}
+    <div className={cn("flex gap-4 rounded-lg border bg-card/60 p-5 sm:p-6", className)}>
+      <Icon aria-hidden className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
+      <div className="grid gap-1.5">
+        <Heading className="text-base font-semibold">{title}</Heading>
+        {description && <div className="max-w-prose text-sm text-muted-foreground">{description}</div>}
+        {action && <div className="mt-2">{action}</div>}
+      </div>
     </div>
   );
 }
@@ -53,17 +48,14 @@ export function ErrorState({
   return (
     <div
       role="alert"
-      className={cn(
-        "flex flex-col items-center justify-center gap-3 rounded-xl border border-danger/40 bg-danger/5 p-8 text-center",
-        className,
-      )}
+      className={cn("flex gap-4 rounded-lg border border-danger/40 border-l-4 bg-danger/5 p-5 sm:p-6", className)}
     >
-      <span className="grid size-10 place-items-center rounded-full bg-danger/10 text-danger">
-        <Icon aria-hidden className="size-5" />
-      </span>
-      <Heading className="text-base font-semibold">{title}</Heading>
-      {description && <div className="max-w-md text-sm text-muted-foreground">{description}</div>}
-      {action && <div className="mt-1">{action}</div>}
+      <Icon aria-hidden className="mt-0.5 size-5 shrink-0 text-danger" />
+      <div className="grid gap-1.5">
+        <Heading className="text-base font-semibold">{title}</Heading>
+        {description && <div className="max-w-prose text-sm text-muted-foreground">{description}</div>}
+        {action && <div className="mt-2">{action}</div>}
+      </div>
     </div>
   );
 }

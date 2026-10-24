@@ -77,7 +77,7 @@ test("another learner's lab is not found", async ({ browser }) => {
   await signIn(intruder, testIdentity("intruder"));
   // The page streams, so the not-found UI arrives with status 200 (and noindex); the API says 404.
   await intruder.goto(`/lab/${labId}`);
-  await expect(intruder.getByRole("heading", { name: "We couldn't find that page" })).toBeVisible();
+  await expect(intruder.getByRole("heading", { level: 1, name: "Page not found" })).toBeVisible();
   const api = await intruder.request.get(`/api/bff/v1/labs/${labId}/snapshot`);
   expect(api.status()).toBe(404);
   expect((await post(intruder, `labs/${labId}/finish`, { "Idempotency-Key": "intruder-key-1" })).status()).toBe(404);
