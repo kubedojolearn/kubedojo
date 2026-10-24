@@ -29,6 +29,8 @@ import (
 	// validate time zones.
 	_ "time/tzdata"
 
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/account"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/admin"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/courses"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/health"
@@ -110,6 +112,8 @@ func serve() error {
 		Catalog:        courses.NewService(pool),
 		Progress:       progress.NewService(pool),
 		Labs:           labs.NewService(pool),
+		Accounts:       account.NewService(pool),
+		Admin:          admin.NewService(pool),
 		Settings:       userStore,
 		Cursors:        httpx.NewCursors(cursorKey),
 		Limiter:        ratelimit.NewRedis(rdb),

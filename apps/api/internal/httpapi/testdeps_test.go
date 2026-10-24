@@ -6,11 +6,14 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/account"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/admin"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth/authtest"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/courses"
@@ -35,6 +38,8 @@ func (identities) Resolve(_ context.Context, _, subject string) (auth.Principal,
 		return auth.Principal{UserID: testUserID, Role: auth.RoleLearner}, nil
 	case "429":
 		return auth.Principal{UserID: throttled, Role: auth.RoleLearner}, nil
+	case "900":
+		return auth.Principal{UserID: adminUserID, Role: auth.RoleAdmin}, nil
 	}
 	return auth.Principal{}, auth.ErrIdentityNotLinked
 }
@@ -95,6 +100,40 @@ func (catalog) GetLesson(_ context.Context, c, l string) (courses.LessonDetail, 
 		SimulatorVersion: "kubernetes-1.37-subset-1", LastReviewedAt: "2026-10-23",
 		Navigation: courses.Navigation{Previous: &courses.LessonRef{CourseSlug: c, Slug: "inspect-a-pod", Title: "Inspect"}},
 	}, nil
+}
+
+var adminUserID = uuid.MustParse("90909090-9090-4090-8090-909090909090")
+
+type adminFake struct{}
+
+func (adminFake) Content(context.Context) ([]admin.LessonContent, error) {
+	v := uuid.MustParse("55555555-5555-4555-8555-555555555555")
+	at := time.Date(2026, 10, 20, 9, 0, 0, 0, time.UTC)
+	return []admin.LessonContent{{LessonID: "workloads/scaling-deployments", Title: "Scale a Deployment", CurrentVersionID: &v,
+		Versions: []admin.ChallengeVersion{{ID: v, Version: 1, ContentSHA256: strings.Repeat("a", 64), Status: "published", ImportedAt: at, PublishedAt: &at}}}}, nil
+}
+
+func (adminFake) Audit(context.Context, *admin.AuditCursor, int32) ([]admin.AuditEntry, *admin.AuditCursor, error) {
+	return []admin.AuditEntry{{ID: uuid.MustParse("91919191-9191-4191-8191-919191919191"), Action: "user.deletion_requested", EntityType: "user",
+		EntityID: "x", Details: json.RawMessage(`{}`), CreatedAt: time.Date(2026, 10, 21, 9, 0, 0, 0, time.UTC)}}, nil, nil
+}
+
+type accountsFake struct{}
+
+func (accountsFake) Leaderboard(context.Context, *account.LeaderboardCursor, int32) ([]account.LeaderboardEntry, *account.LeaderboardCursor, error) {
+	return []account.LeaderboardEntry{{Rank: 1, Handle: "kube-learner", DisplayName: "Kube", TotalXP: 120, CompletedLessons: 2}},
+		&account.LeaderboardCursor{XP: 120, UserID: uuid.MustParse("44444444-4444-4444-8444-444444444444")}, nil
+}
+
+func (accountsFake) Export(context.Context, uuid.UUID) (json.RawMessage, error) {
+	return json.RawMessage(`{"profile":{"handle":"kube-learner"},"labs":[]}`), nil
+}
+
+func (accountsFake) RequestDeletion(_ context.Context, _ uuid.UUID, confirm string) error {
+	if confirm != "kube-learner" {
+		return account.ErrHandleMismatch
+	}
+	return nil
 }
 
 type progressFake struct{}
@@ -271,6 +310,8 @@ func testRouter(t *testing.T, ready bool) (http.Handler, authtest.Signer) {
 		Catalog:        catalog{},
 		Progress:       progressFake{},
 		Labs:           labsFake{},
+		Accounts:       accountsFake{},
+		Admin:          adminFake{},
 		Settings:       userStore{},
 		Cursors:        httpx.NewCursors([]byte("0123456789abcdef0123456789abcdef")),
 		Limiter:        limiter{},
