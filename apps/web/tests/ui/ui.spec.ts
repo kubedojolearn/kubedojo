@@ -115,8 +115,11 @@ for (const [label, viewport] of [
       for (const route of [...appRoutes, `/profile/${who.login}`]) await checkPage(page, route, links);
 
       // Search finds published lessons from the real catalog.
-      await page.keyboard.press("ControlOrMeta+k");
       const search = page.getByRole("dialog", { name: "Search KubeDojo" });
+      await expect(async () => {
+        if (!(await search.isVisible())) await page.keyboard.press("ControlOrMeta+k");
+        await expect(search).toBeVisible({ timeout: 1_000 });
+      }).toPass();
       await search.getByRole("combobox").fill("scale");
       await expect(search.getByRole("option", { name: /Scale a Deployment/ })).toBeVisible();
       await page.keyboard.press("Escape");
