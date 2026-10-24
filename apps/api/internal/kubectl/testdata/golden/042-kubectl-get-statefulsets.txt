@@ -1,0 +1,5 @@
+$ kubectl get statefulsets
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: statefulsets are not part of the KubeDojo simulator yet. Run 'kubectl api-resources' to see what is.

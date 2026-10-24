@@ -1,0 +1,5 @@
+$ kubectl get pods -l 'app in nginx'
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: invalid label key "app in nginx": name part must be 63 characters or less, beginning and ending with an alphanumeric character

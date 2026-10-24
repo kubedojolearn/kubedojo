@@ -1,0 +1,5 @@
+$ kubectl logs deploy/nginx -f
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: -f/--follow isn't supported in the simulator; run the command again to see new output

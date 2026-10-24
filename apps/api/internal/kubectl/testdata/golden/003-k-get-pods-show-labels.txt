@@ -1,0 +1,8 @@
+$ k get pods --show-labels
+--- exit 0
+--- stdout
+NAME                     READY   STATUS             RESTARTS   AGE   LABELS
+nginx-4fzxcz7snh-tbjxs   1/1     Running            0          60m   app=nginx,pod-template-hash=4fzxcz7snh
+picky                    0/1     Pending            0          2m    <none>
+typo                     0/1     ImagePullBackOff   0          5m    run=typo
+--- stderr

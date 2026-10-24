@@ -1,0 +1,151 @@
+# Local development stack. Usage is wrapped by the Makefile:
+#   make up    full stack in containers           -> http://localhost:8000
+#   make dev   postgres + redis + edge in containers, api/web on the host with reload
+# Credentials come from .env (created by `make setup`); nothing is baked into images.
+name: kubedojo
+
+x-hardening: &hardening
+  security_opt: ["no-new-privileges:true"]
+  restart: unless-stopped
+
+services:
+  postgres:
+    <<: *hardening
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?run make setup}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run make setup}
+      POSTGRES_DB: ${POSTGRES_DB:?run make setup}
+    ports: ["127.0.0.1:${POSTGRES_PORT:-5432}:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./infra/compose/postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    <<: *hardening
+    image: redis:8-alpine
+    # Redis holds only disposable coordination data (ADR-0004): no persistence.
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports: ["127.0.0.1:${REDIS_PORT:-6379}:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # One-shot: applies migrations and idempotent seeds before the API starts.
+  migrate:
+    profiles: [app]
+    security_opt: ["no-new-privileges:true"]
+    build:
+      context: apps/api
+      args:
+        VERSION: ${KUBEDOJO_VERSION:-dev}
+        COMMIT: ${KUBEDOJO_COMMIT:-unknown}
+    command: ["bootstrap"]
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres: { condition: service_healthy }
+    read_only: true
+    cap_drop: [ALL]
+    restart: "no"
+
+  api:
+    <<: *hardening
+    profiles: [app]
+    build:
+      context: apps/api
+      args:
+        VERSION: ${KUBEDOJO_VERSION:-dev}
+        COMMIT: ${KUBEDOJO_COMMIT:-unknown}
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      API_LISTEN_ADDR: ":8080"
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+      API_JWT_PUBLIC_KEYS: ${API_JWT_PUBLIC_KEYS:?run make setup}
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    read_only: true
+    cap_drop: [ALL]
+    expose: ["8080"]
+
+  # Background jobs (lab expiry, idempotency retention). Same image as the API.
+  worker:
+    <<: *hardening
+    profiles: [app]
+    build:
+      context: apps/api
+      args:
+        VERSION: ${KUBEDOJO_VERSION:-dev}
+        COMMIT: ${KUBEDOJO_COMMIT:-unknown}
+    entrypoint: ["/usr/local/bin/worker"]
+    command: []
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      api: { condition: service_started }
+    healthcheck:
+      disable: true
+    read_only: true
+    cap_drop: [ALL]
+
+  web:
+    <<: *hardening
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VERSION: ${KUBEDOJO_VERSION:-dev}
+        COMMIT: ${KUBEDOJO_COMMIT:-unknown}
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      API_INTERNAL_URL: http://api:8080
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8000}
+      AUTH_SECRET: ${AUTH_SECRET:?run make setup}
+      AUTH_GITHUB_ID: ${AUTH_GITHUB_ID:-}
+      AUTH_GITHUB_SECRET: ${AUTH_GITHUB_SECRET:-}
+      BFF_SIGNING_PRIVATE_KEY: ${BFF_SIGNING_PRIVATE_KEY:?run make setup}
+      BFF_SIGNING_KID: ${BFF_SIGNING_KID:?run make setup}
+      # Test sign-in for automated tests only; refused when APP_ENV=production.
+      AUTH_TEST_MODE: ${AUTH_TEST_MODE:-0}
+    depends_on:
+      api: { condition: service_healthy }
+    read_only: true
+    tmpfs: ["/app/apps/web/.next/cache"]
+    cap_drop: [ALL]
+    expose: ["3000"]
+
+  edge:
+    <<: *hardening
+    image: caddy:2-alpine
+    environment:
+      # `make dev` points these at processes on the host.
+      WEB_UPSTREAM: ${WEB_UPSTREAM:-web:3000}
+      API_UPSTREAM: ${API_UPSTREAM:-api:8080}
+    ports: ["127.0.0.1:${EDGE_PORT:-8000}:8000"]
+    volumes:
+      - ./infra/compose/Caddyfile:/etc/caddy/Caddyfile:ro
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    cap_drop: [ALL]
+    # The official caddy binary carries a file capability (cap_net_bind_service); it cannot exec
+    # unless that capability is in the bounding set.
+    cap_add: [NET_BIND_SERVICE]
+
+volumes:
+  pgdata:

@@ -1,0 +1,5 @@
+$ kubectl rollout status deploy/nginx
+--- exit 0
+--- stdout
+deployment "nginx" successfully rolled out
+--- stderr

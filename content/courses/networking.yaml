@@ -1,0 +1,15 @@
+schemaVersion: 1
+slug: networking
+title: Networking
+summary: Give Pods a stable address with Services, and work out why traffic isn't arriving.
+description: |
+  Pods come and go, and so do their IP addresses. **Services** give a group of Pods one stable address. You'll create Services, see how they find Pods through labels, and debug the most common reason a Service doesn't work.
+difficulty: beginner
+displayOrder: 3
+prerequisites: [workloads]
+lessons:
+  - service-basics
+  - expose-a-deployment
+  - selectors-and-endpoints
+  - clusterip-vs-nodeport
+  - debug-missing-endpoints

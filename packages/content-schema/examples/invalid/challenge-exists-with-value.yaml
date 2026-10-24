@@ -1,0 +1,23 @@
+schemaVersion: 1
+id: fundamentals/bad
+version: 1
+course: fundamentals
+lesson: bad
+title: Bad assertion
+summary: The exists operator must not take a value.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 5
+lastReviewed: 2026-10-22
+objectives: [Should fail validation]
+body: x
+initialFixture: fixtures/three-node-cluster.yaml
+goals:
+  - id: g
+    type: state
+    description: Something exists here.
+    target: { kind: Pod, namespace: default, name: web }
+    assertions:
+      - { path: status.podIP, operator: exists, value: true }
+hints: []
+solution: { commands: [] }
+reward: { baseXP: 1, firstTryBonusXP: 0, hintPenaltyPerHintXP: 0 }

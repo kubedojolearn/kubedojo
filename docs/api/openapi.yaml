@@ -1,0 +1,1698 @@
+openapi: 3.1.0
+info:
+  title: KubeDojo API
+  version: 0.1.0
+  summary: Internal API of the KubeDojo Go service.
+  description: |
+    Called by the Next.js BFF (`/api/bff/*`), never directly by browsers, except
+    the WebSocket endpoint and routes marked public.
+
+    - Authentication: `Authorization: Bearer <assertion>` where the assertion is an
+      Ed25519-signed JWT minted by the BFF (see ADR-0003). Identity and role are never
+      read from request bodies or other headers.
+    - Envelope: success `{data, meta}`; error `{error, meta}`. Dates are UTC RFC 3339.
+    - Pagination: `cursor` + `limit` (1–100, default 20); `meta.nextCursor` is null on the last page.
+    - Request bodies reject unknown fields (`additionalProperties: false`).
+    - Lab routes return `404 NOT_FOUND` for labs owned by someone else.
+    - `x-kubedojo-part` on each operation names the plan part that implements it.
+  license:
+    name: Apache-2.0
+    identifier: Apache-2.0
+servers:
+  - url: http://localhost:8080
+    description: Local development (Go API, private)
+tags:
+  - name: system
+    description: Liveness and readiness probes.
+  - name: auth
+    description: Account provisioning at sign-in (BFF only).
+  - name: catalog
+    description: Published courses and lessons. Public.
+  - name: users
+    description: The current user, settings and public profiles.
+  - name: progress
+    description: Learner progress, achievements and activity.
+  - name: leaderboard
+    description: Opt-in XP rankings.
+  - name: labs
+    description: "Simulated lab sessions: state, commands, files, answers, grading and hints."
+  - name: realtime
+    description: WebSocket tickets and the lab socket.
+  - name: admin
+    description: Content publishing and audit log. Admin role required.
+security:
+  - bffAssertion: []
+
+paths:
+  /api/v1/healthz:
+    get:
+      tags: [system]
+      operationId: getHealth
+      summary: Liveness probe
+      description: Always 200 while the process is serving. No dependencies are checked. Not wrapped in the envelope.
+      security: []
+      x-kubedojo-part: 2
+      responses:
+        "200":
+          description: Process is alive.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+
+  /api/v1/readyz:
+    get:
+      tags: [system]
+      operationId: getReadiness
+      summary: Readiness probe
+      description: Checks PostgreSQL and Redis. Intended for the orchestrator on the private network. Not wrapped in the envelope.
+      security: []
+      x-kubedojo-part: 2
+      responses:
+        "200":
+          description: Ready to serve.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Readiness" }
+        "503":
+          description: A dependency is unavailable.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Readiness" }
+
+  /api/v1/auth/provision:
+    post:
+      tags: [auth]
+      operationId: provisionUser
+      summary: Create or update the local user for a GitHub identity
+      description: |
+        Called once per sign-in by the BFF. Requires a provisioning assertion
+        (`aud: kubedojo-api-provision`) carrying `login`, `name` and `avatar_url` claims.
+        Request assertions are rejected here, and provisioning assertions are rejected everywhere else.
+      security:
+        - provisionAssertion: []
+      x-kubedojo-part: 6
+      responses:
+        "200":
+          description: User exists (created or updated).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/Me" }
+                  meta: { $ref: "#/components/schemas/Meta" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/catalog/courses:
+    get:
+      tags: [catalog]
+      operationId: listCourses
+      summary: List published courses
+      security: []
+      x-kubedojo-part: 7
+      responses:
+        "200":
+          description: Published courses in display order.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/CourseSummary" }
+                  meta: { $ref: "#/components/schemas/Meta" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/catalog/courses/{courseSlug}:
+    parameters:
+      - $ref: "#/components/parameters/CourseSlug"
+    get:
+      tags: [catalog]
+      operationId: getCourse
+      summary: Get a published course and its lessons
+      security: []
+      x-kubedojo-part: 7
+      responses:
+        "200":
+          description: Course with lesson summaries.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/CourseDetail" }
+                  meta: { $ref: "#/components/schemas/Meta" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/catalog/courses/{courseSlug}/lessons/{lessonSlug}:
+    parameters:
+      - $ref: "#/components/parameters/CourseSlug"
+      - $ref: "#/components/parameters/LessonSlug"
+    get:
+      tags: [catalog]
+      operationId: getLesson
+      summary: Get a published lesson
+      description: |
+        Public. Returns learner-facing content and goal descriptions only. Hidden assertions,
+        expected answers, hint text and reference solutions are never included.
+        (Lesson slugs are unique within a course, so the path includes the course slug.)
+      security: []
+      x-kubedojo-part: 7
+      responses:
+        "200":
+          description: Lesson content.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/LessonDetail" }
+                  meta: { $ref: "#/components/schemas/Meta" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/users/me:
+    get:
+      tags: [users]
+      operationId: getMe
+      summary: Current user
+      x-kubedojo-part: 4
+      responses:
+        "200":
+          description: The authenticated user.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/Me" }
+                  meta: { $ref: "#/components/schemas/Meta" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+    patch:
+      tags: [users]
+      operationId: updateMe
+      summary: Update profile, settings and onboarding answers
+      x-kubedojo-part: 6
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateMeRequest" }
+      responses:
+        "200":
+          description: Updated user.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/Me" }
+                  meta: { $ref: "#/components/schemas/Meta" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/users/me/export:
+    get:
+      tags: [users]
+      operationId: exportMe
+      summary: Export all of the current user's data
+      x-kubedojo-part: 19
+      responses:
+        "200":
+          description: JSON export.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { type: object, additionalProperties: true }
+                  meta: { $ref: "#/components/schemas/Meta" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/users/me/deletion:
+    post:
+      tags: [users]
+      operationId: requestAccountDeletion
+      summary: Delete the current user's account
+      description: Tombstones the account and unlinks the GitHub identity immediately; remaining personal data is erased within 30 days.
+      x-kubedojo-part: 19
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [confirmHandle]
+              properties:
+                confirmHandle: { $ref: "#/components/schemas/Handle" }
+      responses:
+        "202": { description: Deletion accepted. }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/users/me/progress:
+    get:
+      tags: [progress]
+      operationId: getMyProgress
+      summary: Course and lesson progress
+      x-kubedojo-part: 8
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: course
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/Slug" }
+      responses:
+        "200":
+          description: Per-course totals and a page of lesson progress.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/Progress" }
+                  meta: { $ref: "#/components/schemas/PageMeta" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/users/me/progress/opened:
+    post:
+      tags: [progress]
+      operationId: markLessonOpened
+      summary: Record that the learner opened a published lesson
+      description: Updates "continue learning". Never marks completion or awards XP. Adds a lesson-opened activity event unless the learner opted out of analytics.
+      x-kubedojo-part: 8
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [courseSlug, lessonSlug]
+              properties:
+                courseSlug: { $ref: "#/components/schemas/Slug" }
+                lessonSlug: { $ref: "#/components/schemas/Slug" }
+      responses:
+        "204": { description: Recorded. }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/users/me/achievements:
+    get:
+      tags: [progress]
+      operationId: getMyAchievements
+      summary: Achievements earned and available
+      x-kubedojo-part: 18
+      responses:
+        "200":
+          description: Achievements.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Achievement" }
+                  meta: { $ref: "#/components/schemas/Meta" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/users/me/activity:
+    get:
+      tags: [progress]
+      operationId: getMyActivity
+      summary: Recent learning activity
+      x-kubedojo-part: 8
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Activity, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/ActivityItem" }
+                  meta: { $ref: "#/components/schemas/PageMeta" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/profiles/{handle}:
+    parameters:
+      - name: handle
+        in: path
+        required: true
+        schema: { $ref: "#/components/schemas/Handle" }
+    get:
+      tags: [users]
+      operationId: getPublicProfile
+      summary: Public profile
+      description: 404 unless the user has made their profile public.
+      security: []
+      x-kubedojo-part: 8
+      responses:
+        "200":
+          description: Public profile.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/PublicProfile" }
+                  meta: { $ref: "#/components/schemas/Meta" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/leaderboard:
+    get:
+      tags: [leaderboard]
+      operationId: getLeaderboard
+      summary: Opted-in learners ranked by XP
+      security: []
+      x-kubedojo-part: 18
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Leaderboard page.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/LeaderboardEntry" }
+                  meta: { $ref: "#/components/schemas/PageMeta" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/labs:
+    get:
+      tags: [labs]
+      operationId: listMyLabs
+      summary: The current user's lab sessions
+      x-kubedojo-part: 9
+      parameters:
+        - name: state
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/LabState" }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Labs, most recently active first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Lab" }
+                  meta: { $ref: "#/components/schemas/PageMeta" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+    post:
+      tags: [labs]
+      operationId: createLab
+      summary: Start a lab, or return the active one for this lesson
+      x-kubedojo-part: 9
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [challengeVersionId]
+              properties:
+                challengeVersionId: { type: string, format: uuid }
+      responses:
+        "200":
+          description: An active lab for this lesson already existed and is returned.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LabResponse" }
+        "201":
+          description: Lab created from the challenge fixture.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LabResponse" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/labs/{labId}:
+    parameters:
+      - $ref: "#/components/parameters/LabId"
+    get:
+      tags: [labs]
+      operationId: getLab
+      summary: Lab session metadata
+      x-kubedojo-part: 9
+      responses:
+        "200":
+          description: Lab.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LabResponse" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/labs/{labId}/resume:
+    parameters:
+      - $ref: "#/components/parameters/LabId"
+    post:
+      tags: [labs]
+      operationId: resumeLab
+      summary: Mark the lab active now and extend its expiry
+      x-kubedojo-part: 9
+      responses:
+        "200":
+          description: Lab.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LabResponse" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "410": { $ref: "#/components/responses/SessionExpired" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/labs/{labId}/reset:
+    parameters:
+      - $ref: "#/components/parameters/LabId"
+    post:
+      tags: [labs]
+      operationId: resetLab
+      summary: Reload the lab from its fixture
+      x-kubedojo-part: 9
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Lab after reset (version incremented).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LabResponse" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "410": { $ref: "#/components/responses/SessionExpired" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/labs/{labId}/finish:
+    parameters:
+      - $ref: "#/components/parameters/LabId"
+    post:
+      tags: [labs]
+      operationId: finishLab
+      summary: End the lab without completing it (state becomes abandoned)
+      x-kubedojo-part: 9
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Lab after finishing.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LabResponse" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/labs/{labId}/snapshot:
+    parameters:
+      - $ref: "#/components/parameters/LabId"
+    get:
+      tags: [labs]
+      operationId: getLabSnapshot
+      summary: Full simulated cluster state at the current version
+      x-kubedojo-part: 9
+      responses:
+        "200":
+          description: Snapshot.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/Snapshot" }
+                  meta: { $ref: "#/components/schemas/Meta" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/labs/{labId}/events:
+    parameters:
+      - $ref: "#/components/parameters/LabId"
+    get:
+      tags: [labs]
+      operationId: listLabEvents
+      summary: Simulated Kubernetes events, oldest first
+      x-kubedojo-part: 9
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Events.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/SimEvent" }
+                  meta: { $ref: "#/components/schemas/PageMeta" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/labs/{labId}/commands:
+    parameters:
+      - $ref: "#/components/parameters/LabId"
+    get:
+      tags: [labs]
+      operationId: listLabCommands
+      summary: Command history, newest first
+      x-kubedojo-part: 10
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Commands.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/CommandResult" }
+                  meta: { $ref: "#/components/schemas/PageMeta" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+    post:
+      tags: [labs]
+      operationId: runLabCommand
+      summary: Run one terminal command (REST fallback for the WebSocket)
+      description: |
+        Executes at most once per `requestId`: re-sending a `requestId` returns the stored result.
+        Unsupported or invalid commands are still `200` with a non-zero `exitCode`, `stderr` and
+        `errorCode`, because they are terminal output, not API errors.
+      x-kubedojo-part: 10
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RunCommandRequest" }
+      responses:
+        "200":
+          description: Command result (new or deduplicated).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/CommandResult" }
+                  meta: { $ref: "#/components/schemas/Meta" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "410": { $ref: "#/components/responses/SessionExpired" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/labs/{labId}/files:
+    parameters:
+      - $ref: "#/components/parameters/LabId"
+    get:
+      tags: [labs]
+      operationId: listLabFiles
+      summary: Virtual manifest files in the lab editor
+      x-kubedojo-part: 13
+      responses:
+        "200":
+          description: Files.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/LabFile" }
+                  meta: { $ref: "#/components/schemas/Meta" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+    put:
+      tags: [labs]
+      operationId: saveLabFile
+      summary: Create or replace a virtual file
+      x-kubedojo-part: 13
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [path, content]
+              properties:
+                path: { $ref: "#/components/schemas/VirtualPath" }
+                content: { type: string, maxLength: 65536 }
+                baseUpdatedAt:
+                  type: string
+                  format: date-time
+                  description: If set and the file changed since, the save fails with STALE_VERSION.
+      responses:
+        "200":
+          description: Saved file.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/LabFile" }
+                  meta: { $ref: "#/components/schemas/Meta" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/labs/{labId}/answers:
+    parameters:
+      - $ref: "#/components/parameters/LabId"
+    post:
+      tags: [labs]
+      operationId: submitLabAnswer
+      summary: Submit an answer for an answer-type goal
+      description: Stores the answer. Correctness is reported by validate, not here.
+      x-kubedojo-part: 16
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [goalId, answer]
+              properties:
+                goalId: { $ref: "#/components/schemas/GoalId" }
+                answer: { type: string, minLength: 1, maxLength: 256 }
+      responses:
+        "200":
+          description: Answer stored.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: object
+                    required: [goalId, submissionsRemaining]
+                    properties:
+                      goalId: { $ref: "#/components/schemas/GoalId" }
+                      submissionsRemaining: { type: integer, minimum: 0 }
+                  meta: { $ref: "#/components/schemas/Meta" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/labs/{labId}/validate:
+    parameters:
+      - $ref: "#/components/parameters/LabId"
+    post:
+      tags: [labs]
+      operationId: validateLab
+      summary: Grade the lab against its goals
+      description: If every goal passes, the lab completes and XP is awarded (once per lesson per user).
+      x-kubedojo-part: 16
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Grading result (new or the stored result for this idempotency key).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/ValidationResult" }
+                  meta: { $ref: "#/components/schemas/Meta" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/labs/{labId}/hints/{index}:
+    parameters:
+      - $ref: "#/components/parameters/LabId"
+      - name: index
+        in: path
+        required: true
+        schema: { type: integer, minimum: 0, maximum: 9 }
+    post:
+      tags: [labs]
+      operationId: revealHint
+      summary: Reveal a hint (must be revealed in order)
+      x-kubedojo-part: 16
+      responses:
+        "200":
+          description: Hint text; revealing the same hint again returns it without a second penalty.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/Hint" }
+                  meta: { $ref: "#/components/schemas/Meta" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/labs/{labId}/ws-ticket:
+    parameters:
+      - $ref: "#/components/parameters/LabId"
+    post:
+      tags: [realtime]
+      operationId: createWsTicket
+      summary: Issue a one-use WebSocket ticket for this lab (30 s)
+      x-kubedojo-part: 14
+      responses:
+        "201":
+          description: Ticket.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/WsTicket" }
+                  meta: { $ref: "#/components/schemas/Meta" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/ws/labs/{labId}:
+    parameters:
+      - $ref: "#/components/parameters/LabId"
+    get:
+      tags: [realtime]
+      operationId: connectLabSocket
+      summary: WebSocket for a lab (protocol v1)
+      description: |
+        Internet-facing through the edge proxy. Requires an allowed `Origin`, then an
+        `auth` frame with a ticket within 3 seconds. See docs/api/websocket.md and
+        docs/api/ws-protocol.schema.json.
+      security: []
+      x-kubedojo-part: 14
+      responses:
+        "101": { description: Switching protocols. }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/admin/content:
+    get:
+      tags: [admin]
+      operationId: listAdminContent
+      summary: Lessons with all imported challenge versions and their status
+      x-kubedojo-part: 18
+      responses:
+        "200":
+          description: Content versions.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/AdminLessonContent" }
+                  meta: { $ref: "#/components/schemas/Meta" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/admin/content/validate:
+    post:
+      tags: [admin]
+      operationId: validateAdminContent
+      summary: Re-validate an imported version (schema + reference solution replay)
+      x-kubedojo-part: 18
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [challengeVersionId]
+              properties:
+                challengeVersionId: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Validation report.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/ContentValidationReport" }
+                  meta: { $ref: "#/components/schemas/Meta" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/admin/content/publish:
+    post:
+      tags: [admin]
+      operationId: publishAdminContent
+      summary: Publish or unpublish an imported version
+      description: Admins cannot edit content text (ADR-0005). Every call is audited.
+      x-kubedojo-part: 18
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [challengeVersionId, action]
+              properties:
+                challengeVersionId: { type: string, format: uuid }
+                action: { type: string, enum: [publish, unpublish] }
+      responses:
+        "200":
+          description: Updated lesson content status.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/AdminLessonContent" }
+                  meta: { $ref: "#/components/schemas/Meta" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/admin/audit:
+    get:
+      tags: [admin]
+      operationId: listAuditLog
+      summary: Audit log, newest first
+      x-kubedojo-part: 18
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Audit entries.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/AuditEntry" }
+                  meta: { $ref: "#/components/schemas/PageMeta" }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+components:
+  securitySchemes:
+    bffAssertion:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Ed25519 (EdDSA) JWT from the BFF. iss=kubedojo-web, aud=kubedojo-api, sub=github:<id>, exp-iat ≤ 60 s.
+    provisionAssertion:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Like bffAssertion but aud=kubedojo-api-provision, with login, name and avatar_url claims.
+
+  parameters:
+    LabId:
+      name: labId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    CourseSlug:
+      name: courseSlug
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Slug" }
+    LessonSlug:
+      name: lessonSlug
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Slug" }
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: Opaque cursor from a previous page's meta.nextCursor.
+      schema: { type: string, maxLength: 512 }
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Client-generated key (UUID recommended). Retries with the same key return the stored result.
+      schema: { type: string, minLength: 8, maxLength: 128, pattern: "^[A-Za-z0-9_-]+$" }
+
+  responses:
+    Unauthenticated:
+      description: Missing, invalid or expired assertion, or identity not provisioned.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    Forbidden:
+      description: Authenticated but not allowed.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    NotFound:
+      description: Does not exist, or is not visible to this user.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    Conflict:
+      description: State conflict (e.g. lab not active, stale challenge version, idempotency key reused with a different request).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    SessionExpired:
+      description: The lab session has expired.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    ValidationFailed:
+      description: Request failed validation.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    RateLimited:
+      description: Too many requests. See the Retry-After header.
+      headers:
+        Retry-After:
+          schema: { type: integer, minimum: 1 }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  schemas:
+    Health:
+      type: object
+      additionalProperties: false
+      required: [status, version, commit]
+      properties:
+        status: { type: string, const: ok }
+        version: { type: string, examples: ["0.1.0"] }
+        commit: { type: string, examples: ["3361896"] }
+
+    Readiness:
+      type: object
+      additionalProperties: false
+      required: [status, checks]
+      properties:
+        status: { type: string, enum: [ready, unavailable] }
+        checks:
+          type: object
+          additionalProperties: false
+          required: [postgres, redis]
+          properties:
+            postgres: { type: string, enum: [ok, error] }
+            redis: { type: string, enum: [ok, error] }
+
+    Meta:
+      type: object
+      required: [requestId]
+      properties:
+        requestId: { type: string }
+
+    PageMeta:
+      type: object
+      required: [requestId, nextCursor]
+      properties:
+        requestId: { type: string }
+        nextCursor: { type: [string, "null"] }
+
+    ErrorCode:
+      type: string
+      enum:
+        - UNAUTHENTICATED
+        - FORBIDDEN
+        - NOT_FOUND
+        - CONFLICT
+        - RATE_LIMITED
+        - SESSION_EXPIRED
+        - UNSUPPORTED_COMMAND
+        - VALIDATION_FAILED
+        - STALE_VERSION
+        - INTERNAL
+
+    ErrorResponse:
+      type: object
+      required: [error, meta]
+      properties:
+        error:
+          type: object
+          required: [code, message, details]
+          properties:
+            code: { $ref: "#/components/schemas/ErrorCode" }
+            message: { type: string }
+            details:
+              type: array
+              items:
+                type: object
+                required: [message]
+                properties:
+                  field: { type: string }
+                  message: { type: string }
+        meta: { $ref: "#/components/schemas/Meta" }
+
+    Slug:
+      type: string
+      pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
+      maxLength: 64
+
+    Handle:
+      type: string
+      pattern: "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$"
+      description: GitHub-style handle; unique case-insensitively.
+
+    GoalId:
+      type: string
+      pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
+      maxLength: 64
+
+    VirtualPath:
+      type: string
+      pattern: "^manifests/[a-z0-9][a-z0-9._-]{0,62}\\.ya?ml$"
+
+    Difficulty:
+      type: string
+      enum: [beginner, intermediate, advanced]
+
+    Role:
+      type: string
+      enum: [learner, admin]
+
+    Theme:
+      type: string
+      enum: [system, dark, light]
+
+    Settings:
+      type: object
+      additionalProperties: false
+      required: [theme, reducedMotion, leaderboardOptIn, profilePublic, analyticsOptOut, timeZone]
+      properties:
+        theme: { $ref: "#/components/schemas/Theme" }
+        reducedMotion: { type: boolean }
+        leaderboardOptIn: { type: boolean }
+        profilePublic: { type: boolean }
+        analyticsOptOut: { type: boolean }
+        timeZone: { type: string, maxLength: 64, description: IANA time zone name, examples: ["Europe/London"] }
+
+    Onboarding:
+      type: object
+      additionalProperties: false
+      properties:
+        experienceLevel: { type: string, enum: [new, some, comfortable] }
+        learningGoal: { type: string, enum: [fundamentals, troubleshooting, certification-prep, work-project, curiosity] }
+
+    Me:
+      type: object
+      required: [id, handle, displayName, avatarUrl, role, createdAt, settings, onboardingCompletedAt]
+      properties:
+        id: { type: string, format: uuid }
+        handle: { $ref: "#/components/schemas/Handle" }
+        displayName: { type: string, maxLength: 80 }
+        avatarUrl: { type: [string, "null"], format: uri, maxLength: 512 }
+        role: { $ref: "#/components/schemas/Role" }
+        createdAt: { type: string, format: date-time }
+        settings: { $ref: "#/components/schemas/Settings" }
+        onboardingCompletedAt: { type: [string, "null"], format: date-time }
+
+    UpdateMeRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        displayName: { type: string, minLength: 1, maxLength: 80 }
+        handle: { $ref: "#/components/schemas/Handle" }
+        settings:
+          type: object
+          additionalProperties: false
+          minProperties: 1
+          properties:
+            theme: { $ref: "#/components/schemas/Theme" }
+            reducedMotion: { type: boolean }
+            leaderboardOptIn: { type: boolean }
+            profilePublic: { type: boolean }
+            analyticsOptOut: { type: boolean }
+            timeZone: { type: string, maxLength: 64 }
+        onboarding: { $ref: "#/components/schemas/Onboarding" }
+        completeOnboarding: { type: boolean, const: true }
+
+    PublicProfile:
+      type: object
+      required: [handle, displayName, avatarUrl, totalXp, completedLessons, achievements, joinedAt]
+      properties:
+        handle: { $ref: "#/components/schemas/Handle" }
+        displayName: { type: string }
+        avatarUrl: { type: [string, "null"], format: uri }
+        totalXp: { type: integer, minimum: 0 }
+        completedLessons: { type: integer, minimum: 0 }
+        achievements:
+          type: array
+          items: { $ref: "#/components/schemas/Achievement" }
+        joinedAt: { type: string, format: date-time }
+
+    CourseSummary:
+      type: object
+      required: [slug, title, summary, difficulty, lessonCount, plannedLessonCount, estimatedMinutes, displayOrder]
+      properties:
+        slug: { $ref: "#/components/schemas/Slug" }
+        title: { type: string }
+        summary: { type: string }
+        difficulty: { $ref: "#/components/schemas/Difficulty" }
+        lessonCount: { type: integer, minimum: 0, description: Published lessons. }
+        plannedLessonCount: { type: integer, minimum: 0, description: "All lessons the course will have, published or not." }
+        estimatedMinutes: { type: integer, minimum: 0 }
+        displayOrder: { type: integer }
+
+    LessonSummary:
+      type: object
+      required: [slug, courseSlug, title, summary, estimatedMinutes, displayOrder, goalTypes]
+      properties:
+        slug: { $ref: "#/components/schemas/Slug" }
+        courseSlug: { $ref: "#/components/schemas/Slug" }
+        title: { type: string }
+        summary: { type: string }
+        estimatedMinutes: { type: integer, minimum: 1 }
+        displayOrder: { type: integer }
+        goalTypes:
+          type: array
+          items: { type: string, enum: [state, answer, observation] }
+
+    CourseDetail:
+      allOf:
+        - $ref: "#/components/schemas/CourseSummary"
+        - type: object
+          required: [description, prerequisites, lessons]
+          properties:
+            description: { type: string, description: Markdown }
+            prerequisites:
+              type: array
+              items: { $ref: "#/components/schemas/Slug" }
+            lessons:
+              type: array
+              items: { $ref: "#/components/schemas/LessonSummary" }
+
+    PublicGoal:
+      type: object
+      description: Learner-facing goal description. Never contains assertions or expected answers.
+      required: [id, type, description]
+      properties:
+        id: { $ref: "#/components/schemas/GoalId" }
+        type: { type: string, enum: [state, answer, observation] }
+        description: { type: string }
+        input: { type: string, enum: [text, number, choice] }
+        choices:
+          type: array
+          items: { type: string }
+
+    LessonDetail:
+      allOf:
+        - $ref: "#/components/schemas/LessonSummary"
+        - type: object
+          required: [challengeVersionId, contentSha256, objectives, prerequisites, prerequisiteLessons, body, references, glossary, goals, hintCount, reward, simulatorVersion, lastReviewedAt, navigation]
+          properties:
+            challengeVersionId: { type: string, format: uuid }
+            contentSha256: { type: string, pattern: "^[a-f0-9]{64}$" }
+            objectives:
+              type: array
+              items: { type: string }
+            prerequisites:
+              type: array
+              items: { type: string, description: "Lesson ID (course/lesson)" }
+            prerequisiteLessons:
+              type: array
+              description: The prerequisites that are published, with titles. Others are not available yet.
+              items: { $ref: "#/components/schemas/LessonRef" }
+            body: { type: string, description: Trusted Markdown (rendered with the safe pipeline). }
+            references:
+              type: array
+              items:
+                type: object
+                required: [title, url]
+                properties:
+                  title: { type: string }
+                  url: { type: string, format: uri }
+            glossary:
+              type: array
+              description: Glossary term IDs related to this lesson.
+              items: { $ref: "#/components/schemas/Slug" }
+            goals:
+              type: array
+              items: { $ref: "#/components/schemas/PublicGoal" }
+            hintCount: { type: integer, minimum: 0 }
+            reward:
+              type: object
+              required: [baseXp, firstTryBonusXp, hintPenaltyPerHintXp]
+              properties:
+                baseXp: { type: integer, minimum: 0 }
+                firstTryBonusXp: { type: integer, minimum: 0 }
+                hintPenaltyPerHintXp: { type: integer, minimum: 0 }
+            simulatorVersion: { type: string }
+            lastReviewedAt: { type: string, format: date }
+            navigation:
+              type: object
+              required: [previous, next]
+              properties:
+                previous:
+                  oneOf:
+                    - $ref: "#/components/schemas/LessonRef"
+                    - type: "null"
+                next:
+                  oneOf:
+                    - $ref: "#/components/schemas/LessonRef"
+                    - type: "null"
+
+    LessonRef:
+      type: object
+      required: [courseSlug, slug, title]
+      properties:
+        courseSlug: { $ref: "#/components/schemas/Slug" }
+        slug: { $ref: "#/components/schemas/Slug" }
+        title: { type: string }
+
+    LessonProgress:
+      type: object
+      required: [lessonId, courseSlug, lessonSlug, status, bestScore, completedAt, lastStartedAt]
+      properties:
+        lessonId: { type: string, description: "course/lesson" }
+        courseSlug: { $ref: "#/components/schemas/Slug" }
+        lessonSlug: { $ref: "#/components/schemas/Slug" }
+        status: { type: string, enum: [not-started, in-progress, completed] }
+        bestScore: { type: [integer, "null"], minimum: 0, maximum: 100 }
+        completedAt: { type: [string, "null"], format: date-time }
+        lastStartedAt: { type: [string, "null"], format: date-time }
+
+    LessonPointer:
+      type: object
+      required: [courseSlug, slug, title]
+      properties:
+        courseSlug: { $ref: "#/components/schemas/Slug" }
+        slug: { $ref: "#/components/schemas/Slug" }
+        title: { type: string }
+        lastActivityAt: { type: string, format: date-time }
+
+    Progress:
+      type: object
+      required: [courses, lessons, totals, continueLesson, recommendedLesson]
+      properties:
+        continueLesson:
+          description: The most recently opened or started lesson that isn't completed.
+          oneOf:
+            - $ref: "#/components/schemas/LessonPointer"
+            - type: "null"
+        recommendedLesson:
+          description: The first published lesson in curriculum order that isn't completed.
+          oneOf:
+            - $ref: "#/components/schemas/LessonPointer"
+            - type: "null"
+        courses:
+          type: array
+          items:
+            type: object
+            required: [courseSlug, completedLessons, totalLessons]
+            properties:
+              courseSlug: { $ref: "#/components/schemas/Slug" }
+              completedLessons: { type: integer, minimum: 0 }
+              totalLessons: { type: integer, minimum: 0 }
+        lessons:
+          type: array
+          items: { $ref: "#/components/schemas/LessonProgress" }
+        totals:
+          type: object
+          required: [totalXp, completedLessons, currentStreak, longestStreak, lastCompletionDate]
+          properties:
+            totalXp: { type: integer, minimum: 0 }
+            completedLessons: { type: integer, minimum: 0 }
+            currentStreak: { type: integer, minimum: 0, description: "0 if the last completion was before yesterday in the learner's time zone." }
+            longestStreak: { type: integer, minimum: 0 }
+            lastCompletionDate: { type: [string, "null"], format: date }
+
+    Achievement:
+      type: object
+      required: [key, title, description, icon, awardedAt]
+      properties:
+        key: { type: string }
+        title: { type: string }
+        description: { type: string }
+        icon: { type: string }
+        awardedAt: { type: [string, "null"], format: date-time }
+
+    ActivityItem:
+      type: object
+      required: [type, occurredAt]
+      properties:
+        type: { type: string, enum: [lesson-opened, lab-started, lesson-completed, achievement-earned, hint-revealed] }
+        lessonId: { type: string }
+        achievementKey: { type: string }
+        xpDelta: { type: integer }
+        occurredAt: { type: string, format: date-time }
+
+    LeaderboardEntry:
+      type: object
+      required: [rank, handle, displayName, avatarUrl, totalXp, completedLessons]
+      properties:
+        rank: { type: integer, minimum: 1 }
+        handle: { $ref: "#/components/schemas/Handle" }
+        displayName: { type: string }
+        avatarUrl: { type: [string, "null"], format: uri }
+        totalXp: { type: integer, minimum: 0 }
+        completedLessons: { type: integer, minimum: 0 }
+
+    LabState:
+      type: string
+      enum: [active, completed, abandoned, expired]
+
+    Lab:
+      type: object
+      required: [id, lessonId, courseSlug, lessonSlug, title, challengeVersionId, state, version, commandSeq, simulatorVersion, startedAt, lastActiveAt, expiresAt, endedAt, hintsUsed]
+      properties:
+        id: { type: string, format: uuid }
+        lessonId: { type: string, description: "course/lesson" }
+        courseSlug: { $ref: "#/components/schemas/Slug" }
+        lessonSlug: { $ref: "#/components/schemas/Slug" }
+        title: { type: string }
+        challengeVersionId: { type: string, format: uuid }
+        state: { $ref: "#/components/schemas/LabState" }
+        version: { type: integer, minimum: 1 }
+        commandSeq: { type: integer, minimum: 0 }
+        simulatorVersion: { type: string }
+        startedAt: { type: string, format: date-time }
+        lastActiveAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        endedAt: { type: [string, "null"], format: date-time }
+        hintsUsed: { type: integer, minimum: 0 }
+
+    LabResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/Lab" }
+        meta: { $ref: "#/components/schemas/Meta" }
+
+    SimResource:
+      type: object
+      description: |
+        A simulated Kubernetes object. Shape follows the Kubernetes API for the supported subset
+        (docs/architecture/simulator-compatibility.md). Kind-specific top-level fields
+        (ConfigMap/Secret `data`, Secret `type`, EndpointSlice `endpoints`/`ports`/`addressType`)
+        are allowed as additional properties.
+      required: [apiVersion, kind, metadata]
+      additionalProperties: true
+      properties:
+        apiVersion: { type: string }
+        kind: { type: string }
+        metadata:
+          type: object
+          required: [name, uid, resourceVersion, creationTimestamp]
+          properties:
+            name: { type: string }
+            namespace: { type: string }
+            uid: { type: string }
+            labels:
+              type: object
+              additionalProperties: { type: string }
+            annotations:
+              type: object
+              additionalProperties: { type: string }
+            ownerReferences:
+              type: array
+              items:
+                type: object
+                required: [apiVersion, kind, name, uid]
+                properties:
+                  apiVersion: { type: string }
+                  kind: { type: string }
+                  name: { type: string }
+                  uid: { type: string }
+                  controller: { type: boolean }
+            resourceVersion: { type: string }
+            generation: { type: integer }
+            creationTimestamp: { type: string, format: date-time }
+        spec: { type: object, additionalProperties: true }
+        status: { type: object, additionalProperties: true }
+
+    Snapshot:
+      type: object
+      required: [labId, version, simulatorVersion, simTime, currentNamespace, resources]
+      properties:
+        labId: { type: string, format: uuid }
+        version: { type: integer, minimum: 1 }
+        simulatorVersion: { type: string }
+        simTime: { type: string, format: date-time, description: "Simulated clock (ADR-0006), not wall time." }
+        currentNamespace: { type: string, description: Namespace of the simulated kubeconfig context. }
+        resources:
+          type: array
+          description: All resources except Events, sorted by kind, namespace, name.
+          items: { $ref: "#/components/schemas/SimResource" }
+
+    SimEvent:
+      type: object
+      required: [seq, version, type, reason, message, involvedObject, occurredAt]
+      properties:
+        seq: { type: integer, minimum: 1 }
+        version: { type: integer, minimum: 1, description: Lab version that produced the event. }
+        type: { type: string, enum: [Normal, Warning] }
+        reason: { type: string }
+        message: { type: string }
+        involvedObject:
+          type: object
+          required: [kind, name]
+          properties:
+            kind: { type: string }
+            namespace: { type: string }
+            name: { type: string }
+        occurredAt: { type: string, format: date-time, description: Simulated time. }
+
+    RunCommandRequest:
+      type: object
+      additionalProperties: false
+      required: [requestId, input]
+      properties:
+        requestId: { type: string, format: uuid }
+        input: { type: string, minLength: 1, maxLength: 16384 }
+
+    CommandResult:
+      type: object
+      required: [requestId, sequence, input, stdout, stderr, exitCode, errorCode, mutated, snapshotVersion, durationMs, executedAt]
+      properties:
+        requestId: { type: string, format: uuid }
+        sequence: { type: integer, minimum: 1 }
+        input: { type: string }
+        stdout: { type: string }
+        stderr: { type: string }
+        exitCode: { type: integer, minimum: 0, maximum: 255 }
+        errorCode:
+          type: [string, "null"]
+          enum: [UNSUPPORTED_COMMAND, VALIDATION_FAILED, NOT_FOUND, CONFLICT, null]
+          description: Set when the command failed for a reason the UI may want to highlight.
+        mutated: { type: boolean, description: Whether this command changed lab state. }
+        snapshotVersion: { type: integer, minimum: 1 }
+        durationMs: { type: integer, minimum: 0 }
+        executedAt: { type: string, format: date-time }
+
+    LabFile:
+      type: object
+      required: [path, content, sizeBytes, updatedAt]
+      properties:
+        path: { $ref: "#/components/schemas/VirtualPath" }
+        content: { type: string }
+        sizeBytes: { type: integer, minimum: 0, maximum: 65536 }
+        updatedAt: { type: string, format: date-time }
+
+    GoalResult:
+      type: object
+      required: [goalId, passed, message]
+      properties:
+        goalId: { $ref: "#/components/schemas/GoalId" }
+        passed: { type: boolean }
+        message: { type: string, description: Learner-facing feedback; never reveals expected answers. }
+
+    ValidationResult:
+      type: object
+      required: [attemptId, passed, score, xpAwarded, goals, labState, evaluatedAt]
+      properties:
+        attemptId: { type: string, format: uuid }
+        passed: { type: boolean }
+        score: { type: integer, minimum: 0, maximum: 100 }
+        xpAwarded: { type: integer, minimum: 0, description: 0 if XP for this lesson was already awarded. }
+        goals:
+          type: array
+          items: { $ref: "#/components/schemas/GoalResult" }
+        labState: { $ref: "#/components/schemas/LabState" }
+        evaluatedAt: { type: string, format: date-time }
+
+    Hint:
+      type: object
+      required: [index, text, penaltyXp, hintsUsed, hintCount]
+      properties:
+        index: { type: integer, minimum: 0 }
+        text: { type: string }
+        penaltyXp: { type: integer, minimum: 0 }
+        hintsUsed: { type: integer, minimum: 0 }
+        hintCount: { type: integer, minimum: 0 }
+
+    WsTicket:
+      type: object
+      required: [ticket, expiresAt, url, protocolVersion]
+      properties:
+        ticket: { type: string, minLength: 43, maxLength: 64, description: "base64url, 256 bits." }
+        expiresAt: { type: string, format: date-time }
+        url: { type: string, description: "Path to connect to, e.g. /api/v1/ws/labs/{labId}" }
+        protocolVersion: { type: integer, const: 1 }
+
+    AdminChallengeVersion:
+      type: object
+      required: [id, version, contentSha256, status, importedAt, publishedAt]
+      properties:
+        id: { type: string, format: uuid }
+        version: { type: integer, minimum: 1 }
+        contentSha256: { type: string, pattern: "^[a-f0-9]{64}$" }
+        status: { type: string, enum: [draft, published, retired] }
+        importedAt: { type: string, format: date-time }
+        publishedAt: { type: [string, "null"], format: date-time }
+
+    AdminLessonContent:
+      type: object
+      required: [lessonId, title, currentVersionId, versions]
+      properties:
+        lessonId: { type: string }
+        title: { type: string }
+        currentVersionId: { type: [string, "null"], format: uuid }
+        versions:
+          type: array
+          items: { $ref: "#/components/schemas/AdminChallengeVersion" }
+
+    ContentValidationReport:
+      type: object
+      required: [challengeVersionId, valid, errors, solutionReplay]
+      properties:
+        challengeVersionId: { type: string, format: uuid }
+        valid: { type: boolean }
+        errors:
+          type: array
+          items:
+            type: object
+            required: [path, message]
+            properties:
+              path: { type: string }
+              message: { type: string }
+        solutionReplay:
+          type: object
+          required: [passed, goals]
+          properties:
+            passed: { type: boolean }
+            goals:
+              type: array
+              items: { $ref: "#/components/schemas/GoalResult" }
+
+    AuditEntry:
+      type: object
+      required: [id, actorUserId, action, entityType, entityId, details, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        actorUserId: { type: [string, "null"], format: uuid }
+        action: { type: string }
+        entityType: { type: string }
+        entityId: { type: string }
+        details: { type: object, description: Redacted; never command text or YAML. }
+        createdAt: { type: string, format: date-time }

@@ -1,0 +1,6 @@
+$ kubectl get deployments.apps -o wide
+--- exit 0
+--- stdout
+NAME    READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES       SELECTOR
+nginx   1/1     1            1           60m   nginx        nginx:1.27   app=nginx
+--- stderr

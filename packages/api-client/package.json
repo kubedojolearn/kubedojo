@@ -1,0 +1,27 @@
+{
+  "name": "@kubedojo/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Typed client for the KubeDojo Go API, generated from docs/api/openapi.yaml",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "openapi-typescript ../../docs/api/openapi.yaml -o src/schema.d.ts && prettier --write src/schema.d.ts --log-level warn",
+    "check:generated": "openapi-typescript ../../docs/api/openapi.yaml -o .schema.check.d.ts --silent && prettier --log-level warn --stdin-filepath src/schema.d.ts < .schema.check.d.ts > .schema.check.formatted.d.ts && cmp -s .schema.check.formatted.d.ts src/schema.d.ts; status=$?; rm -f .schema.check.d.ts .schema.check.formatted.d.ts; if [ $status -ne 0 ]; then echo 'src/schema.d.ts is stale: run pnpm --filter @kubedojo/api-client generate'; exit 1; fi; echo '\u2713 generated client is up to date'",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "openapi-fetch": "0.17.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "openapi-typescript": "7.13.0",
+    "prettier": "3.9.10",
+    "typescript": "5.9.3",
+    "vitest": "5.0.5"
+  }
+}

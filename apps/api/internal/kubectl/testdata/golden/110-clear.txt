@@ -1,0 +1,4 @@
+$ clear
+--- exit 0 [clear]
+--- stdout
+--- stderr

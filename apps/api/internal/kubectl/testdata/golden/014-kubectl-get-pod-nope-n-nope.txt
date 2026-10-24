@@ -1,0 +1,6 @@
+$ kubectl get pod nope -n nope
+--- exit 1 (NOT_FOUND)
+--- stdout
+--- stderr
+Error from server (NotFound): pods "nope" not found
+ⓘ The namespace "nope" doesn't exist. List namespaces with: kubectl get namespaces

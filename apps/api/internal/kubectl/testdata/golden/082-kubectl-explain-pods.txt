@@ -1,0 +1,27 @@
+$ kubectl explain pods
+--- exit 0
+--- stdout
+KIND:       Pod
+VERSION:    v1
+
+DESCRIPTION:
+    Pod is a collection of containers that can run on a host. This resource is
+    created by clients and scheduled onto hosts.
+    
+FIELDS:
+  apiVersion	<string>
+    APIVersion defines the versioned schema of this representation of an object.
+
+  kind	<string>
+    Kind is a string value representing the REST resource this object
+    represents.
+
+  metadata	<ObjectMeta>
+    Standard object's metadata.
+
+  spec	<PodSpec>
+    Specification of the desired behavior of the pod.
+
+  status	<PodStatus>
+    Most recently observed status of the pod. Read-only.
+--- stderr

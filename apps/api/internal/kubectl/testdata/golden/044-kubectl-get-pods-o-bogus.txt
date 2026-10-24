@@ -1,0 +1,5 @@
+$ kubectl get pods -o bogus
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: unable to match a printer suitable for the output format "bogus", allowed formats are: json,name,wide,yaml

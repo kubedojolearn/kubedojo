@@ -1,0 +1,23 @@
+$ kubectl get all -A
+--- exit 0
+--- stdout
+NAMESPACE   NAME                          READY   STATUS             RESTARTS        AGE
+default     pod/nginx-4fzxcz7snh-tbjxs    1/1     Running            0               60m
+default     pod/picky                     0/1     Pending            0               2m
+default     pod/typo                      0/1     ImagePullBackOff   0               5m
+shop        pod/orders-vqtcsddx9v-flhpw   0/1     CrashLoopBackOff   5 (4m50s ago)   10m
+shop        pod/orders-vqtcsddx9v-q7rwf   0/1     CrashLoopBackOff   5 (4m50s ago)   10m
+
+NAMESPACE   NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)        AGE
+default     service/kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP        30d
+default     service/web          ClusterIP   10.96.0.10   <none>        80/TCP         50m
+default     service/web-np       NodePort    10.96.0.11   <none>        80:30080/TCP   33m
+
+NAMESPACE   NAME                     READY   UP-TO-DATE   AVAILABLE   AGE
+default     deployment.apps/nginx    1/1     1            1           60m
+shop        deployment.apps/orders   0/2     2            0           10m
+
+NAMESPACE   NAME                                DESIRED   CURRENT   READY   AGE
+default     replicaset.apps/nginx-4fzxcz7snh    1         1         1       60m
+shop        replicaset.apps/orders-vqtcsddx9v   2         2         0       10m
+--- stderr

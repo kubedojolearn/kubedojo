@@ -1,0 +1,11 @@
+$ kubectl describe ep web
+--- exit 0
+--- stdout
+Name:         web
+Namespace:    default
+Labels:       app=nginx
+Annotations:  <none>
+Subsets:
+  Addresses:  10.244.1.2
+Events:       <none>
+--- stderr

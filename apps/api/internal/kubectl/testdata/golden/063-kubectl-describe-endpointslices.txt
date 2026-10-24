@@ -1,0 +1,40 @@
+$ kubectl describe endpointslices
+--- exit 0
+--- stdout
+Name:         web-np-4fhqh
+Namespace:    default
+Labels:       endpointslice.kubernetes.io/managed-by=endpointslice-controller.k8s.io
+              kubernetes.io/service-name=web-np
+Annotations:  <none>
+AddressType:  IPv4
+Ports:
+  Name  Port  Protocol
+  ----  ----  --------
+  http  80    TCP
+Endpoints:
+  - Addresses:  10.244.1.2
+    Conditions:
+      Ready:    true
+    TargetRef:  Pod/nginx-4fzxcz7snh-tbjxs
+    NodeName:   node-2
+Events:         <none>
+
+
+Name:         web-sj9wz
+Namespace:    default
+Labels:       endpointslice.kubernetes.io/managed-by=endpointslice-controller.k8s.io
+              kubernetes.io/service-name=web
+Annotations:  <none>
+AddressType:  IPv4
+Ports:
+  Name     Port  Protocol
+  ----     ----  --------
+  <unset>  80    TCP
+Endpoints:
+  - Addresses:  10.244.1.2
+    Conditions:
+      Ready:    true
+    TargetRef:  Pod/nginx-4fzxcz7snh-tbjxs
+    NodeName:   node-2
+Events:         <none>
+--- stderr

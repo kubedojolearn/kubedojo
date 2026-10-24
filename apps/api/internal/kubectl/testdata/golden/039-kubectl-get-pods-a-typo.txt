@@ -1,0 +1,5 @@
+$ kubectl get pods -A typo
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: a resource cannot be retrieved by name across all namespaces

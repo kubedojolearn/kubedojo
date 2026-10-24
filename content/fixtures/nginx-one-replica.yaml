@@ -1,0 +1,62 @@
+schemaVersion: 1
+simulatorVersion: kubernetes-1.37-subset-1
+description: Three ready nodes and an nginx Deployment with one replica in the default namespace.
+resources:
+  - apiVersion: v1
+    kind: Node
+    metadata:
+      name: node-1
+      labels: { kubernetes.io/hostname: node-1, node-role.kubernetes.io/control-plane: "" }
+    spec:
+      taints:
+        - { key: node-role.kubernetes.io/control-plane, effect: NoSchedule }
+    status:
+      capacity: { cpu: "4", memory: 8Gi, pods: "110" }
+      allocatable: { cpu: "3800m", memory: 7Gi, pods: "110" }
+      conditions:
+        - { type: Ready, status: "True" }
+    ageSeconds: 864000
+  - apiVersion: v1
+    kind: Node
+    metadata:
+      name: node-2
+      labels: { kubernetes.io/hostname: node-2 }
+    status:
+      capacity: { cpu: "4", memory: 8Gi, pods: "110" }
+      allocatable: { cpu: "3800m", memory: 7Gi, pods: "110" }
+      conditions:
+        - { type: Ready, status: "True" }
+    ageSeconds: 864000
+  - apiVersion: v1
+    kind: Node
+    metadata:
+      name: node-3
+      labels: { kubernetes.io/hostname: node-3 }
+    status:
+      capacity: { cpu: "4", memory: 8Gi, pods: "110" }
+      allocatable: { cpu: "3800m", memory: 7Gi, pods: "110" }
+      conditions:
+        - { type: Ready, status: "True" }
+    ageSeconds: 864000
+  - apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: nginx
+      namespace: default
+      labels: { app: nginx }
+    spec:
+      replicas: 1
+      selector:
+        matchLabels: { app: nginx }
+      template:
+        metadata:
+          labels: { app: nginx }
+        spec:
+          containers:
+            - name: nginx
+              image: nginx:1.27
+              ports:
+                - containerPort: 80
+              resources:
+                requests: { cpu: 100m, memory: 64Mi }
+    ageSeconds: 3600

@@ -1,0 +1,5 @@
+$ kubectl config use-context prod
+--- exit 1 (NOT_FOUND)
+--- stdout
+--- stderr
+error: no context exists with the name: "prod"

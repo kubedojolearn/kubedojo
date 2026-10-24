@@ -1,0 +1,5 @@
+$ kubectl explain pod.spec.nope
+--- exit 1 (NOT_FOUND)
+--- stdout
+--- stderr
+error: field "nope" does not exist

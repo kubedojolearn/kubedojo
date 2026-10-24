@@ -1,0 +1,5 @@
+$ kubectl rollout status svc/web
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: no rollout status for services: the simulator supports rollouts of deployments only

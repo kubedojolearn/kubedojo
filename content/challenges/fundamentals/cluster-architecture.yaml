@@ -1,0 +1,92 @@
+schemaVersion: 1
+id: fundamentals/cluster-architecture
+version: 1
+course: fundamentals
+lesson: cluster-architecture
+title: How a cluster is put together
+summary: Meet the control plane and the worker nodes, and find them in a live (simulated) cluster.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 10
+lastReviewed: 2026-10-23
+objectives:
+  - Name the control-plane components and say what each one does
+  - List the nodes in a cluster and tell control-plane nodes from workers
+  - Explain where a cluster stores its state
+glossary: [cluster, node, control-plane, pod, etcd, api-server, scheduler, controller, kubectl]
+body: |
+  A Kubernetes **cluster** is a group of machines, called **nodes**, that run your applications
+  and a set of components that decide what should run where. Those two jobs are split into two halves.
+
+  ## The control plane decides
+
+  The **control plane** is the cluster's brain. It doesn't run your application; it keeps track of
+  what you asked for and works to make it happen.
+
+  | Component | What it does |
+  | --- | --- |
+  | `kube-apiserver` | The front door. Every request, from you or from inside the cluster, goes through it. |
+  | `etcd` | A key-value database that stores the cluster's state: every object and its settings. |
+  | `kube-scheduler` | Picks a node for each new Pod, based on what the Pod needs and what each node has free. |
+  | `kube-controller-manager` | Runs *controllers*, loops that compare what you asked for with what exists and fix the difference. |
+
+  ## Worker nodes do the work
+
+  **Worker nodes** run your containers, grouped into **Pods**. Each node runs an agent called the
+  kubelet, which starts the Pods the scheduler assigned to it and reports back how they're doing.
+
+  In this cluster the control-plane components themselves run as Pods in the `kube-system`
+  namespace, on a node reserved for them. That's how many real clusters are set up too.
+
+  ## Look around
+
+  Use the terminal to explore:
+
+  ```sh
+  kubectl get nodes
+  kubectl get pods -n kube-system
+  ```
+
+  Then answer the two questions in the goals panel. You can look things up as many times as you like.
+
+  > **Simulated cluster:** the control-plane Pods here are part of the simulation and can't be
+  > changed. On a real cluster they're running software you could inspect or, carefully, restart.
+references:
+  - title: Cluster architecture (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/architecture/
+  - title: Kubernetes components (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/overview/components/
+initialFixture: fixtures/three-node-cluster.yaml
+terminal:
+  allowedFamilies: [get, describe, explain, api-resources, cluster-info, version, config, logs, events]
+goals:
+  - id: node-count
+    type: answer
+    description: Count the nodes in this cluster.
+    prompt: How many nodes does this cluster have?
+    input: number
+    failureMessage: Not quite. Run `kubectl get nodes` and count the rows.
+    expected:
+      count: { kind: Node }
+  - id: state-store
+    type: answer
+    description: Identify where the cluster stores its state.
+    prompt: Which control-plane component stores the cluster's state?
+    input: choice
+    choices: [kube-apiserver, etcd, kube-scheduler, kube-controller-manager]
+    failureMessage: Look back at the table in the lesson. Which component is a database?
+    expected:
+      static: etcd
+hints:
+  - "`kubectl get nodes` lists every node in the cluster."
+  - "`kubectl get pods -n kube-system` shows the control-plane components running as Pods."
+solution:
+  commands:
+    - kubectl get nodes
+    - kubectl get pods -n kube-system
+  answers:
+    node-count: "3"
+    state-store: etcd
+reward:
+  baseXP: 50
+  firstTryBonusXP: 10
+  hintPenaltyPerHintXP: 5

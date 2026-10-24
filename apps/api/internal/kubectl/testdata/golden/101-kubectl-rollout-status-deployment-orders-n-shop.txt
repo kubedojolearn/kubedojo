@@ -1,0 +1,6 @@
+$ kubectl rollout status deployment orders -n shop
+--- exit 1
+--- stdout
+Waiting for deployment "orders" rollout to finish: 0 of 2 updated replicas are available...
+--- stderr
+ⓘ The simulated cluster is fully reconciled, so this rollout won't progress until something changes. Look at the Pods: kubectl get pods -l app=orders

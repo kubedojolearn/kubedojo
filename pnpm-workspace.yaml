@@ -1,0 +1,10 @@
+packages:
+  - apps/web
+  - packages/*
+
+# Dependencies allowed to run install scripts. Everything else is blocked (pnpm 10 default).
+onlyBuiltDependencies: []
+ignoredBuiltDependencies:
+  - sharp
+  - unrs-resolver
+  - lefthook

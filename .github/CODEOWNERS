@@ -1,0 +1,15 @@
+# Review owners. Security-sensitive paths require a maintainer review (see docs/security/threat-model.md).
+# Replace @kubedojolearn/maintainers with individual handles if the team does not exist.
+*                                   @kubedojolearn/maintainers
+
+/apps/api/internal/auth/            @kubedojolearn/maintainers
+/apps/api/internal/commands/        @kubedojolearn/maintainers
+/apps/api/internal/simulator/       @kubedojolearn/maintainers
+/apps/api/db/migrations/            @kubedojolearn/maintainers
+/apps/web/lib/auth/                 @kubedojolearn/maintainers
+/apps/web/app/api/                  @kubedojolearn/maintainers
+/docs/security/                     @kubedojolearn/maintainers
+/docs/adr/                          @kubedojolearn/maintainers
+/.github/                           @kubedojolearn/maintainers
+/compose.yaml                       @kubedojolearn/maintainers
+/infra/                             @kubedojolearn/maintainers

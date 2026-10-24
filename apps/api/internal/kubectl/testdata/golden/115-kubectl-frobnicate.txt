@@ -1,0 +1,6 @@
+$ kubectl frobnicate
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: unknown command "frobnicate" for "kubectl"
+Run 'kubectl help' for the commands the simulator supports.

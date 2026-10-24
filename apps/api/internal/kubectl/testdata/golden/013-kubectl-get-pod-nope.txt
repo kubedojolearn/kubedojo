@@ -1,0 +1,5 @@
+$ kubectl get pod nope
+--- exit 1 (NOT_FOUND)
+--- stdout
+--- stderr
+Error from server (NotFound): pods "nope" not found

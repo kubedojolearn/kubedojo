@@ -1,0 +1,7 @@
+$ kubectl get pods -o name
+--- exit 0
+--- stdout
+pod/nginx-4fzxcz7snh-tbjxs
+pod/picky
+pod/typo
+--- stderr

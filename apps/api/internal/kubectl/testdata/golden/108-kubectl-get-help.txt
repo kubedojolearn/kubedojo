@@ -1,0 +1,25 @@
+$ kubectl get --help
+--- exit 0
+--- stdout
+Display one or many resources.
+
+Examples:
+  kubectl get pods
+  kubectl get pods -o wide
+  kubectl get deployment nginx -o yaml
+  kubectl get pods,services -n kube-system
+  kubectl get all -A
+  kubectl get pods -l app=nginx --show-labels
+
+Options:
+  -A, --all-namespaces   List across all namespaces
+  -l, --selector         Label selector (=, ==, !=, in, notin, exists, !key)
+  -o, --output           wide | yaml | json | name
+      --show-labels      Add a LABELS column
+      --no-headers       Omit the header row
+      --sort-by          metadata.name or metadata.creationTimestamp
+
+Resource types: pods (po), deployments (deploy), replicasets (rs), services (svc),
+namespaces (ns), nodes (no), configmaps (cm), secrets, endpointslices, endpoints (ep),
+events (ev), all
+--- stderr

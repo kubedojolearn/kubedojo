@@ -1,0 +1,35 @@
+$ kubectl describe pod picky
+--- exit 0
+--- stdout
+Name:             picky
+Namespace:        default
+Priority:         0
+Service Account:  default
+Node:             <none>
+Labels:           <none>
+Annotations:      <none>
+Status:           Pending
+IP:
+IPs:              <none>
+Containers:
+  web:
+    Image:          nginx:1.27
+    Port:           <none>
+    Host Port:      <none>
+    State:          <none>
+    Ready:          False
+    Restart Count:  0
+    Environment:    <none>
+    Mounts:         <none>
+Conditions:
+  Type           Status
+  PodScheduled   False
+Volumes:         <none>
+QoS Class:       BestEffort
+Node-Selectors:  disktype=ssd
+Tolerations:     <none>
+Events:
+  Type     Reason            Age   From               Message
+  ----     ------            ----  ----               -------
+  Warning  FailedScheduling  2m    default-scheduler  0/3 nodes are available: 1 node(s) had untolerated taint {node-role.kubernetes.io/control-plane: }, 2 node(s) didn't match Pod's node affinity/selector.
+--- stderr

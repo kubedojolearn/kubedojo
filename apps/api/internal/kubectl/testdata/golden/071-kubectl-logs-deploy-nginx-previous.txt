@@ -1,0 +1,5 @@
+$ kubectl logs deploy/nginx --previous
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+Error from server (BadRequest): previous terminated container "nginx" in pod "nginx-4fzxcz7snh-tbjxs" not found

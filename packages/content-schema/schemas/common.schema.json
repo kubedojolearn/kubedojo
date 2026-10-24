@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kubedojo.dev/schemas/content/common.schema.json",
+  "title": "Shared definitions for KubeDojo content",
+  "$defs": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "maxLength": 64
+    },
+    "lessonId": {
+      "description": "<course-slug>/<lesson-slug>",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*/[a-z0-9]+(-[a-z0-9]+)*$",
+      "maxLength": 129
+    },
+    "simulatorVersion": {
+      "type": "string",
+      "enum": ["kubernetes-1.37-subset-1"]
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": ["beginner", "intermediate", "advanced"]
+    },
+    "markdown": {
+      "description": "Trusted Markdown rendered by the safe pipeline (no MDX, raw HTML sanitized).",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 50000
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "Namespace",
+        "Node",
+        "Pod",
+        "Deployment",
+        "ReplicaSet",
+        "Service",
+        "EndpointSlice",
+        "Endpoints",
+        "ConfigMap",
+        "Secret"
+      ]
+    },
+    "dnsSubdomain": {
+      "type": "string",
+      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$",
+      "maxLength": 253
+    },
+    "dnsLabel": {
+      "type": "string",
+      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+      "maxLength": 63
+    },
+    "labelMap": {
+      "type": "object",
+      "maxProperties": 64,
+      "propertyNames": {
+        "pattern": "^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?[A-Za-z0-9]([-A-Za-z0-9_.]*[A-Za-z0-9])?$",
+        "maxLength": 317
+      },
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?$",
+        "maxLength": 63
+      }
+    },
+    "annotationMap": {
+      "type": "object",
+      "maxProperties": 64,
+      "propertyNames": { "maxLength": 317 },
+      "additionalProperties": { "type": "string", "maxLength": 4096 }
+    },
+    "virtualPath": {
+      "type": "string",
+      "pattern": "^manifests/[a-z0-9][a-z0-9._-]{0,62}\\.ya?ml$"
+    },
+    "virtualFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "content"],
+      "properties": {
+        "path": { "$ref": "#/$defs/virtualPath" },
+        "content": { "type": "string", "maxLength": 65536 }
+      }
+    }
+  }
+}

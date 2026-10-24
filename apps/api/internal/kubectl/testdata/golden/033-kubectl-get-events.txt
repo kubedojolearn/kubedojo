@@ -1,0 +1,18 @@
+$ kubectl get events
+--- exit 0
+--- stdout
+LAST SEEN   TYPE      REASON              OBJECT                        MESSAGE
+60m         Normal    ScalingReplicaSet   deployment/nginx              Scaled up replica set nginx-4fzxcz7snh from 0 to 1
+60m         Normal    SuccessfulCreate    replicaset/nginx-4fzxcz7snh   Created pod: nginx-4fzxcz7snh-tbjxs
+60m         Normal    Scheduled           pod/nginx-4fzxcz7snh-tbjxs    Successfully assigned default/nginx-4fzxcz7snh-tbjxs to node-2
+60m         Normal    Pulled              pod/nginx-4fzxcz7snh-tbjxs    Container image "nginx:1.27" already present on machine (simulated)
+60m         Normal    Created             pod/nginx-4fzxcz7snh-tbjxs    Created container: nginx
+60m         Normal    Started             pod/nginx-4fzxcz7snh-tbjxs    Started container nginx
+5m          Normal    Scheduled           pod/typo                      Successfully assigned default/typo to node-2
+5m          Normal    Pulling             pod/typo                      Pulling image "ngnix:1.27"
+5m          Warning   Failed              pod/typo                      Failed to pull image "ngnix:1.27": rpc error: code = NotFound desc = failed to pull and unpack image "ngnix:1.27": not found (simulated registry)
+5m          Warning   Failed              pod/typo                      Error: ErrImagePull
+5m          Normal    BackOff             pod/typo                      Back-off pulling image "ngnix:1.27"
+5m          Warning   Failed              pod/typo                      Error: ImagePullBackOff
+2m          Warning   FailedScheduling    pod/picky                     0/3 nodes are available: 1 node(s) had untolerated taint {node-role.kubernetes.io/control-plane: }, 2 node(s) didn't match Pod's node affinity/selector.
+--- stderr

@@ -1,0 +1,6 @@
+$ kubectl events --for deployment/nginx
+--- exit 0
+--- stdout
+LAST SEEN   TYPE     REASON              OBJECT             MESSAGE
+60m         Normal   ScalingReplicaSet   deployment/nginx   Scaled up replica set nginx-4fzxcz7snh from 0 to 1
+--- stderr

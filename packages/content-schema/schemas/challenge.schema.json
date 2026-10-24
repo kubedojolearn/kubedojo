@@ -1,0 +1,627 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kubedojo.dev/schemas/content/challenge.schema.json",
+  "title": "KubeDojo challenge (lesson + lab definition)",
+  "description": "content/challenges/<course>/<lesson>.yaml. Fields under goals, hints and solution are hidden from learners and never sent to browsers except hint text after reveal. See ADR-0005 and ADR-0007.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "version",
+    "course",
+    "lesson",
+    "title",
+    "summary",
+    "simulatorVersion",
+    "estimatedMinutes",
+    "lastReviewed",
+    "objectives",
+    "body",
+    "initialFixture",
+    "goals",
+    "hints",
+    "solution",
+    "reward"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "id": {
+      "description": "Must equal <course>/<lesson> (checked by the content validator).",
+      "$ref": "common.schema.json#/$defs/lessonId"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "course": {
+      "$ref": "common.schema.json#/$defs/slug"
+    },
+    "lesson": {
+      "$ref": "common.schema.json#/$defs/slug"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 80
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 200
+    },
+    "simulatorVersion": {
+      "$ref": "common.schema.json#/$defs/simulatorVersion"
+    },
+    "estimatedMinutes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 120
+    },
+    "lastReviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "objectives": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {
+        "type": "string",
+        "minLength": 5,
+        "maxLength": 200
+      }
+    },
+    "prerequisites": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "common.schema.json#/$defs/lessonId"
+      }
+    },
+    "body": {
+      "$ref": "common.schema.json#/$defs/markdown"
+    },
+    "references": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "url"],
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://"
+          }
+        }
+      }
+    },
+    "initialFixture": {
+      "description": "Path relative to content/, e.g. fixtures/nginx-one-replica.yaml",
+      "type": "string",
+      "pattern": "^fixtures/[a-z0-9][a-z0-9/_-]*\\.yaml$"
+    },
+    "initialFiles": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "$ref": "common.schema.json#/$defs/virtualFile"
+      }
+    },
+    "terminal": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allowedFamilies": {
+          "description": "If set, only these command families are accepted in this lab; others return UNSUPPORTED with a lesson-specific message. Omit to allow every supported command.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/commandVerb"
+          }
+        }
+      }
+    },
+    "goals": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10,
+      "items": {
+        "$ref": "#/$defs/goal"
+      }
+    },
+    "hints": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "string",
+        "minLength": 5,
+        "maxLength": 500
+      }
+    },
+    "solution": {
+      "description": "Hidden reference solution replayed in CI; must make every goal pass.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commands"],
+      "properties": {
+        "files": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "$ref": "common.schema.json#/$defs/virtualFile"
+          }
+        },
+        "commands": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          }
+        },
+        "answers": {
+          "description": "goalId -> answer. Required for answer goals with a static expected value; path and count answers are computed from the replayed state.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 256
+          }
+        }
+      }
+    },
+    "reward": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseXP", "firstTryBonusXP", "hintPenaltyPerHintXP"],
+      "properties": {
+        "baseXP": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "firstTryBonusXP": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 500
+        },
+        "hintPenaltyPerHintXP": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 500
+        }
+      }
+    },
+    "glossary": {
+      "description": "Glossary term IDs (content/glossary.yaml) shown with the lesson.",
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 20,
+      "items": {
+        "$ref": "common.schema.json#/$defs/slug"
+      }
+    }
+  },
+  "$defs": {
+    "commandVerb": {
+      "type": "string",
+      "enum": [
+        "get",
+        "describe",
+        "logs",
+        "events",
+        "explain",
+        "api-resources",
+        "cluster-info",
+        "version",
+        "config",
+        "run",
+        "create",
+        "apply",
+        "delete",
+        "expose",
+        "scale",
+        "set",
+        "rollout",
+        "label",
+        "annotate"
+      ]
+    },
+    "resourcePath": {
+      "description": "Dot path with [n] list indexes and [\"key\"] map keys. No wildcards or expressions.",
+      "type": "string",
+      "maxLength": 256,
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*|\\[[0-9]+\\]|\\[\"[^\"\\]]+\"\\])*$"
+    },
+    "labelSelector": {
+      "description": "kubectl -l syntax: equality (a=b, a!=b) and set-based (a in (x,y), !a, a).",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "$ref": "common.schema.json#/$defs/kind"
+        },
+        "namespace": {
+          "$ref": "common.schema.json#/$defs/dnsLabel"
+        },
+        "name": {
+          "$ref": "common.schema.json#/$defs/dnsSubdomain"
+        },
+        "labelSelector": {
+          "$ref": "#/$defs/labelSelector"
+        }
+      },
+      "oneOf": [
+        {
+          "required": ["name"],
+          "not": {
+            "required": ["labelSelector"]
+          }
+        },
+        {
+          "required": ["labelSelector"],
+          "not": {
+            "required": ["name"]
+          }
+        }
+      ]
+    },
+    "scalar": {
+      "type": ["string", "number", "boolean"]
+    },
+    "assertion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "operator"],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/resourcePath"
+        },
+        "operator": {
+          "enum": [
+            "equals",
+            "notEquals",
+            "exists",
+            "notExists",
+            "in",
+            "contains",
+            "greaterThanOrEqual",
+            "lessThanOrEqual",
+            "lengthEquals",
+            "lengthGreaterThanOrEqual"
+          ]
+        },
+        "value": {}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "operator": {
+                "enum": ["exists", "notExists"]
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": ["value"]
+            }
+          },
+          "else": {
+            "required": ["value"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operator": {
+                "const": "in"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "$ref": "#/$defs/scalar"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operator": {
+                "enum": ["equals", "notEquals", "contains", "greaterThanOrEqual", "lessThanOrEqual"]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "$ref": "#/$defs/scalar"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operator": {
+                "enum": ["lengthEquals", "lengthGreaterThanOrEqual"]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "stateGoal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "description", "target"],
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/slug"
+        },
+        "description": {
+          "description": "Learner-facing; shown in the goals panel. Must not reveal the expected answer.",
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 300
+        },
+        "failureMessage": {
+          "description": "Learner-facing feedback when the goal fails. Must not reveal the expected answer.",
+          "type": "string",
+          "maxLength": 300
+        },
+        "type": {
+          "const": "state"
+        },
+        "target": {
+          "$ref": "#/$defs/target"
+        },
+        "absent": {
+          "type": "boolean"
+        },
+        "assertions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/$defs/assertion"
+          }
+        }
+      },
+      "oneOf": [
+        {
+          "required": ["absent"],
+          "properties": {
+            "absent": {
+              "const": true
+            }
+          },
+          "not": {
+            "required": ["assertions"]
+          }
+        },
+        {
+          "required": ["assertions"],
+          "not": {
+            "required": ["absent"]
+          }
+        }
+      ]
+    },
+    "answerGoal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "description", "prompt", "input", "expected"],
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/slug"
+        },
+        "description": {
+          "description": "Learner-facing; shown in the goals panel. Must not reveal the expected answer.",
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 300
+        },
+        "failureMessage": {
+          "description": "Learner-facing feedback when the goal fails. Must not reveal the expected answer.",
+          "type": "string",
+          "maxLength": 300
+        },
+        "type": {
+          "const": "answer"
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 300
+        },
+        "input": {
+          "enum": ["text", "number", "choice"]
+        },
+        "caseSensitive": {
+          "type": "boolean",
+          "default": true
+        },
+        "choices": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 120
+          }
+        },
+        "expected": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "maxProperties": 1,
+          "properties": {
+            "static": {
+              "$ref": "#/$defs/scalar"
+            },
+            "path": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["target", "path"],
+              "properties": {
+                "target": {
+                  "$ref": "#/$defs/target"
+                },
+                "path": {
+                  "$ref": "#/$defs/resourcePath"
+                }
+              }
+            },
+            "count": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind"],
+              "properties": {
+                "kind": {
+                  "$ref": "common.schema.json#/$defs/kind"
+                },
+                "namespace": {
+                  "$ref": "common.schema.json#/$defs/dnsLabel"
+                },
+                "labelSelector": {
+                  "$ref": "#/$defs/labelSelector"
+                }
+              }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "input": {
+                "const": "choice"
+              }
+            }
+          },
+          "then": {
+            "required": ["choices"],
+            "properties": {
+              "expected": {
+                "required": ["static"]
+              }
+            }
+          },
+          "else": {
+            "not": {
+              "required": ["choices"]
+            }
+          }
+        }
+      ]
+    },
+    "observationGoal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "description", "command"],
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/slug"
+        },
+        "description": {
+          "description": "Learner-facing; shown in the goals panel. Must not reveal the expected answer.",
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 300
+        },
+        "failureMessage": {
+          "description": "Learner-facing feedback when the goal fails. Must not reveal the expected answer.",
+          "type": "string",
+          "maxLength": 300
+        },
+        "type": {
+          "const": "observation"
+        },
+        "command": {
+          "description": "Matched against the parsed command, never the raw text. Only successful (exit 0) commands count.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["verb"],
+          "properties": {
+            "verb": {
+              "$ref": "#/$defs/commandVerb"
+            },
+            "subverb": {
+              "type": "string",
+              "pattern": "^[a-z-]+$",
+              "maxLength": 32
+            },
+            "kind": {
+              "$ref": "common.schema.json#/$defs/kind"
+            },
+            "namespace": {
+              "$ref": "common.schema.json#/$defs/dnsLabel"
+            },
+            "name": {
+              "$ref": "common.schema.json#/$defs/dnsSubdomain"
+            },
+            "output": {
+              "enum": ["table", "wide", "yaml", "json", "name"]
+            },
+            "setsNamespace": {
+              "$ref": "common.schema.json#/$defs/dnsLabel",
+              "description": "For config set-context --current --namespace"
+            }
+          }
+        }
+      }
+    },
+    "goal": {
+      "type": "object",
+      "required": ["type"],
+      "discriminator": {
+        "propertyName": "type"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/stateGoal"
+        },
+        {
+          "$ref": "#/$defs/answerGoal"
+        },
+        {
+          "$ref": "#/$defs/observationGoal"
+        }
+      ]
+    }
+  }
+}

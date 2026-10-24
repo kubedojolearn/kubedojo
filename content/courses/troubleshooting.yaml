@@ -1,0 +1,15 @@
+schemaVersion: 1
+slug: troubleshooting
+title: Troubleshooting
+summary: Fix the failures you'll meet in real clusters, from image pull errors to a full outage.
+description: |
+  Every lab in this course starts broken. You'll diagnose image pull failures, crashing containers, mislabelled Pods and stuck rollouts, then put it all together to bring a broken application back online.
+difficulty: intermediate
+displayOrder: 6
+prerequisites: [networking, configuration]
+lessons:
+  - image-pull-failure
+  - crashloopbackoff
+  - wrong-labels
+  - replica-mismatch
+  - capstone-recovery

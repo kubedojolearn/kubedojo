@@ -1,0 +1,7 @@
+$ kubectl get rs -A
+--- exit 0
+--- stdout
+NAMESPACE   NAME                DESIRED   CURRENT   READY   AGE
+default     nginx-4fzxcz7snh    1         1         1       60m
+shop        orders-vqtcsddx9v   2         2         0       10m
+--- stderr

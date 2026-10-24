@@ -1,0 +1,11 @@
+$ kubectl events -A --types=Warning
+--- exit 0
+--- stdout
+NAMESPACE   LAST SEEN   TYPE      REASON             OBJECT                        MESSAGE
+shop        10m         Warning   BackOff            pod/orders-vqtcsddx9v-flhpw   Back-off restarting failed container orders in pod orders-vqtcsddx9v-flhpw_shop(d868da38-8672-4b56-a4d2-1225283af2e8)
+shop        10m         Warning   BackOff            pod/orders-vqtcsddx9v-q7rwf   Back-off restarting failed container orders in pod orders-vqtcsddx9v-q7rwf_shop(51ce3318-3622-40f6-880e-43ed5da9a60f)
+default     5m          Warning   Failed             pod/typo                      Failed to pull image "ngnix:1.27": rpc error: code = NotFound desc = failed to pull and unpack image "ngnix:1.27": not found (simulated registry)
+default     5m          Warning   Failed             pod/typo                      Error: ErrImagePull
+default     5m          Warning   Failed             pod/typo                      Error: ImagePullBackOff
+default     2m          Warning   FailedScheduling   pod/picky                     0/3 nodes are available: 1 node(s) had untolerated taint {node-role.kubernetes.io/control-plane: }, 2 node(s) didn't match Pod's node affinity/selector.
+--- stderr

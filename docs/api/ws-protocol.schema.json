@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kubedojo.dev/schemas/ws-protocol-v1.json",
+  "title": "KubeDojo lab WebSocket protocol v1",
+  "description": "Every frame is a UTF-8 JSON text frame of at most 32 KiB. See docs/api/websocket.md.",
+  "oneOf": [{ "$ref": "#/$defs/ClientMessage" }, { "$ref": "#/$defs/ServerMessage" }],
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "version": { "type": "integer", "minimum": 1 },
+    "errorCode": {
+      "type": "string",
+      "enum": [
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "CONFLICT",
+        "RATE_LIMITED",
+        "SESSION_EXPIRED",
+        "UNSUPPORTED_COMMAND",
+        "VALIDATION_FAILED",
+        "STALE_VERSION",
+        "PROTOCOL_ERROR",
+        "INTERNAL"
+      ]
+    },
+
+    "ClientMessage": {
+      "oneOf": [{ "$ref": "#/$defs/Auth" }, { "$ref": "#/$defs/CommandRun" }, { "$ref": "#/$defs/ClientHeartbeat" }]
+    },
+    "ServerMessage": {
+      "oneOf": [
+        { "$ref": "#/$defs/AuthOk" },
+        { "$ref": "#/$defs/CommandResult" },
+        { "$ref": "#/$defs/StateChanged" },
+        { "$ref": "#/$defs/ServerHeartbeat" },
+        { "$ref": "#/$defs/Error" }
+      ]
+    },
+
+    "Auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "protocolVersion", "ticket"],
+      "properties": {
+        "type": { "const": "auth" },
+        "protocolVersion": { "const": 1 },
+        "ticket": { "type": "string", "minLength": 43, "maxLength": 64, "pattern": "^[A-Za-z0-9_-]+$" }
+      }
+    },
+    "CommandRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "requestId", "input"],
+      "properties": {
+        "type": { "const": "command.run" },
+        "requestId": { "$ref": "#/$defs/uuid" },
+        "input": { "type": "string", "minLength": 1, "maxLength": 16384 }
+      }
+    },
+    "ClientHeartbeat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "const": "heartbeat" }
+      }
+    },
+
+    "AuthOk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "protocolVersion", "sessionId", "snapshotVersion", "heartbeatIntervalMs"],
+      "properties": {
+        "type": { "const": "auth.ok" },
+        "protocolVersion": { "const": 1 },
+        "sessionId": { "$ref": "#/$defs/uuid" },
+        "snapshotVersion": { "$ref": "#/$defs/version" },
+        "heartbeatIntervalMs": { "type": "integer", "minimum": 1000 }
+      }
+    },
+    "CommandResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "requestId",
+        "sequence",
+        "stdout",
+        "stderr",
+        "exitCode",
+        "errorCode",
+        "mutated",
+        "snapshotVersion"
+      ],
+      "properties": {
+        "type": { "const": "command.result" },
+        "requestId": { "$ref": "#/$defs/uuid" },
+        "sequence": { "type": "integer", "minimum": 1 },
+        "stdout": { "type": "string" },
+        "stderr": { "type": "string" },
+        "exitCode": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "errorCode": {
+          "oneOf": [
+            { "type": "null" },
+            { "enum": ["UNSUPPORTED_COMMAND", "VALIDATION_FAILED", "NOT_FOUND", "CONFLICT"] }
+          ]
+        },
+        "mutated": { "type": "boolean" },
+        "snapshotVersion": { "$ref": "#/$defs/version" },
+        "deduplicated": {
+          "type": "boolean",
+          "description": "true when this requestId had already executed and the stored result is returned"
+        }
+      }
+    },
+    "StateChanged": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "snapshotVersion", "eventCount"],
+      "properties": {
+        "type": { "const": "state.changed" },
+        "snapshotVersion": { "$ref": "#/$defs/version" },
+        "eventCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "ServerHeartbeat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "timestamp"],
+      "properties": {
+        "type": { "const": "heartbeat" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "code", "message"],
+      "properties": {
+        "type": { "const": "error" },
+        "code": { "$ref": "#/$defs/errorCode" },
+        "message": { "type": "string" },
+        "requestId": { "$ref": "#/$defs/uuid" },
+        "retryAfterMs": { "type": "integer", "minimum": 0 },
+        "fatal": { "type": "boolean", "description": "true when the server will close the connection after this frame" }
+      }
+    }
+  }
+}

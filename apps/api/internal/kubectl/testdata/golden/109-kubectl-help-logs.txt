@@ -1,0 +1,16 @@
+$ kubectl help logs
+--- exit 0
+--- stdout
+Print the logs of a container in a Pod. Logs are simulated from the image's profile.
+
+Examples:
+  kubectl logs nginx-7c5ddbdf54-abcde
+  kubectl logs nginx-7c5ddbdf54-abcde -c nginx
+  kubectl logs nginx-7c5ddbdf54-abcde --previous
+  kubectl logs deployment/nginx --tail=5
+
+Options:
+  -c, --container   Container name (required when the Pod has several)
+  -p, --previous    Logs of the previous, crashed container
+      --tail        Number of recent lines to show
+--- stderr

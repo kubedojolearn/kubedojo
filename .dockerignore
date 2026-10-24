@@ -1,0 +1,12 @@
+**/node_modules
+**/.next
+**/playwright-report
+**/test-results
+.git
+.env
+.env.*
+!.env.example
+apps/api
+docs
+content
+infra

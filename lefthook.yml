@@ -1,0 +1,23 @@
+# Git hooks (https://lefthook.dev). Installed by `pnpm install` via the root `prepare` script.
+# Skip once with `LEFTHOOK=0 git commit …`; CI runs the full checks regardless.
+pre-commit:
+  parallel: true
+  jobs:
+    - name: prettier
+      glob: "*.{js,mjs,cjs,ts,tsx,json,css,yaml,yml}"
+      run: pnpm exec prettier --write --ignore-unknown {staged_files}
+      stage_fixed: true
+    - name: eslint (web)
+      root: apps/web/
+      glob: "*.{js,mjs,ts,tsx}"
+      run: pnpm exec eslint --max-warnings=0 {staged_files}
+    - name: gofmt
+      root: apps/api/
+      glob: "*.go"
+      run: |
+        unformatted="$(gofmt -l {staged_files})"
+        if [ -n "$unformatted" ]; then echo "$unformatted"; echo "Run gofmt -w on the files above."; exit 1; fi
+    - name: gitleaks
+      run: |
+        if command -v gitleaks >/dev/null 2>&1; then gitleaks git --staged --no-banner --redact
+        else echo "gitleaks not installed; skipped (CI still scans)"; fi

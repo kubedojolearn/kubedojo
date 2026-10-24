@@ -1,0 +1,205 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* Color values mirror lib/design-tokens.ts; tests/unit/design-tokens.test.ts keeps them in sync. */
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-link: var(--link);
+  --color-highlight: var(--highlight);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-sim-badge: var(--sim-badge);
+  --color-sim-badge-foreground: var(--sim-badge-foreground);
+  --color-terminal: #050b16;
+  --color-terminal-foreground: #d6e2f5;
+  /* From the terminal palette in lib/design-tokens.ts (all ≥ 4.5:1 on the terminal background). */
+  --color-terminal-prompt: #5eead4;
+  --color-terminal-error: #ff7b7b;
+  --color-terminal-muted: #8293b0;
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  --shadow-glow: 0 0 0 1px rgb(50 108 229 / 0.25), 0 8px 32px -8px rgb(34 211 238 / 0.25);
+}
+
+/* Light theme */
+:root {
+  --radius: 0.625rem;
+  --background: #f7f9fc;
+  --foreground: #0b1324;
+  --card: #ffffff;
+  --card-foreground: #0b1324;
+  --popover: #ffffff;
+  --popover-foreground: #0b1324;
+  --primary: #326ce5;
+  --primary-foreground: #ffffff;
+  --secondary: #e9eef6;
+  --secondary-foreground: #0b1324;
+  --muted: #eef2f8;
+  --muted-foreground: #4a5a75;
+  --accent: #e3ebf9;
+  --accent-foreground: #0b1324;
+  --destructive: #b91c1c;
+  --border: #d5ddea;
+  --input: #7a8aa6;
+  --ring: #0e7490;
+  --link: #1f56c9;
+  --highlight: #0e7490;
+  --success: #15803d;
+  --warning: #b45309;
+  --danger: #b91c1c;
+  --sim-badge: #fef3c7;
+  --sim-badge-foreground: #78350f;
+
+  --chart-1: #326ce5;
+  --chart-2: #0e7490;
+  --chart-3: #15803d;
+  --chart-4: #b45309;
+  --chart-5: #7c3aed;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0b1324;
+  --sidebar-primary: #326ce5;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e3ebf9;
+  --sidebar-accent-foreground: #0b1324;
+  --sidebar-border: #d5ddea;
+  --sidebar-ring: #0e7490;
+}
+
+/* Dark theme (brand default) */
+.dark {
+  --background: #09111f;
+  --foreground: #e6edf7;
+  --card: #111c2e;
+  --card-foreground: #e6edf7;
+  --popover: #111c2e;
+  --popover-foreground: #e6edf7;
+  --primary: #326ce5;
+  --primary-foreground: #ffffff;
+  --secondary: #1a2740;
+  --secondary-foreground: #e6edf7;
+  --muted: #1a2740;
+  --muted-foreground: #9aabc4;
+  --accent: #1c2b47;
+  --accent-foreground: #e6edf7;
+  --destructive: #f87171;
+  --border: #22314d;
+  --input: #5b6f92;
+  --ring: #22d3ee;
+  --link: #8cb4ff;
+  --highlight: #22d3ee;
+  --success: #22c55e;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --sim-badge: #3b2f0b;
+  --sim-badge-foreground: #fcd34d;
+
+  --chart-1: #326ce5;
+  --chart-2: #22d3ee;
+  --chart-3: #22c55e;
+  --chart-4: #fbbf24;
+  --chart-5: #a78bfa;
+  --sidebar: #0c1626;
+  --sidebar-foreground: #e6edf7;
+  --sidebar-primary: #326ce5;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1c2b47;
+  --sidebar-accent-foreground: #e6edf7;
+  --sidebar-border: #22314d;
+  --sidebar-ring: #22d3ee;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    @apply font-sans;
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-background text-foreground;
+    text-rendering: optimizeLegibility;
+  }
+  /* Visible focus for every interactive element (WCAG 2.4.7 / 2.4.13): 2px ring with offset. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 35%, transparent);
+  }
+}
+
+/* Reduced motion: honor the OS setting and the in-app setting (html.reduce-motion, Part 08). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}

@@ -1,0 +1,88 @@
+# golangci-lint v2 configuration. Run with `make lint` (pinned version in the Makefile).
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - bodyclose
+    - depguard
+    - errorlint
+    - forbidigo
+    - gosec
+    - misspell
+    - noctx
+    - revive
+    - unconvert
+  settings:
+    depguard:
+      rules:
+        no-process-execution:
+          # Threat T1: user terminal input must never reach a shell or another process.
+          files: ["$all"]
+          deny:
+            - pkg: os/exec
+              desc: "KubeDojo never executes processes; terminal input is parsed by an allowlist (ADR-0002)."
+            - pkg: syscall
+              desc: "Use os/signal and os instead."
+        simulator-is-pure:
+          # ADR-0001/0006: the simulator takes everything as input — no I/O, no wall clock.
+          files: ["**/internal/simulator/**"]
+          deny:
+            - pkg: net
+              desc: "The simulator does no networking."
+            - pkg: net/http
+              desc: "The simulator does no networking."
+            - pkg: database/sql
+              desc: "Persistence belongs to internal/labs."
+            - pkg: github.com/jackc/pgx/v5
+              desc: "Persistence belongs to internal/labs."
+            - pkg: github.com/redis/go-redis/v9
+              desc: "Coordination belongs to internal/labs and internal/realtime."
+            - pkg: math/rand
+              desc: "Use the session's seeded generator passed in by the caller."
+            - pkg: math/rand/v2
+              desc: "Use the session's seeded generator passed in by the caller."
+            - pkg: crypto/rand
+              desc: "Use the session's seeded generator passed in by the caller."
+    forbidigo:
+      forbid:
+        - pattern: ^print(ln)?$
+          msg: "Use the structured logger."
+        - pattern: ^fmt\.Print.*$
+          msg: "Use the structured logger (fmt.Fprint* to stderr is fine in cmd/ for fatal errors)."
+      analyze-types: true
+    gosec:
+      excludes:
+        - G104 # duplicate of errcheck
+    revive:
+      rules:
+        - name: exported
+        - name: package-comments
+        - name: var-naming
+        - name: error-strings
+        - name: receiver-naming
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters: [gosec, noctx, bodyclose]
+      # The container healthcheck calls 127.0.0.1:<validated int port>; G704's taint analysis
+      # treats any env-derived value as attacker-controlled.
+      - path: cmd/api/main\.go
+        text: G704
+        linters: [gosec]
+      # syscall is needed only for SIGTERM in main packages.
+      - path: cmd/
+        text: "import 'syscall' is not allowed"
+        linters: [depguard]
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/kubedojolearn/kubedojo

@@ -1,0 +1,19 @@
+$ kubectl get all
+--- exit 0
+--- stdout
+NAME                         READY   STATUS             RESTARTS   AGE
+pod/nginx-4fzxcz7snh-tbjxs   1/1     Running            0          60m
+pod/picky                    0/1     Pending            0          2m
+pod/typo                     0/1     ImagePullBackOff   0          5m
+
+NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)        AGE
+service/kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP        30d
+service/web          ClusterIP   10.96.0.10   <none>        80/TCP         50m
+service/web-np       NodePort    10.96.0.11   <none>        80:30080/TCP   33m
+
+NAME                    READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/nginx   1/1     1            1           60m
+
+NAME                               DESIRED   CURRENT   READY   AGE
+replicaset.apps/nginx-4fzxcz7snh   1         1         1       60m
+--- stderr

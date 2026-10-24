@@ -1,0 +1,22 @@
+$ kubectl explain svc.spec --recursive
+--- exit 0
+--- stdout
+KIND:       Service
+VERSION:    v1
+
+FIELD: spec <ServiceSpec>
+
+DESCRIPTION:
+    Spec defines the behavior of a service.
+    
+FIELDS:
+  type	<string>
+  selector	<map[string]string>
+  ports	<[]ServicePort>
+    port	<integer>
+    targetPort	<IntOrString>
+    nodePort	<integer>
+    name	<string>
+    protocol	<string>
+  clusterIP	<string>
+--- stderr

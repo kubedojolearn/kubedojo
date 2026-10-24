@@ -1,0 +1,5 @@
+$ kubectl config current-context
+--- exit 0
+--- stdout
+kubedojo
+--- stderr

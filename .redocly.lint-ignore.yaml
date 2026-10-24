@@ -1,0 +1,12 @@
+# Intentional exceptions to the recommended ruleset. Each entry is reviewed; do not add without a reason.
+docs/api/openapi.yaml:
+  no-server-example.com:
+    # The only server is local development; production URLs are private and environment-specific.
+    - "#/servers/0/url"
+  operation-4xx-response:
+    # Probes have no client errors by design.
+    - "#/paths/~1api~1v1~1healthz/get/responses"
+    - "#/paths/~1api~1v1~1readyz/get/responses"
+  operation-2xx-response:
+    # WebSocket upgrade succeeds with 101, not 2xx.
+    - "#/paths/~1api~1v1~1ws~1labs~1{labId}/get/responses"

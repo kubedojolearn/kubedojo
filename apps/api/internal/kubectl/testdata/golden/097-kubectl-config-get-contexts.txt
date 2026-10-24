@@ -1,0 +1,6 @@
+$ kubectl config get-contexts
+--- exit 0
+--- stdout
+CURRENT   NAME       CLUSTER    AUTHINFO   NAMESPACE
+*         kubedojo   kubedojo   learner    default
+--- stderr

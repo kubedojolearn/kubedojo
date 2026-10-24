@@ -1,0 +1,7 @@
+$ kubectl get pods --no-headers
+--- exit 0
+--- stdout
+nginx-4fzxcz7snh-tbjxs   1/1   Running            0     60m
+picky                    0/1   Pending            0     2m
+typo                     0/1   ImagePullBackOff   0     5m
+--- stderr

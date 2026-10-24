@@ -1,0 +1,8 @@
+$ kubectl get pods typo picky nope
+--- exit 1 (NOT_FOUND)
+--- stdout
+NAME    READY   STATUS             RESTARTS   AGE
+typo    0/1     ImagePullBackOff   0          5m
+picky   0/1     Pending            0          2m
+--- stderr
+Error from server (NotFound): pods "nope" not found

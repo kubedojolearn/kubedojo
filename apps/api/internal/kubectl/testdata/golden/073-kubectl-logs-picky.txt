@@ -1,0 +1,5 @@
+$ kubectl logs picky
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+Error from server (BadRequest): container "web" in pod "picky" is waiting to start: ContainerCreating

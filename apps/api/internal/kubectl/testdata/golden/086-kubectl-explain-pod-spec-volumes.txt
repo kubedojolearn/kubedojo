@@ -1,0 +1,5 @@
+$ kubectl explain pod.spec.volumes
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: field "volumes" exists in Kubernetes but isn't supported by the simulator. See 'kubectl explain pod' for the supported fields.

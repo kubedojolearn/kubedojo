@@ -1,0 +1,6 @@
+$ kubectl get cm
+--- exit 0
+--- stdout
+NAME         DATA   AGE
+app-config   2      120m
+--- stderr

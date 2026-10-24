@@ -1,0 +1,15 @@
+schemaVersion: 1
+slug: cluster-operations
+title: Cluster operations
+summary: Inspect nodes, scopes, labels and scheduling, and read the events that explain what happened.
+description: |
+  Look at the cluster the way an operator does: what the nodes have to offer, which objects belong to a namespace, how the scheduler decides where Pods go, and how to read the events that record every decision.
+difficulty: intermediate
+displayOrder: 5
+prerequisites: [workloads]
+lessons:
+  - inspect-nodes
+  - namespaces-and-scope
+  - labels-and-annotations
+  - requests-limits-scheduling
+  - events-and-diagnostics
