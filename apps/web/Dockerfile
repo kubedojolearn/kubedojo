@@ -16,7 +16,8 @@ COPY packages/api-client packages/api-client
 COPY apps/web apps/web
 ARG VERSION=dev
 ARG COMMIT=unknown
-RUN pnpm --filter @kubedojo/web build
+# public/ is optional and git does not keep it when empty; the runtime stage copies it.
+RUN mkdir -p apps/web/public && pnpm --filter @kubedojo/web build
 
 FROM node:24-alpine AS runtime
 WORKDIR /app

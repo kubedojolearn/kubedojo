@@ -19,5 +19,5 @@ pre-commit:
         if [ -n "$unformatted" ]; then echo "$unformatted"; echo "Run gofmt -w on the files above."; exit 1; fi
     - name: gitleaks
       run: |
-        if command -v gitleaks >/dev/null 2>&1; then gitleaks git --staged --no-banner --redact
+        if command -v gitleaks >/dev/null 2>&1; then gitleaks git --staged --config .github/gitleaks.toml --no-banner --redact
         else echo "gitleaks not installed; skipped (CI still scans)"; fi

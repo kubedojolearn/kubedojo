@@ -1,0 +1,13 @@
+# Gitleaks config: the default rules plus reviewed false positives. Used by CI and the
+# pre-commit hook. Keep each allowlist as narrow as possible and say why it is safe.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "kubectl golden outputs print the simulator's fictional Secrets (training-only values)"
+paths = ['''^apps/api/internal/kubectl/testdata/golden/''']
+
+[[allowlists]]
+description = "GitHub's documented example token, used to test that raw tokens are rejected"
+regexTarget = "match"
+regexes = ['''gho_16C7e42F292c6912E7710c838347Ae178B4a''']
