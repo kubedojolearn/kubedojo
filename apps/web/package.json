@@ -16,6 +16,7 @@
     "test:visual": "playwright test --project=visual",
     "check:bundle": "node scripts/check-client-bundle.mjs",
     "test:stack": "playwright test --project=stack",
+    "test:ui": "playwright test --project=ui",
     "gen:glossary": "node scripts/generate-glossary.mjs",
     "check:glossary": "node scripts/generate-glossary.mjs --check"
   },

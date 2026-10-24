@@ -21,6 +21,8 @@ export default defineConfig({
     { name: "visual", testMatch: "visual/**/*.spec.ts", use: { ...devices["Desktop Chrome"] } },
     // Full stack (edge + web + API + Postgres + Redis) with AUTH_TEST_MODE=1; run via `make test-stack`.
     { name: "stack", testMatch: "stack/**/*.spec.ts", use: { ...devices["Desktop Chrome"] } },
+    // Every page against the full stack: a11y, layout, images, links and errors; run via `make test-ui`.
+    { name: "ui", testMatch: "ui/**/*.spec.ts", use: { ...devices["Desktop Chrome"] } },
   ],
   webServer: process.env.E2E_BASE_URL
     ? undefined
