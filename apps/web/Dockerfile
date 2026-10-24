@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # Build context is the repository root (pnpm workspace). See compose.yaml.
 # Ignore rules: Dockerfile.dockerignore next to this file.
-FROM node:24-alpine AS base
+FROM node:25-alpine AS base
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH NEXT_TELEMETRY_DISABLED=1
 RUN corepack enable
 
@@ -19,7 +19,7 @@ ARG COMMIT=unknown
 # public/ is optional and git does not keep it when empty; the runtime stage copies it.
 RUN mkdir -p apps/web/public && pnpm --filter @kubedojo/web build
 
-FROM node:24-alpine AS runtime
+FROM node:25-alpine AS runtime
 WORKDIR /app
 ARG VERSION=dev
 ARG COMMIT=unknown
