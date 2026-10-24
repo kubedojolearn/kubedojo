@@ -8,15 +8,15 @@ A torii gate (the dojo) framing three cubes (the cluster), tied with a belt. The
 
 | File | Use |
 | --- | --- |
-| `public/brand/kubedojo-mark.png` | The mark on its navy tile: header, footer, sidebar (`LogoMark`) |
-| `public/brand/kubedojo-logo.webp` | The full lockup: sign-in panel and design system (`LogoLockup`) |
+| `public/brand/kubedojo-mark.png` | The mark on its navy tile: header, footer, sign-in (`LogoMark`) |
+| `public/brand/kubedojo-logo.webp` | The full lockup: design system (`LogoLockup`) |
 | `app/icon.png`, `app/apple-icon.png`, `app/favicon.ico` | Browser and home-screen icons |
 
 The Open Graph/Twitter card (`app/opengraph-image.tsx`) embeds the mark. The mark doesn't imitate the Kubernetes helm wheel or heptagon (risk R7 in the [risk register](../architecture/risk-register.md)).
 
 ## Wordmark
 
-"Kube" in the foreground color + "Dojo" in the highlight color, set in Bricolage Grotesque bold as live text (not an image), so it scales and is read by screen readers.
+"Kube" in the foreground color + "Dojo" in the highlight color, set in Inter bold as live text (not an image), so it scales and is read by screen readers.
 
 ## Belts
 
@@ -24,7 +24,7 @@ Each course is a belt, in curriculum order: white, yellow, orange, green, blue, 
 
 ## Visual language
 
-Ink and paper: the logo's navy as the dark background, warm paper for light. Hairline borders and divided lists rather than floating cards, small corner radii, no glows or gradient text. Mono labels (`white belt · course 1`) mark structure. Pages show real product content (real kubectl output, the real syllabus) instead of generic feature tiles.
+KubeDojo shares its design system with its sister project [GitDojo](https://github.com/gitdojolearn/GitDojo), so the two read as one family: the same header, footer and page layout, deep neutral surfaces, thin borders and one restrained blue accent. Marketing pages use numbered mono eyebrows (`01 — How a lesson goes`), alternate open and banded sections, and allow a soft glow behind the hero and the closing call to action. Mono labels (`white belt · course 1`) mark structure. Pages show real product content (real kubectl output, the real syllabus) instead of generic feature tiles.
 
 ## Voice
 

@@ -1,7 +1,7 @@
 # V1 screens
 
 - **Status:** Accepted (Part 03). Wireframes are low-fidelity; the implemented shell and the [design system gallery](../../apps/web/app/design-system/page.tsx) (`/design-system`) are the visual reference.
-- Every screen has exactly one `h1`, a skip link to `#main`, and works from 320 px wide. Below 1024 px the app sidebar becomes a drawer; below 768 px marketing navigation becomes a drawer.
+- Every screen has exactly one `h1`, a skip link to `#main`, and works from 320 px wide. Every page shares one header and footer (the same layout as GitDojo's); below 1280 px the header links move into a menu under the header.
 - Data-dependent screens list their **empty**, **loading** and **error** states. Loading uses skeletons plus a polite live region; errors use `ErrorState` (`role="alert"`) with a retry.
 
 Legend: `[Button]`, `(link)`, `▢` card, `░` skeleton, `◷` disabled-with-reason (`UnavailableButton`).
@@ -73,23 +73,22 @@ Long-form pages use `Prose`. FAQ uses an accordion (all items independently expa
 
 States (Part 06): OAuth cancelled → message + retry; provisioning failed → error with request reference; already signed in → redirect to `callbackUrl` (same-origin only).
 
-## Signed-in app (shell implemented in Part 03)
+## Site header and footer (every page, signed in or not)
 
 ```text
-┌ Sidebar (≥1024px) ┬ Topbar: ☰(mobile) ◷Search…⌘K   ◷🔔 ☾ 👤 ┐
-│ Logo              │ [Preview] notice (until Part 06)          │
-│ Dashboard         │ main#main                                 │
-│ Curriculum        │                                           │
-│ Learning paths    │                                           │
-│ Leaderboard       │                                           │
-│ Settings          │                                           │
-│ ADMIN (role only) │                                           │
-│ Overview/Content/ │                                           │
-│ Audit log         │                                           │
-└───────────────────┴───────────────────────────────────────────┘
+┌ Header (sticky, 56px, max 1280px) ─────────────────────────────────────────────────┐
+│ ▣ KubeDojo  Learn  Learning path  Leaderboard  Dashboard  Changelog  Docs           │
+│                                  [⌕ Search ⌘K] ☾ [★ Star on GitHub] Sign in [Start] │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+main#main (max 1280px, 16/24px gutters)
+┌ Footer ─────────────────────────────────────────────────────────────────────────────┐
+│ ▣ KubeDojo, tagline, licence, trademark note │ Learn │ Project │ Legal             │
+└─────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-The Admin group is shown only to admins once roles exist (Part 06); the API enforces access regardless.
+- Signed in, "Sign in / Start learning" becomes the account menu (avatar, handle): Dashboard, Profile, Settings, Sign out. Admins also get Admin overview, Content and Audit log there; the API enforces access regardless.
+- Below 1280 px the links move into a menu panel under the header (☰); below 768 px search is an icon button.
+- Sign-in and onboarding use a split layout instead: the form on a card, a small kubectl session beside it.
 
 ### Dashboard `/dashboard` — empty states implemented; data in Parts 08, 16, 18
 
