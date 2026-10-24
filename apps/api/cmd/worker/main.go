@@ -20,7 +20,20 @@ import (
 )
 
 func main() {
-	if err := run(); err != nil {
+	cmd := "run"
+	if len(os.Args) > 1 {
+		cmd = os.Args[1]
+	}
+	var err error
+	switch cmd {
+	case "run":
+		err = run()
+	case "healthcheck":
+		err = healthcheck()
+	default:
+		err = fmt.Errorf("unknown command %q (want run or healthcheck)", cmd)
+	}
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "worker:", err)
 		os.Exit(1)
 	}
@@ -66,4 +79,25 @@ func run() error {
 	runner.Run(ctx)
 	log.Info("worker stopped")
 	return nil
+}
+
+// healthcheck reports whether the worker's stores are reachable. It runs as its own process
+// (the Compose healthcheck), because the distroless image has no shell and the worker no port.
+func healthcheck() error {
+	cfg, err := config.Load(os.Getenv)
+	if err != nil {
+		return fmt.Errorf("invalid configuration:\n%w", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	pool, err := database.Open(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	pool.Close()
+	rdb, err := redis.Open(ctx, cfg.RedisURL)
+	if err != nil {
+		return err
+	}
+	return rdb.Close()
 }
