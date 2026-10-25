@@ -1,12 +1,11 @@
 import Link from "next/link";
+import { GitFork } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
-import { Container } from "@/components/layout/page-header";
 import { footerNav, site } from "@/lib/site";
 
 function FooterLink({ href, label }: { href: string; label: string }) {
-  const external = href.startsWith("http");
-  const className = "text-sm text-muted-foreground transition-colors hover:text-foreground";
-  return external ? (
+  const className = "text-muted-foreground hover:text-foreground hover:underline";
+  return href.startsWith("http") ? (
     <a href={href} rel="noreferrer" className={className}>
       {label}
     </a>
@@ -19,16 +18,23 @@ function FooterLink({ href, label }: { href: string; label: string }) {
 
 export function SiteFooter() {
   return (
-    <footer className="mt-16 border-t bg-card/40">
-      <Container className="grid gap-10 py-12 md:grid-cols-[2fr_repeat(3,1fr)]">
-        <div className="space-y-3">
+    <footer className="border-t border-border-subtle">
+      <div className="mx-auto grid max-w-[1280px] grid-cols-2 gap-x-6 gap-y-10 px-4 py-12 sm:grid-cols-3 sm:px-6 md:grid-cols-[2fr_repeat(3,1fr)]">
+        <div className="col-span-2 sm:col-span-3 md:col-span-1">
           <Logo />
-          <p className="max-w-xs text-sm text-muted-foreground">{site.tagline}</p>
+          <p className="mt-3 max-w-xs text-small text-muted-foreground">{site.tagline}</p>
+          <p className="mt-3 flex items-center gap-1.5 text-caption text-muted-foreground">
+            <GitFork className="size-3.5" aria-hidden /> Open source, Apache 2.0 licensed
+          </p>
+          <p className="mt-3 max-w-xs text-caption text-muted-foreground">
+            An independent project, not affiliated with the CNCF or The Linux Foundation. Kubernetes is a registered
+            trademark of The Linux Foundation.
+          </p>
         </div>
         {footerNav.map((group) => (
           <nav key={group.title} aria-label={group.title}>
-            <h2 className="mb-3 text-sm font-semibold">{group.title}</h2>
-            <ul className="grid gap-2">
+            <h2 className="text-small font-semibold text-foreground">{group.title}</h2>
+            <ul className="mt-3 space-y-2 text-small">
               {group.items.map((item) => (
                 <li key={item.href}>
                   <FooterLink {...item} />
@@ -37,14 +43,7 @@ export function SiteFooter() {
             </ul>
           </nav>
         ))}
-      </Container>
-      <Container className="flex flex-col gap-2 border-t py-6 text-xs text-muted-foreground sm:flex-row sm:justify-between">
-        <p>Open source under the Apache License 2.0.</p>
-        <p>
-          KubeDojo is an independent project, not affiliated with the CNCF or The Linux Foundation. Kubernetes is a
-          registered trademark of The Linux Foundation.
-        </p>
-      </Container>
+      </div>
     </footer>
   );
 }

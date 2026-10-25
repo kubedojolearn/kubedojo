@@ -15,7 +15,7 @@ export function LogoMark({ className, title }: { className?: string; title?: str
       alt={title ?? ""}
       aria-hidden={title ? undefined : true}
       decoding="async"
-      className={cn("size-8 shrink-0 rounded-md", className)}
+      className={cn("size-7 shrink-0 rounded-md", className)}
     />
   );
 }
@@ -23,9 +23,9 @@ export function LogoMark({ className, title }: { className?: string; title?: str
 /** Mark plus wordmark. The text is real text, so it is read by screen readers and scales with zoom. */
 export function Logo({ className }: { className?: string }) {
   return (
-    <span className={cn("inline-flex items-center gap-2.5", className)}>
+    <span className={cn("inline-flex items-center gap-2", className)}>
       <LogoMark />
-      <span className="font-heading text-lg font-bold tracking-tight">
+      <span className="text-[18px] font-bold tracking-tight text-foreground">
         Kube<span className="text-highlight">Dojo</span>
       </span>
     </span>

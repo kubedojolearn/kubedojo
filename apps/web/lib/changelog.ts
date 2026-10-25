@@ -8,6 +8,15 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-24",
+    title: "One header and footer everywhere",
+    items: [
+      "KubeDojo now shares its look with GitDojo: the same header, footer, colors and type.",
+      "Every page, including your dashboard and settings, has the same header with search, the theme switch and your account menu.",
+      "The home page walks through how a lesson goes, the six belts, what the simulator does, and how belts and XP work.",
+    ],
+  },
+  {
+    date: "2026-10-24",
     title: "A new look, search, and your data",
     items: [
       "KubeDojo has its own logo and look: every course is now a belt, from white to black.",

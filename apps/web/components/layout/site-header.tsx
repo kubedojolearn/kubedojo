@@ -1,58 +1,65 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { SessionHeaderAction, SessionMobileNav } from "@/components/layout/session-slots";
 import { GithubIcon } from "@/components/brand/github-icon";
 import { Logo } from "@/components/brand/logo";
-import { NavLink } from "@/components/layout/nav-link";
 import { MobileNav } from "@/components/layout/mobile-nav";
-import { Container } from "@/components/layout/page-header";
+import { NavLink } from "@/components/layout/nav-link";
+import { SiteSearchWithIndex } from "@/components/layout/search-index";
+import { AccountPlaceholder, SessionAccountControls, SessionMobileNav } from "@/components/layout/session-slots";
+import { SiteSearch } from "@/components/layout/site-search";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { marketingNav, site } from "@/lib/site";
+import { mainNav, site } from "@/lib/site";
 
+const linkClass =
+  "rounded-md px-3 py-1.5 text-small whitespace-nowrap text-foreground-secondary transition-colors hover:bg-hover hover:text-foreground";
+
+/** The one header on every page (marketing and signed-in alike), laid out like GitDojo's. */
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
-      <Container className="flex h-16 items-center gap-4">
-        <Link href="/" aria-label="KubeDojo home" className="rounded-md">
-          <Logo />
-        </Link>
-        <nav aria-label="Main" className="ml-6 hidden md:block">
-          <ul className="flex items-center gap-1">
-            {marketingNav.map((item) => (
-              <li key={item.href}>
-                <NavLink
-                  href={item.href}
-                  className="relative rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  activeClassName="text-foreground font-medium after:absolute after:inset-x-3 after:-bottom-[13px] after:h-0.5 after:bg-highlight"
-                >
-                  {item.label}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <div className="ml-auto flex items-center gap-1">
-          <Button variant="ghost" size="icon" asChild className="hidden sm:inline-flex">
-            <a href={site.repoUrl} aria-label="KubeDojo on GitHub" rel="noreferrer">
+    <header className="sticky top-0 z-40 border-b border-border-subtle bg-background/90 backdrop-blur-sm">
+      <div className="mx-auto flex h-14 max-w-[1280px] items-center justify-between gap-4 px-4 sm:px-6">
+        <div className="flex min-w-0 items-center gap-6">
+          <Link href="/" aria-label="KubeDojo home" className="shrink-0 rounded-md">
+            <Logo />
+          </Link>
+          <nav aria-label="Main" className="hidden xl:block">
+            <ul className="flex items-center gap-1">
+              {mainNav.map((item) => (
+                <li key={item.href}>
+                  {item.href.startsWith("http") ? (
+                    <a href={item.href} rel="noreferrer" className={linkClass}>
+                      {item.label}
+                    </a>
+                  ) : (
+                    <NavLink href={item.href} className={linkClass} activeClassName="bg-hover text-foreground">
+                      {item.label}
+                    </NavLink>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </div>
+        <div className="flex items-center gap-2">
+          <Suspense fallback={<SiteSearch lessons={null} />}>
+            <SiteSearchWithIndex />
+          </Suspense>
+          <ThemeToggle />
+          <Button asChild variant="outline" size="sm" className="max-sm:hidden max-lg:w-8 max-lg:px-0">
+            <a href={site.repoUrl} rel="noreferrer" aria-label="Star KubeDojo on GitHub">
               <GithubIcon />
+              <span className="hidden lg:inline">Star on GitHub</span>
             </a>
           </Button>
-          <ThemeToggle />
-          <Suspense
-            fallback={
-              <Button asChild size="sm" className="hidden sm:inline-flex">
-                <Link href="/login">Sign in</Link>
-              </Button>
-            }
-          >
-            <SessionHeaderAction />
+          <Suspense fallback={<AccountPlaceholder />}>
+            <SessionAccountControls />
           </Suspense>
           <Suspense fallback={<MobileNav signedIn={false} />}>
             <SessionMobileNav />
           </Suspense>
         </div>
-      </Container>
+      </div>
     </header>
   );
 }

@@ -27,7 +27,7 @@ async function ProfileView({ params }: Props) {
     if (me?.handle.toLowerCase() !== handle.toLowerCase()) notFound();
     return (
       <>
-        <h1 className="text-3xl font-bold">@{me.handle}</h1>
+        <h1 className="text-h2 font-semibold tracking-tight sm:text-h1">@{me.handle}</h1>
         <EmptyState
           icon={Lock}
           className="mt-8"
@@ -50,7 +50,7 @@ async function ProfileView({ params }: Props) {
           <AvatarFallback>{(profile.displayName || profile.handle).slice(0, 2).toUpperCase()}</AvatarFallback>
         </Avatar>
         <div>
-          <h1 className="text-3xl font-bold">{profile.displayName || profile.handle}</h1>
+          <h1 className="text-h2 font-semibold tracking-tight sm:text-h1">{profile.displayName || profile.handle}</h1>
           <p className="text-muted-foreground">
             @{profile.handle} · joined {joined.format(new Date(profile.joinedAt))}
           </p>

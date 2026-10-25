@@ -7,72 +7,91 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-heading: var(--font-bricolage), var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-foreground-secondary: var(--foreground-secondary);
+  --color-surface: var(--surface);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-elevated: var(--elevated);
+  --color-hover: var(--hover);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-faint: var(--faint);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-link: var(--link);
   --color-highlight: var(--highlight);
+  --color-highlight-soft: var(--highlight-soft);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
   --color-sim-badge: var(--sim-badge);
   --color-sim-badge-foreground: var(--sim-badge-foreground);
-  --color-ink: var(--brand-ink);
-  --color-terminal: #050b16;
-  --color-terminal-foreground: #d6e2f5;
+  --color-shade: var(--shade);
+  --color-terminal: #080a0d;
+  --color-terminal-foreground: #d6dce5;
   /* From the terminal palette in lib/design-tokens.ts (all ≥ 4.5:1 on the terminal background). */
   --color-terminal-prompt: #5eead4;
-  --color-terminal-error: #ff7b7b;
-  --color-terminal-muted: #8293b0;
+  --color-terminal-error: #f06a78;
+  --color-terminal-muted: #8a93a1;
 
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
 
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
 
-  --shadow-panel: 0 1px 0 0 color-mix(in oklab, var(--foreground) 6%, transparent) inset;
+  /* Type scale (shared with GitDojo). */
+  --text-display: 56px;
+  --text-display--line-height: 64px;
+  --text-display--letter-spacing: -0.03em;
+  --text-h1: 40px;
+  --text-h1--line-height: 48px;
+  --text-h2: 30px;
+  --text-h2--line-height: 38px;
+  --text-h3: 22px;
+  --text-h3--line-height: 30px;
+  --text-h4: 18px;
+  --text-h4--line-height: 26px;
+  --text-body-lg: 17px;
+  --text-body-lg--line-height: 28px;
+  --text-body: 15px;
+  --text-body--line-height: 24px;
+  --text-small: 13px;
+  --text-small--line-height: 20px;
+  --text-caption: 12px;
+  --text-caption--line-height: 18px;
+  --text-micro: 11px;
+  --text-micro--line-height: 16px;
 }
 
-/* Light theme: paper and ink. */
+/* Light theme. */
 :root {
-  --radius: 0.375rem;
-  --brand-ink: #040d1d;
+  --radius: 0.625rem;
   /* Belt colors mark course order (white belt → black belt). Decorative: always paired with text. */
   --belt-1: #ece7db;
   --belt-2: #f2c230;
@@ -80,88 +99,96 @@
   --belt-4: #2fb463;
   --belt-5: #2f7bf6;
   --belt-6: #15171c;
-  --background: #f4f2ec;
-  --foreground: #0b1324;
-  --card: #fffdf8;
-  --card-foreground: #0b1324;
-  --popover: #fffdf8;
-  --popover-foreground: #0b1324;
-  --primary: #0157d6;
+  --background: #f4f6f9;
+  --foreground: #111827;
+  --foreground-secondary: #3d4756;
+  --surface: #f9fafb;
+  --card: #ffffff;
+  --card-foreground: #111827;
+  --elevated: #eef1f5;
+  --hover: #e5e9ef;
+  --popover: #ffffff;
+  --popover-foreground: #111827;
+  --primary: #3a5ad6;
   --primary-foreground: #ffffff;
-  --secondary: #e9e5dc;
-  --secondary-foreground: #0b1324;
-  --muted: #ebe7de;
-  --muted-foreground: #52565e;
-  --accent: #e2e8f4;
-  --accent-foreground: #0b1324;
-  --destructive: #b42318;
-  --border: #d9d3c6;
-  --input: #8a8f98;
-  --ring: #0b6e86;
-  --link: #0450c2;
-  --highlight: #0b6e86;
-  --success: #17773b;
-  --warning: #a14a06;
-  --danger: #b42318;
-  --sim-badge: #f8ebc4;
-  --sim-badge-foreground: #6b3a0b;
+  --secondary: #eef1f5;
+  --secondary-foreground: #111827;
+  --muted: #f9fafb;
+  --muted-foreground: #556070;
+  --faint: #78828f;
+  --accent: #e5e9ef;
+  --accent-foreground: #111827;
+  --destructive: #c0263a;
+  --border: #d6dce4;
+  --border-subtle: #e4e8ee;
+  --border-strong: #c2c9d3;
+  --input: #78828f;
+  --ring: #3a5ad6;
+  --link: #3a5ad6;
+  --highlight: #3a5ad6;
+  --success: #11703a;
+  --warning: #8a5a00;
+  --danger: #c0263a;
+  --sim-badge: #fbf1d9;
+  --sim-badge-foreground: #6b4500;
 
-  --chart-1: #0157d6;
-  --chart-2: #0b6e86;
-  --chart-3: #17773b;
-  --chart-4: #a14a06;
-  --chart-5: #6d3fd1;
-  --sidebar: #efece4;
-  --sidebar-foreground: #0b1324;
-  --sidebar-primary: #0157d6;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e2ddd2;
-  --sidebar-accent-foreground: #0b1324;
-  --sidebar-border: #d9d3c6;
-  --sidebar-ring: #0b6e86;
+  --primary-soft: rgb(58 90 214 / 0.09);
+  --highlight-soft: rgb(58 90 214 / 0.32);
+  --glow: rgb(58 90 214 / 0.1);
+  --shade: rgb(15 23 42 / 0.35);
+
+  --chart-1: #3a5ad6;
+  --chart-2: #0a68b8;
+  --chart-3: #11703a;
+  --chart-4: #8a5a00;
+  --chart-5: #6d4ad1;
 }
 
-/* Dark theme (brand default): the logo's navy ink, blue and cyan. */
+/* Dark theme (brand default). */
 .dark {
-  --background: #040d1d;
-  --foreground: #e8eef8;
-  --card: #0a1629;
-  --card-foreground: #e8eef8;
-  --popover: #0c1a30;
-  --popover-foreground: #e8eef8;
-  --primary: #0165f6;
+  --background: #0b0d10;
+  --foreground: #f4f7fb;
+  --foreground-secondary: #aeb6c2;
+  --surface: #111419;
+  --card: #151920;
+  --card-foreground: #f4f7fb;
+  --elevated: #1a1f27;
+  --hover: #202630;
+  --popover: #1a1f27;
+  --popover-foreground: #f4f7fb;
+  --primary: #4a67e0;
   --primary-foreground: #ffffff;
-  --secondary: #12213a;
-  --secondary-foreground: #e8eef8;
-  --muted: #11203a;
-  --muted-foreground: #97a7c0;
-  --accent: #142849;
-  --accent-foreground: #e8eef8;
-  --destructive: #ff8a80;
-  --border: #1a2b48;
-  --input: #5a7096;
-  --ring: #22e2f9;
-  --link: #7db9ff;
-  --highlight: #22e2f9;
-  --success: #3ccf7d;
-  --warning: #f5b83d;
-  --danger: #ff8a80;
-  --sim-badge: #33280a;
-  --sim-badge-foreground: #fcd34d;
+  --secondary: #1a1f27;
+  --secondary-foreground: #f4f7fb;
+  --muted: #111419;
+  --muted-foreground: #8a93a1;
+  --faint: #6f7886;
+  --accent: #202630;
+  --accent-foreground: #f4f7fb;
+  --destructive: #f06a78;
+  --border: #262c35;
+  --border-subtle: #1d222a;
+  --border-strong: #343c48;
+  --input: #6f7886;
+  --ring: #6c8cff;
+  --link: #6c8cff;
+  --highlight: #6c8cff;
+  --success: #4fd18b;
+  --warning: #f5c451;
+  --danger: #f06a78;
+  --sim-badge: #2b2414;
+  --sim-badge-foreground: #f5c451;
 
-  --chart-1: #0381fd;
-  --chart-2: #22e2f9;
-  --chart-3: #3ccf7d;
-  --chart-4: #f5b83d;
+  --primary-soft: rgb(108 140 255 / 0.12);
+  --highlight-soft: rgb(108 140 255 / 0.3);
+  --glow: rgb(108 140 255 / 0.14);
+  --shade: #000000;
+
+  --chart-1: #6c8cff;
+  --chart-2: #62b6ff;
+  --chart-3: #4fd18b;
+  --chart-4: #f5c451;
   --chart-5: #a78bfa;
-  --sidebar: #061224;
-  --sidebar-foreground: #e8eef8;
-  --sidebar-primary: #0165f6;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #11223f;
-  --sidebar-accent-foreground: #e8eef8;
-  --sidebar-border: #1a2b48;
-  --sidebar-ring: #22e2f9;
 }
 
 @layer base {
@@ -171,21 +198,21 @@
   html {
     @apply font-sans;
     color-scheme: light;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   html.dark {
     color-scheme: dark;
   }
   body {
     @apply bg-background text-foreground;
-    text-rendering: optimizeLegibility;
-    font-feature-settings: "ss02";
+    font-size: 15px;
+    line-height: 24px;
   }
   h1,
   h2,
   h3 {
-    font-family: var(--font-heading);
-    font-optical-sizing: auto;
-    letter-spacing: -0.015em;
+    letter-spacing: -0.02em;
   }
   code,
   kbd,
@@ -203,7 +230,7 @@
     cursor: pointer;
   }
   ::selection {
-    background: color-mix(in oklab, var(--primary) 35%, transparent);
+    background: color-mix(in oklab, var(--ring) 35%, transparent);
   }
 }
 

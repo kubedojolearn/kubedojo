@@ -60,12 +60,16 @@ export function SiteSearch({ lessons, className }: { lessons: SearchLesson[] | n
     <>
       <Button
         variant="outline"
+        size="sm"
         onClick={() => setOpen(true)}
-        className={cn("justify-start gap-2 font-normal text-muted-foreground", className)}
+        aria-label="Search lessons and terms"
+        className={cn("font-normal text-muted-foreground max-md:w-8 max-md:px-0", className)}
       >
         <Search />
-        <span>Search lessons and terms</span>
-        <Kbd className="ml-auto">⌘K</Kbd>
+        <span className="hidden md:inline">Search</span>
+        <Kbd aria-hidden className="ml-3 hidden md:inline-flex">
+          ⌘K
+        </Kbd>
       </Button>
       <CommandDialog
         open={open}

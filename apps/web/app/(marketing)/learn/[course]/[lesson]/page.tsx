@@ -97,7 +97,7 @@ async function LessonView({ params }: Props) {
           <Belt order={order} />
           {beltName(order).toLowerCase()} belt · lesson {lesson.displayOrder}
         </p>
-        <h1 id="lesson-title" className="text-3xl font-bold text-balance sm:text-5xl">
+        <h1 id="lesson-title" className="text-h2 font-semibold tracking-tight text-balance sm:text-h1">
           {lesson.title}
         </h1>
         <p className="max-w-3xl text-lg text-muted-foreground">{lesson.summary}</p>
