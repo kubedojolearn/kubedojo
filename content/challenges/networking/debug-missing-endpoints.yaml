@@ -1,0 +1,125 @@
+schemaVersion: 1
+id: networking/debug-missing-endpoints
+version: 1
+course: networking
+lesson: debug-missing-endpoints
+title: Debug a Service with no endpoints
+summary: Work through a Service that matches no Pods, find the selector mistake, and fix it.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 12
+lastReviewed: 2026-10-25
+objectives:
+  - Recognize a Service with no endpoints
+  - Follow a short checklist to find out why
+  - Fix a Service selector by editing and applying its manifest
+prerequisites:
+  - networking/clusterip-vs-nodeport
+glossary: [service, endpointslice, selector, label, manifest]
+body: |
+  "The Service isn't working" very often means "the Service has no endpoints": it exists and has an
+  IP, but it matches no ready Pods, so there's nowhere to send traffic.
+
+  ## Confirm it
+
+  ```sh
+  kubectl describe service checkout
+  ```
+
+  `Endpoints: <none>` is the giveaway. The EndpointSlice says the same:
+
+  ```sh
+  kubectl get endpointslices -l kubernetes.io/service-name=checkout
+  ```
+
+  ## Work through the checklist
+
+  1. **Are there Pods at all, and are they ready?** `kubectl get pods`. Pods that aren't ready are
+     listed in the EndpointSlice but marked not ready, and they get no traffic.
+  2. **Does the selector match their labels, exactly?** Compare the Service's `Selector` with
+     `kubectl get pods --show-labels`. A single character is enough: `check-out` is not `checkout`.
+  3. **Is the namespace the same?** A Service only selects Pods in its own namespace.
+  4. **Is `targetPort` right?** Endpoints appear, but traffic goes to a port nobody listens on.
+
+  Running the selector yourself is the fastest test:
+
+  ```sh
+  kubectl get pods -l app=check-out    # what the Service matches
+  kubectl get pods -l app=checkout     # what you meant
+  ```
+
+  ## Fix it declaratively
+
+  The Service's manifest is in the editor. Correct the selector, save, and apply it:
+
+  ```sh
+  kubectl apply -f manifests/checkout-service.yaml
+  ```
+
+  Endpoints appear as soon as the selector matches.
+
+  ## Your task
+
+  Customers can't check out. The `checkout` Pods are healthy, but the Service in front of them has
+  no endpoints. Find the mistake and fix the Service so both Pods receive traffic on port 8080.
+
+  > **Simulated cluster:** with no real traffic, "working" means the Service selects the right ready
+  > Pods and forwards to the right port.
+references:
+  - title: Debug Services (Kubernetes docs)
+    url: https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/
+initialFixture: fixtures/checkout-no-endpoints.yaml
+terminal:
+  allowedFamilies: [get, describe, logs, events, apply, label, explain]
+initialFiles:
+  - path: manifests/checkout-service.yaml
+    content: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: checkout
+        labels:
+          app: checkout
+      spec:
+        selector:
+          app: check-out
+        ports:
+          - name: http
+            port: 80
+            targetPort: 8080
+goals:
+  - id: checkout-endpoints
+    type: state
+    description: The checkout Service has both checkout Pods as endpoints, forwarding to port 8080.
+    failureMessage: Compare the Service's Selector with `kubectl get pods --show-labels`, character by character.
+    target: { kind: EndpointSlice, namespace: default, labelSelector: "kubernetes.io/service-name=checkout" }
+    assertions:
+      - { path: endpoints, operator: lengthEquals, value: 2 }
+      - { path: 'ports[0].port', operator: equals, value: 8080 }
+hints:
+  - "`kubectl describe service checkout` shows the selector it's using."
+  - "`kubectl get pods --show-labels` shows the labels the Pods really have."
+  - In manifests/checkout-service.yaml, change the selector to app=checkout, save, then apply it.
+solution:
+  files:
+    - path: manifests/checkout-service.yaml
+      content: |
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: checkout
+          labels:
+            app: checkout
+        spec:
+          selector:
+            app: checkout
+          ports:
+            - name: http
+              port: 80
+              targetPort: 8080
+  commands:
+    - kubectl describe service checkout
+    - kubectl apply -f manifests/checkout-service.yaml
+reward:
+  baseXP: 125
+  firstTryBonusXP: 25
+  hintPenaltyPerHintXP: 10

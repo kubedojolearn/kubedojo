@@ -30,12 +30,53 @@ func loadRepoContent(t *testing.T) content.Bundle {
 	return b
 }
 
+// partialContent is the repository content with only three lessons written, so tests can check
+// how courses with planned (unwritten) lessons are served.
+func partialContent(t *testing.T) content.Bundle {
+	t.Helper()
+	b := loadRepoContent(t)
+	keep := map[string]bool{
+		"fundamentals/cluster-architecture": true, "workloads/inspect-a-pod": true, "workloads/scaling-deployments": true,
+	}
+	for id := range b.Challenges {
+		if !keep[id] {
+			delete(b.Challenges, id)
+		}
+	}
+	return b
+}
+
+func TestFullCurriculumImportsAndEveryCourseIsComplete(t *testing.T) {
+	pool := testdb.New(t)
+	b := loadRepoContent(t)
+	if _, err := content.Import(ctx, pool, b, true); err != nil {
+		t.Fatalf("import: %v", err)
+	}
+	list, err := courses.NewService(pool).ListCourses(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 6 {
+		t.Fatalf("courses %+v", list)
+	}
+	total := 0
+	for _, c := range list {
+		if c.LessonCount != c.PlannedLessonCount {
+			t.Errorf("%s: %d of %d lessons published", c.Slug, c.LessonCount, c.PlannedLessonCount)
+		}
+		total += int(c.LessonCount)
+	}
+	if total != 30 || len(b.Challenges) != 30 {
+		t.Fatalf("published %d lessons, loaded %d", total, len(b.Challenges))
+	}
+}
+
 func TestImportPublishesAndCatalogServesOnlyPublicFields(t *testing.T) {
 	pool := testdb.New(t)
 	if _, err := seed.Run(ctx, pool); err != nil {
 		t.Fatal(err)
 	}
-	b := loadRepoContent(t)
+	b := partialContent(t)
 	rep, err := content.Import(ctx, pool, b, true)
 	if err != nil {
 		t.Fatalf("import: %v", err)

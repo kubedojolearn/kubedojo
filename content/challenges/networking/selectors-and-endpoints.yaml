@@ -1,0 +1,98 @@
+schemaVersion: 1
+id: networking/selectors-and-endpoints
+version: 1
+course: networking
+lesson: selectors-and-endpoints
+title: How Services find Pods
+summary: Follow a Service's selector to its endpoints, and fix a Pod that's missing from them because of one absent label.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 10
+lastReviewed: 2026-10-25
+objectives:
+  - Explain that a Pod is behind a Service only if it carries every label in the selector
+  - Compare a Service's selector with Pod labels to find a missing Pod
+  - Watch the EndpointSlice update after a label change
+prerequisites:
+  - networking/expose-a-deployment
+glossary: [service, selector, label, endpointslice, pod]
+body: |
+  A Service's selector is an *and*: a Pod is an endpoint only if it carries **every** label in the
+  selector, with the same values. Extra labels on the Pod don't matter. A missing or misspelled one
+  does.
+
+  The Service is never told about Pods directly. The EndpointSlice controller keeps re-running the
+  selector, so the moment a Pod's labels change, it joins or leaves the Service.
+
+  ## Compare both sides
+
+  ```sh
+  kubectl describe service api          # the Selector line
+  kubectl get pods --show-labels        # each Pod's labels
+  ```
+
+  Then check which Pods made it:
+
+  ```sh
+  kubectl get endpointslices -l kubernetes.io/service-name=api
+  ```
+
+  A quick trick is to run the Service's selector yourself. The Pods it lists are exactly the
+  Service's endpoints (as long as they're ready):
+
+  ```sh
+  kubectl get pods -l app=api,tier=backend
+  ```
+
+  ## Fix the label, not the selector
+
+  When one Pod is missing, there are two ways to make them match: change the Service's selector, or
+  label the Pod. Loosening the selector is risky. Drop `tier=backend` and any Pod labelled `app=api`
+  would receive traffic, including ones that aren't meant to. Fix the odd one out instead:
+
+  ```sh
+  kubectl label pod <pod-name> tier=backend
+  ```
+
+  ## Your task
+
+  The `api` Service should balance across three Pods but only uses two. Find the missing Pod and
+  bring it in **without changing the Service**.
+
+  > **Simulated cluster:** these Pods were created individually for the lesson. In a real cluster
+  > they'd normally come from a Deployment, and you'd fix the label in its Pod template.
+references:
+  - title: Services without selectors, and with them (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/services-networking/service/#services-without-selectors
+  - title: Labels and selectors (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+initialFixture: fixtures/api-endpoints.yaml
+terminal:
+  allowedFamilies: [get, describe, label, events, explain]
+goals:
+  - id: api-endpoints
+    type: state
+    description: The api Service has all three Pods as endpoints.
+    failureMessage: Run the Service's selector yourself with `kubectl get pods -l ...`. Which Pod doesn't show up?
+    target: { kind: EndpointSlice, namespace: default, labelSelector: "kubernetes.io/service-name=api" }
+    assertions:
+      - { path: endpoints, operator: lengthEquals, value: 3 }
+  - id: selector-unchanged
+    type: state
+    description: The api Service still selects app=api and tier=backend.
+    failureMessage: Change the Pod's labels, not the Service's selector.
+    target: { kind: Service, namespace: default, name: api }
+    assertions:
+      - { path: spec.selector.app, operator: equals, value: api }
+      - { path: spec.selector.tier, operator: equals, value: backend }
+hints:
+  - Compare the Selector in `kubectl describe service api` with `kubectl get pods --show-labels`.
+  - One Pod has app=api but no tier label.
+  - "Try: kubectl label pod api-3 tier=backend"
+solution:
+  commands:
+    - kubectl get pods --show-labels
+    - kubectl label pod api-3 tier=backend
+reward:
+  baseXP: 100
+  firstTryBonusXP: 20
+  hintPenaltyPerHintXP: 10

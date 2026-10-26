@@ -1,0 +1,101 @@
+schemaVersion: 1
+id: troubleshooting/crashloopbackoff
+version: 1
+course: troubleshooting
+lesson: crashloopbackoff
+title: Fix a CrashLoopBackOff
+summary: Read the logs of a container that keeps crashing, including the previous run, and fix the missing setting.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 12
+lastReviewed: 2026-10-25
+objectives:
+  - Explain what CrashLoopBackOff means and why restarts slow down
+  - Read the logs of a crashed container with --previous
+  - Fix a crash caused by a missing environment variable
+prerequisites:
+  - troubleshooting/image-pull-failure
+  - configuration/environment-from-configmaps
+glossary: [crashloopbackoff, pod, container, deployment, event]
+body: |
+  **CrashLoopBackOff** means the container *did* start, then exited. The kubelet restarts it, it
+  exits again, and so on. Each time the kubelet waits longer before the next restart: 10 seconds, 20,
+  40, up to five minutes. The `RESTARTS` column keeps counting.
+
+  Kubernetes is doing its job here. The problem is inside the application, so the application's own
+  output is the best evidence.
+
+  ## Read what it said before it died
+
+  ```sh
+  kubectl get pods
+  kubectl logs deployment/orders
+  kubectl logs deployment/orders --previous
+  ```
+
+  `--previous` shows the logs of the *last crashed* run. That matters when the current run has
+  just restarted and hasn't printed much yet. Applications usually say why they're giving up in the
+  last few lines.
+
+  `describe` adds the exit code and the restart history:
+
+  ```sh
+  kubectl describe pod <pod-name>
+  ```
+
+  Look at `Last State: Terminated` with its `Exit Code`, and the `BackOff` events.
+
+  ## Usual causes
+
+  - Missing or wrong configuration: an environment variable, a ConfigMap key, a file.
+  - A dependency that isn't reachable at start-up, like a database.
+  - A bad command or arguments in the Pod template.
+  - Running out of memory (`OOMKilled` in `Last State`).
+
+  ## Fix the template
+
+  Configuration lives in the Deployment's Pod template. `kubectl set env` adds a variable and starts
+  a rollout:
+
+  ```sh
+  kubectl set env deployment/orders KEY=value
+  ```
+
+  For a team-managed app you'd add it to the manifest, or to a ConfigMap the Deployment reads.
+
+  ## Your task
+
+  The `orders` Deployment's only Pod is in `CrashLoopBackOff`. Read its logs, find the missing
+  setting, and get it running. This is the production deployment.
+
+  > **Simulated cluster:** the crash is simulated from the image's profile, and restarts follow the
+  > kubelet's backoff on simulated time. The logs are fixed lines, not a real process.
+references:
+  - title: Debug running Pods (Kubernetes docs)
+    url: https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/
+  - title: Container restart policy (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy
+initialFixture: fixtures/orders-crash.yaml
+terminal:
+  allowedFamilies: [get, describe, logs, events, set, rollout, apply, explain]
+goals:
+  - id: orders-ready
+    type: state
+    description: The orders Pod runs without crashing and is ready.
+    failureMessage: Read `kubectl logs deployment/orders --previous`. Which setting does the app say is missing, and which values does it accept?
+    target: { kind: Deployment, namespace: default, name: orders }
+    assertions:
+      - { path: status.readyReplicas, operator: equals, value: 1 }
+      - { path: status.updatedReplicas, operator: equals, value: 1 }
+hints:
+  - "`kubectl logs deployment/orders --previous` shows what the last crashed run printed."
+  - The last log line names an environment variable and the values it accepts.
+  - "Try: kubectl set env deployment/orders APP_MODE=production"
+solution:
+  commands:
+    - kubectl logs deployment/orders --previous
+    - kubectl set env deployment/orders APP_MODE=production
+    - kubectl rollout status deployment/orders
+reward:
+  baseXP: 125
+  firstTryBonusXP: 25
+  hintPenaltyPerHintXP: 10

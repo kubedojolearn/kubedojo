@@ -1,0 +1,102 @@
+schemaVersion: 1
+id: networking/service-basics
+version: 1
+course: networking
+lesson: service-basics
+title: What a Service is
+summary: See why Pods need a stable address in front of them, and read a Service's IP, selector and endpoints.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 10
+lastReviewed: 2026-10-25
+objectives:
+  - Explain why clients shouldn't connect to Pod IPs directly
+  - Read a Service's ClusterIP, ports and selector
+  - Find the Pods behind a Service through its EndpointSlice
+prerequisites:
+  - workloads/create-a-deployment
+glossary: [service, clusterip, endpointslice, selector, label, pod]
+body: |
+  Every Pod gets its own IP address, but Pods don't last. A rollout replaces them, a failed node
+  takes its Pods with it, and scaling adds and removes them. Each new Pod gets a new IP, so anything
+  that remembered the old address breaks.
+
+  A **Service** solves this. It's a stable virtual IP address and port in front of a group of Pods.
+  Clients talk to the Service; the Service forwards each connection to one of the Pods behind it.
+
+  ## Look at a Service
+
+  ```sh
+  kubectl get services
+  kubectl describe service web
+  ```
+
+  The parts that matter:
+
+  | Field | Meaning |
+  | --- | --- |
+  | `IP` (the **ClusterIP**) | The Service's stable address. It stays the same for the Service's whole life. |
+  | `Port` / `TargetPort` | The port clients connect to, and the port on the Pods that traffic is forwarded to. |
+  | `Selector` | Which Pods are behind the Service, chosen by label. |
+  | `Endpoints` | The Pod addresses that currently match the selector. |
+
+  (The `kubernetes` Service in `default` is the API server's own. Every cluster has one.)
+
+  ## Endpoints are kept up to date for you
+
+  The Service doesn't store a list of Pods. A controller watches for Pods that match the selector
+  and writes their addresses into an **EndpointSlice** that belongs to the Service:
+
+  ```sh
+  kubectl get endpointslices
+  kubectl get endpointslices -l kubernetes.io/service-name=web -o yaml
+  ```
+
+  Add a matching Pod and it appears there; delete one and it disappears. The Service's address never
+  changes.
+
+  ## Your task
+
+  A Deployment called `web` sits behind a Service also called `web`. Find the Service's ClusterIP and
+  count how many Pods it sends traffic to.
+
+  > **Simulated cluster:** addresses are allocated like a real cluster's, but no traffic flows. There
+  > is nothing to `curl`. The lessons focus on how Services find their Pods.
+references:
+  - title: Service (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/services-networking/service/
+  - title: EndpointSlices (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/
+initialFixture: fixtures/web-service.yaml
+terminal:
+  allowedFamilies: [get, describe, events, explain]
+goals:
+  - id: web-cluster-ip
+    type: answer
+    description: Find the web Service's ClusterIP.
+    prompt: What is the ClusterIP of the Service `web`?
+    input: text
+    failureMessage: Look at the CLUSTER-IP column of `kubectl get services`. The kubernetes Service is a different one.
+    expected:
+      path:
+        target: { kind: Service, namespace: default, name: web }
+        path: spec.clusterIP
+  - id: web-endpoint-count
+    type: answer
+    description: Count the Pods behind the web Service.
+    prompt: How many Pod addresses does the Service `web` send traffic to?
+    input: number
+    failureMessage: Count the addresses in the Endpoints line of `kubectl describe service web`.
+    expected:
+      count: { kind: Pod, namespace: default, labelSelector: "app=web" }
+hints:
+  - "`kubectl get services` lists each Service with its CLUSTER-IP."
+  - "`kubectl describe service web` shows the Selector and the Endpoints it matched."
+  - "`kubectl get endpointslices` lists the addresses behind each Service."
+solution:
+  commands:
+    - kubectl get services
+    - kubectl describe service web
+reward:
+  baseXP: 75
+  firstTryBonusXP: 15
+  hintPenaltyPerHintXP: 5

@@ -1,0 +1,187 @@
+schemaVersion: 1
+id: troubleshooting/capstone-recovery
+version: 1
+course: troubleshooting
+lesson: capstone-recovery
+title: "Capstone: bring the shop back online"
+summary: Three components, three different failures. Triage the whole application and bring every part back.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 30
+lastReviewed: 2026-10-25
+objectives:
+  - Triage a whole application before fixing any single part
+  - Diagnose image, selector and configuration failures from their symptoms
+  - Choose the right fix for each and confirm the application is healthy end to end
+prerequisites:
+  - troubleshooting/replica-mismatch
+glossary: [deployment, service, endpointslice, configmap, image, selector, event]
+body: |
+  It's Monday morning and the shop is down. Three components make it up:
+
+  | Component | Kind | Job |
+  | --- | --- | --- |
+  | `shop-web` | Deployment + Service | The storefront customers see |
+  | `shop-api` | Deployment + Service | The API the storefront and worker call |
+  | `shop-worker` | Deployment | Sends order emails; reads its settings from the ConfigMap `shop-config` |
+
+  Several things went wrong over the weekend. Nobody knows which, or how many.
+
+  ## Triage first
+
+  Before fixing anything, get the whole picture. It's tempting to fix the first error you see, but
+  the first error isn't always the most important one, and several problems can look like one.
+
+  ```sh
+  kubectl get deployments
+  kubectl get pods
+  kubectl get services
+  kubectl get endpointslices
+  kubectl events --types Warning
+  ```
+
+  Write down every component that isn't healthy and its symptom. Then take them one at a time,
+  using the checklists from this course:
+
+  - **Pods not ready?** Their status says where to look: `ImagePullBackOff` means the image,
+    `CrashLoopBackOff` means the logs, `CreateContainerConfigError` means a missing ConfigMap or
+    Secret, and `Pending` means scheduling.
+  - **Pods ready but a Service has no endpoints?** Compare the Service's selector with the Pods'
+    labels.
+
+  ## Fix at the source
+
+  Fix templates and Services, not individual Pods. Controllers recreate Pods from the template, so
+  a hand-fixed Pod doesn't stay fixed. The Service manifests are in the editor if you need them;
+  `kubectl set image`, `kubectl create configmap` and `kubectl apply` cover everything else.
+
+  ## Done means healthy end to end
+
+  You're finished when every Deployment is fully ready **and** every Service has endpoints. A green
+  Deployment behind a Service that selects nothing is still an outage.
+
+  ## Your task
+
+  Bring the shop back online. Some facts from the team:
+
+  - The storefront should run `nginx:1.27`.
+  - The worker reaches the API at `http://shop-api`, configured as `API_URL`.
+  - Services select on `app=<component name>`.
+
+  > **Simulated cluster:** no customer traffic flows. "Online" means every component is ready and
+  > reachable through its Service, as the goals check.
+references:
+  - title: Troubleshooting applications (Kubernetes docs)
+    url: https://kubernetes.io/docs/tasks/debug/debug-application/
+  - title: Debug Services (Kubernetes docs)
+    url: https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/
+initialFixture: fixtures/shop-outage.yaml
+initialFiles:
+  - path: manifests/shop-web-service.yaml
+    content: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: shop-web
+        labels:
+          app: shop-web
+      spec:
+        selector:
+          app: shop-web
+        ports:
+          - name: http
+            port: 80
+            targetPort: 80
+  - path: manifests/shop-api-service.yaml
+    content: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: shop-api
+        labels:
+          app: shop-api
+      spec:
+        selector:
+          app: shop-apl
+        ports:
+          - name: http
+            port: 80
+            targetPort: 8080
+goals:
+  - id: web-ready
+    type: state
+    description: shop-web runs the right image with both replicas ready.
+    failureMessage: Check the shop-web Pods' status and their events.
+    target: { kind: Deployment, namespace: default, name: shop-web }
+    assertions:
+      - { path: 'spec.template.spec.containers[0].image', operator: equals, value: "nginx:1.27" }
+      - { path: status.readyReplicas, operator: equals, value: 2 }
+      - { path: status.updatedReplicas, operator: equals, value: 2 }
+  - id: api-ready
+    type: state
+    description: shop-api has both replicas ready.
+    failureMessage: Check `kubectl get deployment shop-api`.
+    target: { kind: Deployment, namespace: default, name: shop-api }
+    assertions:
+      - { path: status.readyReplicas, operator: equals, value: 2 }
+  - id: worker-ready
+    type: state
+    description: shop-worker is running and ready.
+    failureMessage: Describe the shop-worker Pod and read its newest event.
+    target: { kind: Deployment, namespace: default, name: shop-worker }
+    assertions:
+      - { path: status.readyReplicas, operator: equals, value: 1 }
+  - id: shop-config
+    type: state
+    description: The shop-config ConfigMap tells the worker where the API is.
+    failureMessage: Check `kubectl get configmap shop-config -o yaml`. The key must be exactly the one the worker reads.
+    target: { kind: ConfigMap, namespace: default, name: shop-config }
+    assertions:
+      - { path: data.API_URL, operator: exists }
+  - id: web-endpoints
+    type: state
+    description: The shop-web Service has endpoints.
+    failureMessage: Run `kubectl get endpointslices -l kubernetes.io/service-name=shop-web`.
+    target: { kind: EndpointSlice, namespace: default, labelSelector: "kubernetes.io/service-name=shop-web" }
+    assertions:
+      - { path: endpoints, operator: lengthGreaterThanOrEqual, value: 1 }
+  - id: api-endpoints
+    type: state
+    description: The shop-api Service has endpoints.
+    failureMessage: Compare `kubectl describe service shop-api` with `kubectl get pods --show-labels`.
+    target: { kind: EndpointSlice, namespace: default, labelSelector: "kubernetes.io/service-name=shop-api" }
+    assertions:
+      - { path: endpoints, operator: lengthGreaterThanOrEqual, value: 1 }
+hints:
+  - "Triage first: `kubectl get pods` and `kubectl events --types Warning` show most of the damage."
+  - "Three different faults: an image name, a Service selector and a missing ConfigMap."
+  - shop-api's Pods are healthy, but its Service selects a label that no Pod has. Look closely at the selector's spelling.
+  - "The worker needs: kubectl create configmap shop-config --from-literal=API_URL=http://shop-api"
+solution:
+  files:
+    - path: manifests/shop-api-service.yaml
+      content: |
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: shop-api
+          labels:
+            app: shop-api
+        spec:
+          selector:
+            app: shop-api
+          ports:
+            - name: http
+              port: 80
+              targetPort: 8080
+  commands:
+    - kubectl get pods
+    - kubectl events --types Warning
+    - kubectl set image deployment/shop-web web=nginx:1.27
+    - kubectl apply -f manifests/shop-api-service.yaml
+    - kubectl create configmap shop-config --from-literal=API_URL=http://shop-api
+    - kubectl get deployments
+    - kubectl get endpointslices
+reward:
+  baseXP: 300
+  firstTryBonusXP: 75
+  hintPenaltyPerHintXP: 20

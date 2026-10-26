@@ -1,0 +1,140 @@
+schemaVersion: 1
+id: networking/clusterip-vs-nodeport
+version: 1
+course: networking
+lesson: clusterip-vs-nodeport
+title: ClusterIP vs. NodePort
+summary: Learn which Service types are reachable from where, and turn a ClusterIP Service into a NodePort one.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 12
+lastReviewed: 2026-10-25
+objectives:
+  - Explain who can reach a ClusterIP Service and who can reach a NodePort Service
+  - Change a Service's type by editing and applying its manifest
+  - Find the node port Kubernetes allocated
+prerequisites:
+  - networking/selectors-and-endpoints
+glossary: [service, clusterip, nodeport, manifest]
+body: |
+  A Service's `type` decides who can reach it.
+
+  | Type | Reachable from | Typical use |
+  | --- | --- | --- |
+  | **ClusterIP** (the default) | Only inside the cluster | Internal services: databases, APIs other Pods call |
+  | **NodePort** | Also from outside, at `<any node's IP>:<nodePort>` | Simple external access, or behind your own load balancer |
+  | **LoadBalancer** | A cloud load balancer's address | Public services on a cloud provider |
+
+  The types build on each other. A NodePort Service still has a ClusterIP, and a LoadBalancer Service
+  still has a node port.
+
+  ## How NodePort works
+
+  Kubernetes picks a port from **30000–32767** and opens it on *every* node. Traffic arriving at
+  any node on that port reaches the Service, wherever its Pods actually run. You can choose the
+  number with `nodePort:`, but letting Kubernetes pick avoids clashes.
+
+  ## Change the type
+
+  A Service's type is part of its spec, so edit the manifest:
+
+  ```yaml
+  spec:
+    type: NodePort
+    selector:
+      app: web
+    ports:
+      - name: http
+        port: 80
+        targetPort: 80
+  ```
+
+  ```sh
+  kubectl apply -f manifests/web-service.yaml
+  kubectl get service web
+  ```
+
+  The `PORT(S)` column changes from `80/TCP` to something like `80:31234/TCP`: Service port 80,
+  node port 31234. The ClusterIP stays the same.
+
+  ## Your task
+
+  A partner team needs to reach `web` from outside the cluster for a test. Change the Service to
+  type `NodePort` (keep its selector and ports), apply it, and report the node port Kubernetes
+  allocated.
+
+  > **Simulated cluster:** the node port is allocated and shown exactly as on a real cluster, but no
+  > traffic reaches it: there are no real nodes to connect to.
+references:
+  - title: Service types (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+  - title: NodePort (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport
+initialFixture: fixtures/web-service.yaml
+terminal:
+  allowedFamilies: [get, describe, apply, events, explain]
+initialFiles:
+  - path: manifests/web-service.yaml
+    content: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: web
+        labels:
+          app: web
+      spec:
+        selector:
+          app: web
+        ports:
+          - name: http
+            port: 80
+            targetPort: 80
+goals:
+  - id: web-nodeport
+    type: state
+    description: The web Service is of type NodePort, has a node port, and still selects the web Pods.
+    failureMessage: "Add `type: NodePort` under spec in manifests/web-service.yaml, save, and apply it."
+    target: { kind: Service, namespace: default, name: web }
+    assertions:
+      - { path: spec.type, operator: equals, value: NodePort }
+      - { path: 'spec.ports[0].nodePort', operator: exists }
+      - { path: 'spec.ports[0].port', operator: equals, value: 80 }
+      - { path: spec.selector.app, operator: equals, value: web }
+  - id: node-port-number
+    type: answer
+    description: Report the node port Kubernetes allocated.
+    prompt: Which node port did Kubernetes allocate to the Service `web`?
+    input: number
+    failureMessage: In `kubectl get service web`, the node port is the number after the colon in PORT(S).
+    expected:
+      path:
+        target: { kind: Service, namespace: default, name: web }
+        path: 'spec.ports[0].nodePort'
+hints:
+  - The type goes under `spec:` in the manifest, at the same level as `selector:`.
+  - "After saving, run: kubectl apply -f manifests/web-service.yaml"
+  - "In `80:31234/TCP`, 31234 is the node port."
+solution:
+  files:
+    - path: manifests/web-service.yaml
+      content: |
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: web
+          labels:
+            app: web
+        spec:
+          type: NodePort
+          selector:
+            app: web
+          ports:
+            - name: http
+              port: 80
+              targetPort: 80
+  commands:
+    - kubectl apply -f manifests/web-service.yaml
+    - kubectl get service web
+reward:
+  baseXP: 100
+  firstTryBonusXP: 20
+  hintPenaltyPerHintXP: 10

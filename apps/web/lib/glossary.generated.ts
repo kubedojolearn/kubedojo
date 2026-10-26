@@ -9,6 +9,13 @@ export interface GlossaryTerm {
 
 export const glossary: GlossaryTerm[] = [
   {
+    id: "annotation",
+    term: "Annotation",
+    definition:
+      "A key-value note attached to an object for people and tools to read. Unlike labels, annotations can't be used in selectors.",
+    docsUrl: "https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/",
+  },
+  {
     id: "api-server",
     term: "API server",
     definition:
@@ -20,6 +27,12 @@ export const glossary: GlossaryTerm[] = [
     term: "Cluster",
     definition: "A set of nodes that run containerized applications, managed by a control plane.",
     docsUrl: "https://kubernetes.io/docs/concepts/architecture/",
+  },
+  {
+    id: "clusterip",
+    term: "ClusterIP",
+    definition: "The default Service type. A virtual IP address reachable only from inside the cluster.",
+    docsUrl: "https://kubernetes.io/docs/concepts/services-networking/service/#type-clusterip",
   },
   {
     id: "configmap",
@@ -48,6 +61,13 @@ export const glossary: GlossaryTerm[] = [
     docsUrl: "https://kubernetes.io/docs/concepts/architecture/controller/",
   },
   {
+    id: "crashloopbackoff",
+    term: "CrashLoopBackOff",
+    definition:
+      "A Pod status meaning a container keeps exiting and the kubelet is waiting longer and longer before restarting it.",
+    docsUrl: "https://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/",
+  },
+  {
     id: "deployment",
     term: "Deployment",
     definition:
@@ -59,6 +79,13 @@ export const glossary: GlossaryTerm[] = [
     term: "Desired state",
     definition:
       "What you have asked Kubernetes for, stored in objects' spec fields. Controllers work to make the actual state match it.",
+  },
+  {
+    id: "endpointslice",
+    term: "EndpointSlice",
+    definition:
+      "A list of the ready addresses behind a Service, kept up to date by a controller as matching Pods come and go.",
+    docsUrl: "https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/",
   },
   {
     id: "etcd",
@@ -73,6 +100,13 @@ export const glossary: GlossaryTerm[] = [
       "A short record of something that happened to an object, such as being scheduled or failing to pull an image. Shown by kubectl describe and kubectl get events.",
   },
   {
+    id: "image",
+    term: "Image",
+    definition:
+      "A packaged application and its dependencies, identified by a name and tag such as nginx:1.27. Containers are started from images.",
+    docsUrl: "https://kubernetes.io/docs/concepts/containers/images/",
+  },
+  {
     id: "kubectl",
     term: "kubectl",
     definition: "The command-line tool for talking to a Kubernetes cluster's API server.",
@@ -84,6 +118,12 @@ export const glossary: GlossaryTerm[] = [
     definition:
       "A key-value pair attached to an object. Selectors use labels to pick out groups of objects, such as the Pods behind a Service.",
     docsUrl: "https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/",
+  },
+  {
+    id: "manifest",
+    term: "Manifest",
+    definition: "A YAML or JSON file that describes the objects you want, ready for kubectl apply.",
+    docsUrl: "https://kubernetes.io/docs/concepts/overview/working-with-objects/object-management/",
   },
   {
     id: "namespace",
@@ -100,6 +140,13 @@ export const glossary: GlossaryTerm[] = [
     docsUrl: "https://kubernetes.io/docs/concepts/architecture/nodes/",
   },
   {
+    id: "nodeport",
+    term: "NodePort",
+    definition:
+      "A Service type that also opens the same port, from 30000 to 32767, on every node so traffic from outside the cluster can reach the Service.",
+    docsUrl: "https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport",
+  },
+  {
     id: "pod",
     term: "Pod",
     definition:
@@ -114,11 +161,32 @@ export const glossary: GlossaryTerm[] = [
     docsUrl: "https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/",
   },
   {
+    id: "resource-requests",
+    term: "Resource requests",
+    definition:
+      "The CPU and memory a container asks for. The scheduler only places a Pod on a node with that much unreserved capacity.",
+    docsUrl: "https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+  },
+  {
+    id: "rollout",
+    term: "Rollout",
+    definition:
+      "The gradual replacement of a Deployment's Pods after its Pod template changes. Each rollout gets a revision number you can roll back to.",
+    docsUrl: "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-back-a-deployment",
+  },
+  {
     id: "scheduler",
     term: "Scheduler",
     definition:
       "The control-plane component that picks a node for each new Pod, based on the Pod's requirements and each node's free capacity.",
     docsUrl: "https://kubernetes.io/docs/concepts/scheduling-eviction/kube-scheduler/",
+  },
+  {
+    id: "secret",
+    term: "Secret",
+    definition:
+      "An object for small pieces of sensitive data such as passwords or tokens. Values are base64-encoded, which is not encryption.",
+    docsUrl: "https://kubernetes.io/docs/concepts/configuration/secret/",
   },
   {
     id: "selector",

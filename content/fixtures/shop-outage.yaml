@@ -1,0 +1,110 @@
+schemaVersion: 1
+simulatorVersion: kubernetes-1.37-subset-1
+description: The shop is down. Three Deployments and two Services, each broken in a different way.
+imageCatalog:
+  - image: kubedojo/shop-worker:1.0
+    behavior: run
+    logs:
+      - "shop-worker 1.0 starting"
+      - "sending order emails via the API (simulated)"
+resources:
+  - apiVersion: v1
+    kind: Node
+    metadata:
+      name: control-plane
+      labels: { kubernetes.io/hostname: control-plane, node-role.kubernetes.io/control-plane: "" }
+    spec:
+      taints:
+        - { key: node-role.kubernetes.io/control-plane, effect: NoSchedule }
+    status:
+      capacity: { cpu: "2", memory: 4Gi, pods: "110" }
+      allocatable: { cpu: "1800m", memory: 3Gi, pods: "110" }
+      conditions:
+        - { type: Ready, status: "True" }
+    ageSeconds: 2592000
+  - apiVersion: v1
+    kind: Node
+    metadata:
+      name: worker-1
+      labels: { kubernetes.io/hostname: worker-1 }
+    status:
+      capacity: { cpu: "4", memory: 8Gi, pods: "110" }
+      allocatable: { cpu: "3800m", memory: 7Gi, pods: "110" }
+      conditions:
+        - { type: Ready, status: "True" }
+    ageSeconds: 2592000
+  - apiVersion: v1
+    kind: Node
+    metadata:
+      name: worker-2
+      labels: { kubernetes.io/hostname: worker-2 }
+    status:
+      capacity: { cpu: "4", memory: 8Gi, pods: "110" }
+      allocatable: { cpu: "3800m", memory: 7Gi, pods: "110" }
+      conditions:
+        - { type: Ready, status: "True" }
+    ageSeconds: 2592000
+  - apiVersion: apps/v1
+    kind: Deployment
+    metadata: { name: shop-web, namespace: default, labels: { app: shop-web } }
+    spec:
+      replicas: 2
+      selector: { matchLabels: { app: shop-web } }
+      template:
+        metadata: { labels: { app: shop-web } }
+        spec:
+          containers:
+            - name: web
+              image: nginx:1.72
+              ports: [{ containerPort: 80 }]
+              resources: { requests: { cpu: 100m, memory: 64Mi } }
+    ageSeconds: 1200
+  - apiVersion: v1
+    kind: Service
+    metadata: { name: shop-web, namespace: default, labels: { app: shop-web } }
+    spec:
+      selector: { app: shop-web }
+      ports:
+        - { name: http, port: 80, targetPort: 80 }
+    ageSeconds: 86400
+  - apiVersion: apps/v1
+    kind: Deployment
+    metadata: { name: shop-api, namespace: default, labels: { app: shop-api } }
+    spec:
+      replicas: 2
+      selector: { matchLabels: { app: shop-api } }
+      template:
+        metadata: { labels: { app: shop-api } }
+        spec:
+          containers:
+            - name: api
+              image: kubedojo/demo-api:2.0
+              ports: [{ containerPort: 8080 }]
+              resources: { requests: { cpu: 100m, memory: 64Mi } }
+    ageSeconds: 86400
+  - apiVersion: v1
+    kind: Service
+    metadata: { name: shop-api, namespace: default, labels: { app: shop-api } }
+    spec:
+      selector: { app: shop-apl }
+      ports:
+        - { name: http, port: 80, targetPort: 8080 }
+    ageSeconds: 1500
+  - apiVersion: apps/v1
+    kind: Deployment
+    metadata: { name: shop-worker, namespace: default, labels: { app: shop-worker } }
+    spec:
+      replicas: 1
+      selector: { matchLabels: { app: shop-worker } }
+      template:
+        metadata: { labels: { app: shop-worker } }
+        spec:
+          containers:
+            - name: worker
+              image: kubedojo/shop-worker:1.0
+              env:
+                - name: API_URL
+                  valueFrom:
+                    configMapKeyRef: { name: shop-config, key: API_URL }
+              resources: { requests: { cpu: 100m, memory: 64Mi } }
+    ageSeconds: 900

@@ -1,0 +1,103 @@
+schemaVersion: 1
+id: networking/expose-a-deployment
+version: 1
+course: networking
+lesson: expose-a-deployment
+title: Expose a Deployment
+summary: Put a Service in front of a Deployment with kubectl expose, mapping the Service port to the container port.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 10
+lastReviewed: 2026-10-25
+objectives:
+  - Create a Service for a Deployment with kubectl expose
+  - Tell port and targetPort apart and choose each correctly
+  - Check that a new Service found its Pods
+prerequisites:
+  - networking/service-basics
+glossary: [service, endpointslice, selector, deployment, clusterip]
+body: |
+  Any Pods can sit behind a Service, but most often you want one in front of a Deployment.
+  `kubectl expose` creates it for you and copies the Deployment's selector, so the Service picks up
+  exactly that Deployment's Pods.
+
+  ## Two different ports
+
+  A Service maps one port to another:
+
+  - **`port`** is what clients connect to on the Service, for example the familiar `80`.
+  - **`targetPort`** is where the application inside the Pod actually listens, for example `8080`.
+
+  They don't have to match, and often don't. The usual mistake is to set only `port`: `targetPort`
+  then defaults to the same number, and the Service forwards to a port nothing listens on.
+
+  Find the right `targetPort` from the Deployment or its logs:
+
+  ```sh
+  kubectl describe deployment shop
+  kubectl logs deployment/shop
+  ```
+
+  ## Expose it
+
+  ```sh
+  kubectl expose deployment shop --port=80 --target-port=8080
+  ```
+
+  The Service gets the Deployment's name unless you pass `--name`, and the default type,
+  `ClusterIP`.
+
+  ## Check it worked
+
+  ```sh
+  kubectl describe service shop
+  kubectl get endpointslices -l kubernetes.io/service-name=shop
+  ```
+
+  The `Endpoints` line should list one address for each Pod, each ending in the target port. If it
+  says `<none>`, the selector matched nothing.
+
+  ## Your task
+
+  The `shop` Deployment runs three replicas but nothing can reach it reliably. Create a Service
+  called `shop` that listens on port **80** and forwards to the port the application listens on.
+
+  > **Simulated cluster:** no traffic flows, so the check is what the Service selects and where it
+  > forwards, not a real request.
+references:
+  - title: Connecting applications with Services (Kubernetes docs)
+    url: https://kubernetes.io/docs/tutorials/services/connect-applications-service/
+  - title: kubectl expose (Kubernetes docs)
+    url: https://kubernetes.io/docs/reference/kubectl/generated/kubectl_expose/
+initialFixture: fixtures/shop-deployment.yaml
+terminal:
+  allowedFamilies: [get, describe, logs, events, expose, create, apply, delete, explain]
+goals:
+  - id: shop-service
+    type: state
+    description: A Service called shop selects app=shop and forwards port 80 to the application's port.
+    failureMessage: Check `kubectl describe service shop`. Compare TargetPort with the port in the shop logs. If it's wrong, delete the Service and expose again.
+    target: { kind: Service, namespace: default, name: shop }
+    assertions:
+      - { path: spec.selector.app, operator: equals, value: shop }
+      - { path: 'spec.ports[0].port', operator: equals, value: 80 }
+      - { path: 'spec.ports[0].targetPort', operator: equals, value: 8080 }
+  - id: shop-endpoints
+    type: state
+    description: The shop Service has all three Pods as endpoints.
+    failureMessage: Run `kubectl get endpointslices -l kubernetes.io/service-name=shop`. Does the selector match the Pods' labels?
+    target: { kind: EndpointSlice, namespace: default, labelSelector: "kubernetes.io/service-name=shop" }
+    assertions:
+      - { path: endpoints, operator: lengthEquals, value: 3 }
+hints:
+  - "`kubectl logs deployment/shop` shows which port the application listens on."
+  - "`kubectl expose deployment <name>` takes --port and --target-port."
+  - "Try: kubectl expose deployment shop --port=80 --target-port=8080"
+solution:
+  commands:
+    - kubectl logs deployment/shop
+    - kubectl expose deployment shop --port=80 --target-port=8080
+    - kubectl get endpointslices -l kubernetes.io/service-name=shop
+reward:
+  baseXP: 100
+  firstTryBonusXP: 20
+  hintPenaltyPerHintXP: 10

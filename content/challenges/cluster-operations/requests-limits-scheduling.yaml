@@ -1,0 +1,156 @@
+schemaVersion: 1
+id: cluster-operations/requests-limits-scheduling
+version: 1
+course: cluster-operations
+lesson: requests-limits-scheduling
+title: Requests, limits and scheduling
+summary: See how CPU and memory requests decide where Pods fit, and right-size a Deployment that asks for too much.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 15
+lastReviewed: 2026-10-25
+objectives:
+  - Explain the difference between resource requests and limits
+  - Work out how many Pods fit on a node from its allocatable resources
+  - Fix Insufficient cpu by right-sizing a request in a manifest
+prerequisites:
+  - cluster-operations/inspect-nodes
+glossary: [resource-requests, scheduler, node, pod, deployment, manifest]
+body: |
+  Each container can declare two amounts of CPU and memory:
+
+  - **Requests** are what the container is *guaranteed*. The scheduler adds up the requests of the
+    Pods already on a node and places a new Pod only where its request still fits in the node's
+    *allocatable* amount. Requests are a reservation: actual usage doesn't matter here.
+  - **Limits** are a ceiling at run time. A container that goes over its CPU limit is slowed down
+    (throttled). One that goes over its memory limit is killed and restarted.
+
+  ```yaml
+  resources:
+    requests:
+      cpu: 500m          # half a core, reserved on the node
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 256Mi
+  ```
+
+  ## Do the arithmetic
+
+  A worker with `3800m` allocatable CPU fits one Pod requesting `2` (2000m), but not two: that
+  would be 4000m. Three such Pods on two workers leaves one `Pending`:
+
+  ```text
+  0/3 nodes are available: 1 node(s) had untolerated taint {...}, 2 Insufficient cpu.
+  ```
+
+  `kubectl describe node` shows each node's `Allocated resources`: requests already reserved, as a
+  share of allocatable.
+
+  ## Right-size, don't just shrink
+
+  Asking for too much wastes the cluster: reserved capacity sits idle while other Pods can't
+  schedule. Asking for too little is worse, because the node gets overcommitted and Pods compete when
+  busy. Set requests from measured usage, plus some headroom.
+
+  ## Your task
+
+  The `batch` Deployment wants three replicas, but one is always `Pending`. Its owners measured it:
+  each Pod uses about 300m CPU at peak, and they're happy with a request of **500m or less**.
+
+  1. Confirm why the third Pod can't be scheduled.
+  2. Edit `manifests/batch.yaml` to request at most `500m` CPU (keep the limit at or above the
+     request), and apply it.
+  3. Check that all three replicas are ready.
+
+  > **Simulated cluster:** limits are stored and shown, but nothing is throttled or killed, because
+  > nothing actually runs. Requests drive scheduling exactly as described.
+references:
+  - title: Resource management for Pods and containers (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+  - title: Scheduling framework and resource fit (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/scheduling-eviction/kube-scheduler/
+initialFixture: fixtures/batch-requests.yaml
+terminal:
+  allowedFamilies: [get, describe, events, apply, rollout, explain]
+initialFiles:
+  - path: manifests/batch.yaml
+    content: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: batch
+        labels:
+          app: batch
+      spec:
+        replicas: 3
+        selector:
+          matchLabels:
+            app: batch
+        template:
+          metadata:
+            labels:
+              app: batch
+          spec:
+            containers:
+              - name: batch
+                image: busybox:1.36
+                resources:
+                  requests:
+                    cpu: "2"
+                    memory: 256Mi
+                  limits:
+                    cpu: "2"
+                    memory: 256Mi
+goals:
+  - id: batch-ready
+    type: state
+    description: All three batch replicas are ready, each requesting at most 500m CPU.
+    failureMessage: Check `kubectl get deployment batch` and the cpu request in `kubectl get deployment batch -o yaml`.
+    target: { kind: Deployment, namespace: default, name: batch }
+    assertions:
+      - { path: spec.replicas, operator: equals, value: 3 }
+      - { path: status.readyReplicas, operator: equals, value: 3 }
+      - { path: status.updatedReplicas, operator: equals, value: 3 }
+      - { path: 'spec.template.spec.containers[0].resources.requests.cpu', operator: lessThanOrEqual, value: "500m" }
+hints:
+  - Describe the Pending Pod and read the FailedScheduling event.
+  - "`kubectl describe node worker-1` shows how much CPU is already requested."
+  - "In manifests/batch.yaml set requests cpu: 500m (and the limit to 500m or more), save, then apply it."
+solution:
+  files:
+    - path: manifests/batch.yaml
+      content: |
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: batch
+          labels:
+            app: batch
+        spec:
+          replicas: 3
+          selector:
+            matchLabels:
+              app: batch
+          template:
+            metadata:
+              labels:
+                app: batch
+            spec:
+              containers:
+                - name: batch
+                  image: busybox:1.36
+                  resources:
+                    requests:
+                      cpu: 500m
+                      memory: 256Mi
+                    limits:
+                      cpu: "1"
+                      memory: 256Mi
+  commands:
+    - kubectl describe node worker-1
+    - kubectl apply -f manifests/batch.yaml
+    - kubectl get deployment batch
+reward:
+  baseXP: 125
+  firstTryBonusXP: 25
+  hintPenaltyPerHintXP: 10

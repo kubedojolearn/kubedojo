@@ -1,0 +1,76 @@
+schemaVersion: 1
+simulatorVersion: kubernetes-1.37-subset-1
+description: A control-plane node and four workers of different sizes, two of them labelled disk=ssd.
+resources:
+  - apiVersion: v1
+    kind: Node
+    metadata:
+      name: control-plane
+      labels: { kubernetes.io/hostname: control-plane, node-role.kubernetes.io/control-plane: "" }
+    spec:
+      taints:
+        - { key: node-role.kubernetes.io/control-plane, effect: NoSchedule }
+    status:
+      capacity: { cpu: "2", memory: 4Gi, pods: "110" }
+      allocatable: { cpu: "1800m", memory: 3Gi, pods: "110" }
+      conditions:
+        - { type: Ready, status: "True" }
+    ageSeconds: 2592000
+  - apiVersion: v1
+    kind: Node
+    metadata:
+      name: node-1
+      labels: { kubernetes.io/hostname: node-1, disk: ssd, zone: zone-a }
+    status:
+      capacity: { cpu: "8", memory: 16Gi, pods: "110" }
+      allocatable: { cpu: "7800m", memory: 15Gi, pods: "110" }
+      conditions:
+        - { type: Ready, status: "True" }
+    ageSeconds: 2592000
+  - apiVersion: v1
+    kind: Node
+    metadata:
+      name: node-2
+      labels: { kubernetes.io/hostname: node-2, disk: hdd, zone: zone-a }
+    status:
+      capacity: { cpu: "2", memory: 4Gi, pods: "110" }
+      allocatable: { cpu: "1900m", memory: 3Gi, pods: "110" }
+      conditions:
+        - { type: Ready, status: "True" }
+    ageSeconds: 1728000
+  - apiVersion: v1
+    kind: Node
+    metadata:
+      name: node-3
+      labels: { kubernetes.io/hostname: node-3, disk: ssd, zone: zone-b }
+    status:
+      capacity: { cpu: "4", memory: 8Gi, pods: "110" }
+      allocatable: { cpu: "3800m", memory: 7Gi, pods: "110" }
+      conditions:
+        - { type: Ready, status: "True" }
+    ageSeconds: 864000
+  - apiVersion: v1
+    kind: Node
+    metadata:
+      name: node-4
+      labels: { kubernetes.io/hostname: node-4, disk: hdd, zone: zone-b }
+    status:
+      capacity: { cpu: "4", memory: 8Gi, pods: "110" }
+      allocatable: { cpu: "3800m", memory: 7Gi, pods: "110" }
+      conditions:
+        - { type: Ready, status: "True" }
+    ageSeconds: 86400
+  - apiVersion: apps/v1
+    kind: Deployment
+    metadata: { name: web, namespace: default, labels: { app: web } }
+    spec:
+      replicas: 3
+      selector: { matchLabels: { app: web } }
+      template:
+        metadata: { labels: { app: web } }
+        spec:
+          containers:
+            - name: nginx
+              image: nginx:1.27
+              resources: { requests: { cpu: 500m, memory: 256Mi } }
+    ageSeconds: 7200

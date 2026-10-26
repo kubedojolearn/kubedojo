@@ -1,0 +1,105 @@
+schemaVersion: 1
+id: workloads/rollout-and-rollback
+version: 1
+course: workloads
+lesson: rollout-and-rollback
+title: Roll out and roll back
+summary: Ship a new image with a rolling update, spot a release that can't finish, and roll back to the last good revision.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 15
+lastReviewed: 2026-10-25
+objectives:
+  - Start a rolling update by changing a Deployment's image
+  - Follow a rollout with rollout status and rollout history
+  - Explain why a bad release doesn't take down every Pod
+  - Roll back with rollout undo
+prerequisites:
+  - workloads/scaling-deployments
+glossary: [deployment, replicaset, rollout, image, pod, event]
+body: |
+  Changing a Deployment's Pod template, for example its image, starts a **rollout**. The Deployment
+  creates a new ReplicaSet for the new version and moves Pods across gradually: start some new Pods,
+  wait until they're ready, remove some old ones, and repeat.
+
+  Two settings control the pace. `maxSurge` is how many extra Pods may exist during the rollout, and
+  `maxUnavailable` is how many may be missing. The defaults are 25% each. For three replicas that
+  means one extra Pod at a time and none unavailable, so the old version keeps serving until the new
+  one proves itself.
+
+  ## Ship a new version
+
+  ```sh
+  kubectl set image deployment/web nginx=nginx:1.27
+  kubectl rollout status deployment/web
+  ```
+
+  `nginx=` names the *container* to update. Every rollout gets a **revision** number:
+
+  ```sh
+  kubectl rollout history deployment/web
+  ```
+
+  ## When a rollout can't finish
+
+  If the new Pods never become ready, perhaps because the image doesn't exist, the rollout stops
+  partway. Thanks to `maxUnavailable`, the old Pods are still running. Nothing is down, but nothing is
+  progressing either:
+
+  ```sh
+  kubectl rollout status deployment/web
+  kubectl get pods
+  ```
+
+  ## Roll back
+
+  ```sh
+  kubectl rollout undo deployment/web
+  ```
+
+  `undo` brings back the previous revision's template. Kubernetes doesn't rewind the revision
+  counter: the restored template becomes the *newest* revision. Roll out once and undo once, and
+  you're on revision 3, running revision 1's image.
+
+  ## Your task
+
+  `web` runs `nginx:1.26`, revision 1. A teammate's release notes say to deploy **`nginx:1.72`**.
+
+  1. Roll it out to the `nginx` container and check the rollout's progress.
+  2. Work out why it isn't finishing.
+  3. Roll back so all three replicas run `nginx:1.26` again.
+
+  > **Simulated cluster:** a rollout that can't finish makes `rollout status` explain why and exit,
+  > instead of waiting forever as it would on a real cluster.
+references:
+  - title: Updating a Deployment (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#updating-a-deployment
+  - title: Rolling back a Deployment (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-back-a-deployment
+initialFixture: fixtures/web-rollout.yaml
+terminal:
+  allowedFamilies: [get, describe, logs, events, set, rollout, apply, explain]
+goals:
+  - id: rolled-back
+    type: state
+    description: web runs nginx:1.26 on all 3 replicas again, after a rollout and a rollback.
+    failureMessage: Check `kubectl rollout history deployment/web`. You need to roll out the new image first, then undo it.
+    target: { kind: Deployment, namespace: default, name: web }
+    assertions:
+      - { path: 'spec.template.spec.containers[0].image', operator: equals, value: "nginx:1.26" }
+      - { path: 'metadata.annotations["deployment.kubernetes.io/revision"]', operator: greaterThanOrEqual, value: 3 }
+      - { path: status.readyReplicas, operator: equals, value: 3 }
+      - { path: status.updatedReplicas, operator: equals, value: 3 }
+hints:
+  - "`kubectl set image deployment/web nginx=<image>` starts a rollout."
+  - Describe the new Pod that isn't ready. What do its events say about the image?
+  - "`kubectl rollout undo deployment/web` returns to the previous revision."
+solution:
+  commands:
+    - kubectl set image deployment/web nginx=nginx:1.72
+    - kubectl rollout status deployment/web
+    - kubectl rollout undo deployment/web
+    - kubectl rollout history deployment/web
+reward:
+  baseXP: 125
+  firstTryBonusXP: 25
+  hintPenaltyPerHintXP: 10

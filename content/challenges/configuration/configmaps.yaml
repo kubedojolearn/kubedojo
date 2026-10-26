@@ -1,0 +1,94 @@
+schemaVersion: 1
+id: configuration/configmaps
+version: 1
+course: configuration
+lesson: configmaps
+title: Store configuration in a ConfigMap
+summary: Keep settings out of your images by putting them in a ConfigMap, and read them back.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 10
+lastReviewed: 2026-10-25
+objectives:
+  - Explain why configuration belongs outside container images
+  - Create a ConfigMap from literal key-value pairs
+  - Read a ConfigMap's data with get -o yaml and describe
+prerequisites:
+  - workloads/create-a-deployment
+glossary: [configmap, image, pod, container]
+body: |
+  If an image contains its own settings, such as a log level, a feature switch or another service's
+  address, you need a new image for every environment and every change. The usual practice is to
+  build **one** image and supply configuration when it runs.
+
+  A **ConfigMap** is the Kubernetes object for that: a named set of key-value pairs that Pods can
+  read, typically as environment variables. You'll wire one into a Deployment in a later lesson; this
+  one is about creating and reading them.
+
+  ## Create one from the command line
+
+  ```sh
+  kubectl create configmap app-config --from-literal=LOG_LEVEL=info
+  ```
+
+  Repeat `--from-literal` for more keys. Keys may contain letters, digits, `-`, `_` and `.`. If the
+  values will become environment variables, `UPPER_SNAKE_CASE` keys are the convention.
+
+  ## Read it back
+
+  ```sh
+  kubectl get configmaps
+  kubectl describe configmap app-config
+  kubectl get configmap app-config -o yaml
+  ```
+
+  Values live under `data`, stored as plain text. Everything in a ConfigMap is readable by anyone
+  who can read the namespace, so it's for settings, not passwords. Secrets come later in the course.
+
+  ## Changing one
+
+  `kubectl create` fails if the ConfigMap already exists. To change it, delete and recreate it, or
+  keep it as a manifest and use `kubectl apply`. Running Pods don't notice a changed environment
+  variable: they only read it when their containers start.
+
+  ## Your task
+
+  Create a ConfigMap called `app-config` with two keys:
+
+  | Key | Value |
+  | --- | --- |
+  | `LOG_LEVEL` | `debug` |
+  | `FEATURE_X` | `on` |
+
+  Then read it back to check.
+
+  > **Simulated cluster:** ConfigMaps here are limited to 64 KiB each (a real cluster allows 1 MiB)
+  > and support `data` only, not `binaryData`.
+references:
+  - title: ConfigMaps (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/configuration/configmap/
+  - title: kubectl create configmap (Kubernetes docs)
+    url: https://kubernetes.io/docs/reference/kubectl/generated/kubectl_create/kubectl_create_configmap/
+initialFixture: fixtures/empty-cluster.yaml
+terminal:
+  allowedFamilies: [get, describe, create, apply, delete, events, explain]
+goals:
+  - id: app-config
+    type: state
+    description: A ConfigMap called app-config sets LOG_LEVEL to debug and FEATURE_X to on.
+    failureMessage: Check `kubectl get configmap app-config -o yaml`. Keys and values are case-sensitive. To start over, delete it and create it again.
+    target: { kind: ConfigMap, namespace: default, name: app-config }
+    assertions:
+      - { path: data.LOG_LEVEL, operator: equals, value: "debug" }
+      - { path: data.FEATURE_X, operator: equals, value: "on" }
+hints:
+  - "`kubectl create configmap <name> --from-literal=KEY=value` creates one."
+  - You can repeat --from-literal in the same command.
+  - "Try: kubectl create configmap app-config --from-literal=LOG_LEVEL=debug --from-literal=FEATURE_X=on"
+solution:
+  commands:
+    - kubectl create configmap app-config --from-literal=LOG_LEVEL=debug --from-literal=FEATURE_X=on
+    - kubectl get configmap app-config -o yaml
+reward:
+  baseXP: 75
+  firstTryBonusXP: 15
+  hintPenaltyPerHintXP: 5

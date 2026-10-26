@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -102,17 +103,59 @@ const nginxDeployment = `{"apiVersion":"apps/v1","kind":"Deployment","metadata":
 
 // ---- repository fixtures ----
 
+// brokenOnPurpose lists the fixtures whose labs start with failing Pods, and the failures their
+// lessons ask learners to diagnose. Every failing Pod must show one of them, and each must occur.
+var brokenOnPurpose = map[string][]string{
+	"batch-requests.yaml":        {"Unschedulable"},
+	"etl-events.yaml":            {"Unschedulable"},
+	"pending-reports.yaml":       {"Unschedulable"},
+	"render-memory.yaml":         {"Unschedulable"},
+	"frontend-bad-image.yaml":    {"ImagePullBackOff"},
+	"orders-crash.yaml":          {"CrashLoopBackOff"},
+	"worker-missing-config.yaml": {"CreateContainerConfigError"},
+	"shop-outage.yaml":           {"ImagePullBackOff", "CreateContainerConfigError"},
+}
+
+// podProblem names why a Pod isn't running and ready, or returns "" if it is.
+func podProblem(p *Pod) string {
+	if p.Spec.NodeName == "" {
+		return "Unschedulable"
+	}
+	for _, cs := range p.Status.ContainerStatuses {
+		if cs.State.Waiting != nil {
+			return cs.State.Waiting.Reason
+		}
+	}
+	if p.Status.PodIP == "" || !p.Ready() {
+		return "NotReady"
+	}
+	return ""
+}
+
 func TestEveryRepositoryFixtureLoads(t *testing.T) {
 	files, err := filepath.Glob("../../../../content/fixtures/*.yaml")
 	if err != nil || len(files) == 0 {
 		t.Fatalf("no fixtures found: %v", err)
 	}
 	for _, f := range files {
-		t.Run(filepath.Base(f), func(t *testing.T) {
+		name := filepath.Base(f)
+		t.Run(name, func(t *testing.T) {
 			s := mustLoad(t, loadYAMLFixture(t, f), 42)
+			expected := brokenOnPurpose[name]
+			seen := map[string]bool{}
 			for _, p := range pods(s, "*") {
-				if p.Spec.NodeName == "" || p.Status.PodIP == "" || !p.Ready() {
-					t.Errorf("pod %s/%s not running: node=%q ip=%q phase=%s", p.Metadata.Namespace, p.Metadata.Name, p.Spec.NodeName, p.Status.PodIP, p.Status.Phase)
+				problem := podProblem(p)
+				if problem == "" {
+					continue
+				}
+				seen[problem] = true
+				if !slices.Contains(expected, problem) {
+					t.Errorf("pod %s/%s not running: %s (node=%q ip=%q phase=%s)", p.Metadata.Namespace, p.Metadata.Name, problem, p.Spec.NodeName, p.Status.PodIP, p.Status.Phase)
+				}
+			}
+			for _, want := range expected {
+				if !seen[want] {
+					t.Errorf("the lesson expects a Pod with %s, but none has it", want)
 				}
 			}
 		})

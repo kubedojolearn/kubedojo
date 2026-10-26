@@ -1,0 +1,163 @@
+schemaVersion: 1
+id: configuration/editing-manifests
+version: 1
+course: configuration
+lesson: editing-manifests
+title: Edit and re-apply a manifest
+summary: Change a running Deployment by editing its manifest and applying it again, and check what actually changed.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 12
+lastReviewed: 2026-10-25
+objectives:
+  - Find a field in a Deployment manifest and change it safely
+  - Re-apply a manifest and check the result on the cluster
+  - Explain why a Pod template change starts a rollout
+prerequisites:
+  - configuration/configmaps
+  - fundamentals/declarative-vs-imperative
+glossary: [manifest, deployment, label, rollout, pod]
+body: |
+  Once a team keeps manifests in Git, every change follows the same loop: **edit the file, apply it,
+  check the result.** The file stays the source of truth, so the next person to apply it doesn't
+  undo your change.
+
+  ## Edit carefully
+
+  YAML is all about indentation. Two things trip people up most:
+
+  - **Where a field lives.** A Deployment has labels in two places. `metadata.labels` label the
+    Deployment itself; `spec.template.metadata.labels` label every Pod it creates. Services and
+    selectors look at the *Pod* labels.
+  - **Lists.** `containers:` and `ports:` hold lists, so their items start with `- `.
+
+  ```yaml
+  spec:
+    template:
+      metadata:
+        labels:
+          app: api
+          team: payments          # a new Pod label
+      spec:
+        containers:
+          - name: api
+            ports:
+              - containerPort: 8080
+  ```
+
+  ## Apply and check
+
+  ```sh
+  kubectl apply -f manifests/api.yaml
+  kubectl get deployment api -o yaml
+  kubectl get pods --show-labels
+  ```
+
+  Real kubectl has `kubectl diff` to preview a change before applying it. The simulator doesn't, so
+  compare `kubectl get ... -o yaml` before and after.
+
+  ## Template changes roll out
+
+  Any change under `spec.template` gives the Pods a new definition, so the Deployment rolls out new
+  Pods and retires the old ones. Changes elsewhere, like `replicas` or the Deployment's own labels,
+  don't replace any Pods.
+
+  ## Your task
+
+  Two things are wrong with the `api` Deployment:
+
+  1. Its container listens on **8080** (check the logs), but the manifest declares port 80.
+  2. Every Pod in the payments team must carry the label `team=payments`.
+
+  Fix both in `manifests/api.yaml`, apply it, and confirm the new Pods have the label.
+
+  > **Simulated cluster:** `apply` here merges the fields the simulator supports. On a real cluster
+  > it would also handle fields like probes and volumes.
+references:
+  - title: Declarative management of objects (Kubernetes docs)
+    url: https://kubernetes.io/docs/tasks/manage-kubernetes-objects/declarative-config/
+  - title: Pod templates (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/workloads/pods/#pod-templates
+initialFixture: fixtures/api-deployment.yaml
+terminal:
+  allowedFamilies: [get, describe, logs, events, apply, rollout, explain]
+initialFiles:
+  - path: manifests/api.yaml
+    content: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: api
+        labels:
+          app: api
+      spec:
+        replicas: 2
+        selector:
+          matchLabels:
+            app: api
+        template:
+          metadata:
+            labels:
+              app: api
+          spec:
+            containers:
+              - name: api
+                image: kubedojo/demo-api:1.0
+                ports:
+                  - containerPort: 80
+                resources:
+                  requests:
+                    cpu: 100m
+                    memory: 64Mi
+goals:
+  - id: api-template
+    type: state
+    description: The api Pod template is labelled team=payments, declares container port 8080, and both replicas are ready.
+    failureMessage: Check `kubectl get deployment api -o yaml`. The label belongs under spec.template.metadata.labels, not the Deployment's own metadata.
+    target: { kind: Deployment, namespace: default, name: api }
+    assertions:
+      - { path: spec.template.metadata.labels.team, operator: equals, value: payments }
+      - { path: spec.template.metadata.labels.app, operator: equals, value: api }
+      - { path: 'spec.template.spec.containers[0].ports[0].containerPort', operator: equals, value: 8080 }
+      - { path: status.readyReplicas, operator: equals, value: 2 }
+      - { path: status.updatedReplicas, operator: equals, value: 2 }
+hints:
+  - "`kubectl logs deployment/api` shows the port the application listens on."
+  - "Pod labels go under spec.template.metadata.labels, next to `app: api`."
+  - "After saving, run: kubectl apply -f manifests/api.yaml"
+solution:
+  files:
+    - path: manifests/api.yaml
+      content: |
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: api
+          labels:
+            app: api
+        spec:
+          replicas: 2
+          selector:
+            matchLabels:
+              app: api
+          template:
+            metadata:
+              labels:
+                app: api
+                team: payments
+            spec:
+              containers:
+                - name: api
+                  image: kubedojo/demo-api:1.0
+                  ports:
+                    - containerPort: 8080
+                  resources:
+                    requests:
+                      cpu: 100m
+                      memory: 64Mi
+  commands:
+    - kubectl apply -f manifests/api.yaml
+    - kubectl get pods --show-labels
+reward:
+  baseXP: 100
+  firstTryBonusXP: 20
+  hintPenaltyPerHintXP: 10

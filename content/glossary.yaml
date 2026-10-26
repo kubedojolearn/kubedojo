@@ -72,3 +72,43 @@ terms:
     term: Service
     definition: A stable network address for a group of Pods chosen by a label selector.
     docsUrl: https://kubernetes.io/docs/concepts/services-networking/service/
+  - id: annotation
+    term: Annotation
+    definition: A key-value note attached to an object for people and tools to read. Unlike labels, annotations can't be used in selectors.
+    docsUrl: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+  - id: manifest
+    term: Manifest
+    definition: A YAML or JSON file that describes the objects you want, ready for kubectl apply.
+    docsUrl: https://kubernetes.io/docs/concepts/overview/working-with-objects/object-management/
+  - id: rollout
+    term: Rollout
+    definition: The gradual replacement of a Deployment's Pods after its Pod template changes. Each rollout gets a revision number you can roll back to.
+    docsUrl: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-back-a-deployment
+  - id: endpointslice
+    term: EndpointSlice
+    definition: A list of the ready addresses behind a Service, kept up to date by a controller as matching Pods come and go.
+    docsUrl: https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/
+  - id: clusterip
+    term: ClusterIP
+    definition: The default Service type. A virtual IP address reachable only from inside the cluster.
+    docsUrl: https://kubernetes.io/docs/concepts/services-networking/service/#type-clusterip
+  - id: nodeport
+    term: NodePort
+    definition: A Service type that also opens the same port, from 30000 to 32767, on every node so traffic from outside the cluster can reach the Service.
+    docsUrl: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport
+  - id: secret
+    term: Secret
+    definition: An object for small pieces of sensitive data such as passwords or tokens. Values are base64-encoded, which is not encryption.
+    docsUrl: https://kubernetes.io/docs/concepts/configuration/secret/
+  - id: resource-requests
+    term: Resource requests
+    definition: The CPU and memory a container asks for. The scheduler only places a Pod on a node with that much unreserved capacity.
+    docsUrl: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+  - id: image
+    term: Image
+    definition: A packaged application and its dependencies, identified by a name and tag such as nginx:1.27. Containers are started from images.
+    docsUrl: https://kubernetes.io/docs/concepts/containers/images/
+  - id: crashloopbackoff
+    term: CrashLoopBackOff
+    definition: A Pod status meaning a container keeps exiting and the kubelet is waiting longer and longer before restarting it.
+    docsUrl: https://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/

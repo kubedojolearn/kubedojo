@@ -1,0 +1,97 @@
+schemaVersion: 1
+id: cluster-operations/labels-and-annotations
+version: 1
+course: cluster-operations
+lesson: labels-and-annotations
+title: Labels vs. annotations
+summary: Decide when to use a label and when to use an annotation, and update both safely with --overwrite.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 10
+lastReviewed: 2026-10-25
+objectives:
+  - Explain the difference between labels and annotations
+  - Add, change and remove labels and annotations with kubectl
+  - Use --overwrite deliberately when changing an existing value
+prerequisites:
+  - fundamentals/labels-and-selectors
+glossary: [label, annotation, selector, deployment]
+body: |
+  Labels and annotations are both key-value pairs in an object's `metadata`. They look alike but have
+  different jobs.
+
+  | | **Labels** | **Annotations** |
+  | --- | --- | --- |
+  | Used for | Selecting and grouping objects | Information for people and tools |
+  | Selectors can use them | Yes | No |
+  | Values | Short: up to 63 characters, limited characters | Can be long, any text |
+  | Examples | `app=search`, `env=prod`, `tier=backend` | owning team, on-call contact, a build commit, a change reason |
+
+  A good test: *would anything ever select by it?* If yes, it's a label. If it's just a note, use an
+  annotation. Keep labels few and meaningful, because selectors, dashboards and cost reports depend
+  on them.
+
+  ## Labels
+
+  ```sh
+  kubectl label deployment search tier=backend
+  kubectl label deployment search env=prod --overwrite
+  kubectl label deployment search tier-
+  ```
+
+  Changing a key that already exists needs `--overwrite`. Without it kubectl refuses, which protects
+  you from changing a value by accident. A trailing `-` removes the key.
+
+  ## Annotations
+
+  ```sh
+  kubectl annotate deployment search owner=platform-team
+  kubectl describe deployment search
+  ```
+
+  `annotate` follows the same rules: `--overwrite` to change, `key-` to remove.
+
+  ## Object labels vs. Pod labels
+
+  `kubectl label deployment` labels the **Deployment** object only. Its Pods take their labels from
+  the Pod template, so changing the template is how you relabel Pods. That's a manifest edit, as in
+  the configuration course.
+
+  ## Your task
+
+  The `search` Deployment has been promoted to production, but it's still labelled `env=staging`.
+
+  1. Change its label to `env=prod`.
+  2. Record that the platform team owns it, as the annotation `owner=platform-team`.
+
+  > **Simulated cluster:** label and annotation rules (lengths, allowed characters, `--overwrite`)
+  > match a real cluster's.
+references:
+  - title: Annotations (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+  - title: Recommended labels (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
+initialFixture: fixtures/search-deployment.yaml
+terminal:
+  allowedFamilies: [get, describe, label, annotate, events, explain]
+goals:
+  - id: search-metadata
+    type: state
+    description: The search Deployment is labelled env=prod and annotated owner=platform-team.
+    failureMessage: Check `kubectl describe deployment search`. Labels and Annotations are listed separately near the top.
+    target: { kind: Deployment, namespace: default, name: search }
+    assertions:
+      - { path: metadata.labels.env, operator: equals, value: prod }
+      - { path: metadata.labels.app, operator: equals, value: search }
+      - { path: metadata.annotations.owner, operator: equals, value: platform-team }
+hints:
+  - The env label already exists, so kubectl needs permission to change it.
+  - "Try: kubectl label deployment search env=prod --overwrite"
+  - "`kubectl annotate deployment search owner=platform-team` adds the annotation."
+solution:
+  commands:
+    - kubectl label deployment search env=prod --overwrite
+    - kubectl annotate deployment search owner=platform-team
+reward:
+  baseXP: 75
+  firstTryBonusXP: 15
+  hintPenaltyPerHintXP: 5

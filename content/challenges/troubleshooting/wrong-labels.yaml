@@ -1,0 +1,171 @@
+schemaVersion: 1
+id: troubleshooting/wrong-labels
+version: 1
+course: troubleshooting
+lesson: wrong-labels
+title: A Deployment whose Pods nobody can reach
+summary: Trace an empty Service back to a Deployment whose Pod template has the wrong labels, and fix it without touching the Service.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 15
+lastReviewed: 2026-10-25
+objectives:
+  - Tell a Deployment's selector, its Pod template labels and a Service's selector apart
+  - Explain why a Deployment's selector can't be changed
+  - Fix Pod labels through the Deployment's template, then watch the rollout
+prerequisites:
+  - networking/debug-missing-endpoints
+  - troubleshooting/crashloopbackoff
+glossary: [deployment, service, selector, label, endpointslice, rollout]
+body: |
+  Three sets of labels have to line up for traffic to reach a Deployment's Pods:
+
+  1. The **Deployment's selector** (`spec.selector.matchLabels`): how it finds its own Pods.
+  2. The **Pod template's labels** (`spec.template.metadata.labels`): what every new Pod carries.
+     They must include everything in (1).
+  3. The **Service's selector** (`spec.selector`): which Pods get traffic. The Pods must carry
+     everything in (3) too.
+
+  The Deployment can be perfectly healthy, with every Pod running and ready, while the Service
+  matches none of them.
+
+  ## Find the gap
+
+  ```sh
+  kubectl describe service profile           # Selector
+  kubectl get pods --show-labels             # what the Pods carry
+  kubectl describe deployment profile        # Selector and Pod Template labels
+  ```
+
+  ## Decide which side to fix
+
+  Sometimes the Service is wrong. Here, the team's convention is that every Service selects on
+  `app=<name>`, and other tools such as dashboards and network policies rely on that. So the Pods
+  have to carry `app=profile`.
+
+  You can't fix it with `kubectl label pod`: the next rollout would create Pods from the template
+  without the label. And a Deployment's own selector is **immutable**. Changing it is rejected,
+  because the Deployment would lose track of its existing Pods.
+
+  The fix is to **add** the label to the Pod template, keeping the labels the selector needs:
+
+  ```yaml
+  template:
+    metadata:
+      labels:
+        component: profile     # still needed by the Deployment's selector
+        app: profile           # now matched by the Service
+  ```
+
+  Applying it changes the template, so a rollout replaces the Pods with labelled ones, and they join
+  the Service as they become ready.
+
+  ## Your task
+
+  Requests to the `profile` Service fail: it has no endpoints. Fix the Deployment so the Service
+  reaches both Pods. **Don't change the Service.**
+
+  > **Simulated cluster:** the rollout completes within one command. On a real cluster you'd watch
+  > the new Pods join the EndpointSlice one at a time.
+references:
+  - title: Deployment selectors (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#selector
+  - title: Debug Services (Kubernetes docs)
+    url: https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/
+initialFixture: fixtures/profile-wrong-labels.yaml
+terminal:
+  allowedFamilies: [get, describe, logs, events, apply, label, rollout, explain]
+initialFiles:
+  - path: manifests/profile-deployment.yaml
+    content: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: profile
+        labels:
+          app: profile
+      spec:
+        replicas: 2
+        selector:
+          matchLabels:
+            component: profile
+        template:
+          metadata:
+            labels:
+              component: profile
+          spec:
+            containers:
+              - name: profile
+                image: kubedojo/demo-api:1.0
+                ports:
+                  - containerPort: 8080
+                resources:
+                  requests:
+                    cpu: 100m
+                    memory: 64Mi
+goals:
+  - id: profile-endpoints
+    type: state
+    description: The profile Service has both profile Pods as endpoints.
+    failureMessage: Compare the Service's selector with the Pod template's labels in `kubectl describe deployment profile`.
+    target: { kind: EndpointSlice, namespace: default, labelSelector: "kubernetes.io/service-name=profile" }
+    assertions:
+      - { path: endpoints, operator: lengthEquals, value: 2 }
+  - id: profile-rolled-out
+    type: state
+    description: The profile Deployment's template carries the label the Service selects, and both new Pods are ready.
+    failureMessage: The label belongs in spec.template.metadata.labels. Keep component=profile there too.
+    target: { kind: Deployment, namespace: default, name: profile }
+    assertions:
+      - { path: spec.template.metadata.labels.app, operator: equals, value: profile }
+      - { path: status.readyReplicas, operator: equals, value: 2 }
+      - { path: status.updatedReplicas, operator: equals, value: 2 }
+  - id: service-unchanged
+    type: state
+    description: The profile Service still selects app=profile, and only that.
+    failureMessage: Fix the Deployment, not the Service. Put the Service's selector back to app=profile.
+    target: { kind: Service, namespace: default, name: profile }
+    assertions:
+      - { path: spec.selector.app, operator: equals, value: profile }
+      - { path: spec.selector.component, operator: notExists }
+hints:
+  - Compare `kubectl describe service profile` with `kubectl get pods --show-labels`.
+  - Labelling the running Pods won't last. Change the template in manifests/profile-deployment.yaml.
+  - "Add `app: profile` under spec.template.metadata.labels (keep component: profile), save, and apply."
+solution:
+  files:
+    - path: manifests/profile-deployment.yaml
+      content: |
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: profile
+          labels:
+            app: profile
+        spec:
+          replicas: 2
+          selector:
+            matchLabels:
+              component: profile
+          template:
+            metadata:
+              labels:
+                component: profile
+                app: profile
+            spec:
+              containers:
+                - name: profile
+                  image: kubedojo/demo-api:1.0
+                  ports:
+                    - containerPort: 8080
+                  resources:
+                    requests:
+                      cpu: 100m
+                      memory: 64Mi
+  commands:
+    - kubectl describe service profile
+    - kubectl apply -f manifests/profile-deployment.yaml
+    - kubectl get endpointslices -l kubernetes.io/service-name=profile
+reward:
+  baseXP: 150
+  firstTryBonusXP: 30
+  hintPenaltyPerHintXP: 10

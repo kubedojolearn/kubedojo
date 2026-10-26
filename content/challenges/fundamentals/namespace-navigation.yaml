@@ -1,0 +1,111 @@
+schemaVersion: 1
+id: fundamentals/namespace-navigation
+version: 1
+course: fundamentals
+lesson: namespace-navigation
+title: Finding your way with namespaces
+summary: List namespaces, look inside them, search across all of them, and change the namespace kubectl uses by default.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 10
+lastReviewed: 2026-10-25
+objectives:
+  - Explain what a namespace is for
+  - List the namespaces in a cluster and the Pods inside one
+  - Search every namespace at once with -A
+  - Change kubectl's default namespace for the current context
+prerequisites:
+  - fundamentals/cluster-architecture
+glossary: [namespace, pod, kubectl, cluster]
+body: |
+  A **namespace** divides one cluster into named groups of objects. Teams usually get their own
+  namespaces, so two teams can each have a Pod called `web` without clashing: names only have to be
+  unique *within* a namespace.
+
+  ## See the namespaces
+
+  ```sh
+  kubectl get namespaces
+  ```
+
+  Every cluster starts with a few: `default`, where your commands go unless you say otherwise, and
+  `kube-system`, `kube-public` and `kube-node-lease`, which belong to Kubernetes itself.
+
+  ## Look inside one
+
+  Most commands work on one namespace at a time. Without `-n`, kubectl uses your *current*
+  namespace, which starts as `default`:
+
+  ```sh
+  kubectl get pods              # the current namespace
+  kubectl get pods -n team-a    # the team-a namespace
+  ```
+
+  If `kubectl get pods` says `No resources found in default namespace.`, the Pods may well exist,
+  just somewhere else.
+
+  ## Search everywhere
+
+  `-A` (short for `--all-namespaces`) lists matching objects from every namespace and adds a
+  `NAMESPACE` column:
+
+  ```sh
+  kubectl get pods -A
+  ```
+
+  ## Change your default namespace
+
+  Typing `-n team-a` on every command gets old. Your kubeconfig *context* remembers a namespace, and
+  you can change it:
+
+  ```sh
+  kubectl config set-context --current --namespace=team-a
+  kubectl config view --minify
+  ```
+
+  From now on, `kubectl get pods` means "Pods in `team-a`". This changes only your kubectl settings,
+  not the cluster.
+
+  ## Your task
+
+  1. Make `team-a` your default namespace.
+  2. Someone reports a problem with the Pod `billing-api`, but not which namespace it's in. Find it.
+
+  > **Simulated cluster:** the lab has one simulated kubeconfig with a single context, `kubedojo`.
+  > On a real machine your kubeconfig can hold many clusters and contexts.
+references:
+  - title: Namespaces (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/
+  - title: Configure access to multiple clusters (Kubernetes docs)
+    url: https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/
+initialFixture: fixtures/team-namespaces.yaml
+terminal:
+  allowedFamilies: [get, describe, logs, events, explain, config, api-resources]
+goals:
+  - id: default-namespace
+    type: observation
+    description: Make team-a your current namespace.
+    failureMessage: Use `kubectl config set-context` with `--current` and `--namespace`.
+    command: { verb: config, subverb: set-context, setsNamespace: team-a }
+  - id: billing-namespace
+    type: answer
+    description: Find the namespace the billing-api Pod runs in.
+    prompt: Which namespace is the Pod `billing-api` in?
+    input: text
+    caseSensitive: false
+    failureMessage: Search every namespace at once with `kubectl get pods -A`.
+    expected:
+      path:
+        target: { kind: Pod, namespace: payments, name: billing-api }
+        path: metadata.namespace
+hints:
+  - "`kubectl get namespaces` lists them all; `kubectl get pods -n <name>` looks inside one."
+  - "`-A` searches every namespace at once and adds a NAMESPACE column."
+  - "Try: kubectl config set-context --current --namespace=team-a"
+solution:
+  commands:
+    - kubectl config set-context --current --namespace=team-a
+    - kubectl get pods -A
+reward:
+  baseXP: 50
+  firstTryBonusXP: 10
+  hintPenaltyPerHintXP: 5

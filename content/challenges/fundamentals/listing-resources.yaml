@@ -1,0 +1,111 @@
+schemaVersion: 1
+id: fundamentals/listing-resources
+version: 1
+course: fundamentals
+lesson: listing-resources
+title: Listing and reading resources
+summary: Use kubectl get with wide, YAML and all to see what's running, where it runs and how it's configured.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 10
+lastReviewed: 2026-10-25
+objectives:
+  - List resources of one or several kinds with kubectl get
+  - Choose an output format (wide, yaml) to see more detail
+  - Find the node a Pod was scheduled to
+  - Count the objects in a namespace
+prerequisites:
+  - fundamentals/namespace-navigation
+glossary: [pod, node, deployment, replicaset, namespace, kubectl]
+body: |
+  `kubectl get` is the command you'll type most. It lists objects of a kind, and its flags decide
+  how much detail you see.
+
+  ## The default table
+
+  ```sh
+  kubectl get pods -n shop
+  ```
+
+  One row per Pod: its name, how many containers are ready, its status, restarts and age. Good for a
+  quick look, but it doesn't say *where* anything runs.
+
+  ## `-o wide`: a few more columns
+
+  ```sh
+  kubectl get pods -n shop -o wide
+  ```
+
+  Adds each Pod's IP address and the **node** it was scheduled to. That's often the first thing you
+  need when one machine is misbehaving.
+
+  ## `-o yaml`: everything
+
+  ```sh
+  kubectl get pod web-0 -n shop -o yaml
+  ```
+
+  The complete object as the cluster stores it. Three parts are worth learning to spot:
+
+  - `metadata`: name, namespace, labels, and when it was created.
+  - `spec`: what you asked for, such as containers and images. For a scheduled Pod,
+    `spec.nodeName` says which node it landed on.
+  - `status`: what the cluster reports back, such as the phase and IP address.
+
+  ## Several kinds at once
+
+  You can list kinds separated by commas, or use `all` for the common workload kinds:
+
+  ```sh
+  kubectl get deployments,pods -n shop
+  kubectl get all -n shop
+  ```
+
+  `all` shows Pods, Services, Deployments and ReplicaSets. Despite the name, it doesn't include
+  everything (ConfigMaps and Secrets, for example, are left out).
+
+  ## Your task
+
+  The `shop` namespace runs a storefront, a cart, and a standalone Pod called `web-0`. Find out
+  which node `web-0` runs on, and how many Pods the namespace has in total.
+
+  > **Simulated cluster:** node placement here comes from the simulated scheduler, which picks the
+  > least-busy node. A real scheduler weighs more factors, so placement can differ.
+references:
+  - title: kubectl get (Kubernetes docs)
+    url: https://kubernetes.io/docs/reference/kubectl/generated/kubectl_get/
+  - title: Objects in Kubernetes (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/overview/working-with-objects/
+initialFixture: fixtures/shop-listing.yaml
+terminal:
+  allowedFamilies: [get, describe, logs, events, explain, config, api-resources]
+goals:
+  - id: web-0-node
+    type: answer
+    description: Find the node that the web-0 Pod runs on.
+    prompt: Which node is the Pod `web-0` (namespace `shop`) running on?
+    input: text
+    caseSensitive: false
+    failureMessage: Look at the NODE column of `kubectl get pods -n shop -o wide`.
+    expected:
+      path:
+        target: { kind: Pod, namespace: shop, name: web-0 }
+        path: spec.nodeName
+  - id: shop-pod-count
+    type: answer
+    description: Count the Pods in the shop namespace.
+    prompt: How many Pods are in the `shop` namespace?
+    input: number
+    failureMessage: Make sure you're looking in the shop namespace, not default. Count every Pod, not just one app's.
+    expected:
+      count: { kind: Pod, namespace: shop }
+hints:
+  - Remember `-n shop`; the Pods aren't in the default namespace.
+  - "`-o wide` adds a NODE column to the Pod table."
+  - "`kubectl get pods -n shop` lists every Pod in the namespace; count the rows."
+solution:
+  commands:
+    - kubectl get pods -n shop -o wide
+reward:
+  baseXP: 50
+  firstTryBonusXP: 10
+  hintPenaltyPerHintXP: 5

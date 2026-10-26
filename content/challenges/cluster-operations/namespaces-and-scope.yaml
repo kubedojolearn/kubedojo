@@ -1,0 +1,99 @@
+schemaVersion: 1
+id: cluster-operations/namespaces-and-scope
+version: 1
+course: cluster-operations
+lesson: namespaces-and-scope
+title: Namespaced vs. cluster-scoped
+summary: Learn which kinds of object live in a namespace and which belong to the whole cluster, and create a namespace.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 10
+lastReviewed: 2026-10-25
+objectives:
+  - Explain the difference between namespaced and cluster-scoped kinds
+  - List each kind's scope with kubectl api-resources
+  - Create a namespace and put objects in it
+prerequisites:
+  - fundamentals/namespace-navigation
+glossary: [namespace, node, pod, cluster]
+body: |
+  Most kinds of object live *inside* a namespace: Pods, Deployments, Services, ConfigMaps, Secrets.
+  Their names only need to be unique within it, and deleting the namespace deletes them.
+
+  Some kinds belong to the **whole cluster** instead. A Node is a machine, and it doesn't make sense
+  for it to belong to one team's namespace. Namespaces themselves are cluster-scoped too: a
+  namespace can't be inside another namespace.
+
+  ## Ask the cluster
+
+  ```sh
+  kubectl api-resources
+  kubectl api-resources --namespaced=true
+  kubectl api-resources --namespaced=false
+  ```
+
+  The `NAMESPACED` column answers the question for every kind the cluster serves, along with short
+  names you can type instead (`po`, `deploy`, `svc`, `ns`).
+
+  ## What scope changes
+
+  - `-n` and `-A` only mean something for namespaced kinds. `kubectl get nodes -n team-a` lists the
+    same nodes as `kubectl get nodes`.
+  - In YAML, a cluster-scoped object has no `metadata.namespace`.
+  - Access rules on a real cluster follow the same split: a team can be given full control of its
+    namespace without any power over nodes.
+
+  ## Create a namespace
+
+  ```sh
+  kubectl create namespace staging
+  kubectl get namespaces
+  kubectl create deployment web --image=nginx:1.27 -n staging
+  ```
+
+  Namespace names must be valid DNS labels: lowercase letters, digits and `-`, up to 63 characters.
+
+  ## Your task
+
+  Your team is adding a staging environment. Create a namespace called `staging`, then answer the
+  question about scope.
+
+  > **Simulated cluster:** `api-resources` lists only the kinds the simulator supports. A real
+  > cluster lists dozens more.
+references:
+  - title: Namespaces (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/
+  - title: Not all objects are in a namespace (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/#not-all-objects-are-in-a-namespace
+initialFixture: fixtures/empty-cluster.yaml
+terminal:
+  allowedFamilies: [get, describe, create, delete, events, explain, api-resources]
+goals:
+  - id: staging-namespace
+    type: state
+    description: A namespace called staging exists and is active.
+    failureMessage: Check `kubectl get namespaces`. The name must be exactly staging.
+    target: { kind: Namespace, name: staging }
+    assertions:
+      - { path: status.phase, operator: equals, value: Active }
+  - id: node-scope
+    type: answer
+    description: Decide whether Nodes belong to a namespace.
+    prompt: Is a Node a namespaced object?
+    input: choice
+    choices: ["Yes, every Node belongs to a namespace", "No, Nodes are cluster-scoped"]
+    failureMessage: Check the NAMESPACED column of `kubectl api-resources`.
+    expected:
+      static: "No, Nodes are cluster-scoped"
+hints:
+  - "`kubectl create namespace <name>` creates one."
+  - "`kubectl api-resources --namespaced=false` lists the cluster-scoped kinds."
+solution:
+  commands:
+    - kubectl create namespace staging
+    - kubectl api-resources --namespaced=false
+  answers:
+    node-scope: "No, Nodes are cluster-scoped"
+reward:
+  baseXP: 75
+  firstTryBonusXP: 15
+  hintPenaltyPerHintXP: 5
