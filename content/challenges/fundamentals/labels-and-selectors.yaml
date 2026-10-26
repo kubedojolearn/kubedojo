@@ -1,0 +1,105 @@
+schemaVersion: 1
+id: fundamentals/labels-and-selectors
+version: 1
+course: fundamentals
+lesson: labels-and-selectors
+title: Labels and selectors
+summary: Tag objects with labels, then pick out exactly the ones you want with equality and set-based selectors.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 12
+lastReviewed: 2026-10-25
+objectives:
+  - Show the labels on objects with --show-labels
+  - Filter objects with equality-based and set-based selectors
+  - Add or change a label with kubectl label
+  - Explain why Services and Deployments depend on labels
+prerequisites:
+  - fundamentals/listing-resources
+glossary: [label, selector, pod, service, deployment]
+body: |
+  A **label** is a key-value pair attached to an object, like `app=shop` or `tier=frontend`. Labels
+  don't do anything on their own. Their power comes from **selectors**, queries that pick out every
+  object carrying certain labels.
+
+  This is how Kubernetes connects things: a Deployment finds *its* Pods by selector, and a Service
+  sends traffic to the Pods its selector matches. Get the labels wrong and those connections break.
+
+  ## See labels
+
+  ```sh
+  kubectl get pods --show-labels
+  ```
+
+  ## Filter with a selector
+
+  `-l` (or `--selector`) filters by label. Commas mean *and*:
+
+  ```sh
+  kubectl get pods -l app=shop
+  kubectl get pods -l app=shop,tier=frontend
+  kubectl get pods -l 'tier!=frontend'
+  ```
+
+  **Set-based** selectors match one of several values, or test whether a key exists at all:
+
+  ```sh
+  kubectl get pods -l 'tier in (frontend,backend)'
+  kubectl get pods -l '!tier'
+  ```
+
+  Quote selectors that contain spaces, brackets or `!`.
+
+  ## Add or change a label
+
+  ```sh
+  kubectl label pod cart tier=backend
+  ```
+
+  If the key already exists, kubectl refuses to change it unless you add `--overwrite`. That stops you
+  from relabelling something by accident. `kubectl label pod cart tier-` (with a trailing hyphen)
+  removes the label.
+
+  ## Your task
+
+  The shop's Pods are labelled with `app` and `tier`, but someone forgot the `cart` Pod's tier.
+  It's a backend service: give it the label `tier=backend`. Then count the shop's frontend Pods.
+
+  > **Simulated cluster:** these Pods were created directly for the lesson. In practice you'd label
+  > a Deployment's Pod template so every Pod it creates carries the label.
+references:
+  - title: Labels and selectors (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+  - title: kubectl label (Kubernetes docs)
+    url: https://kubernetes.io/docs/reference/kubectl/generated/kubectl_label/
+initialFixture: fixtures/shop-labels.yaml
+terminal:
+  allowedFamilies: [get, describe, label, events, explain]
+goals:
+  - id: cart-tier
+    type: state
+    description: The cart Pod is labelled tier=backend.
+    failureMessage: Check `kubectl get pod cart --show-labels`. Is the tier label there, with the right value?
+    target: { kind: Pod, namespace: default, name: cart }
+    assertions:
+      - { path: metadata.labels.tier, operator: equals, value: backend }
+      - { path: metadata.labels.app, operator: equals, value: shop }
+  - id: frontend-count
+    type: answer
+    description: Count the shop's frontend Pods.
+    prompt: How many Pods match the selector `app=shop,tier=frontend`?
+    input: number
+    failureMessage: Both labels must match. Try `kubectl get pods -l app=shop,tier=frontend`.
+    expected:
+      count: { kind: Pod, namespace: default, labelSelector: "app=shop,tier=frontend" }
+hints:
+  - "`kubectl get pods --show-labels` shows every Pod's labels."
+  - "`kubectl label pod <name> key=value` adds a label."
+  - "A comma in a selector means both conditions must match: -l app=shop,tier=frontend"
+solution:
+  commands:
+    - kubectl label pod cart tier=backend
+    - kubectl get pods -l app=shop,tier=frontend
+reward:
+  baseXP: 75
+  firstTryBonusXP: 15
+  hintPenaltyPerHintXP: 5

@@ -26,6 +26,15 @@ func setup(t *testing.T) (*progress.Service, *users.Store, func(subject, login s
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Three published lessons, so the rest of each course is planned (unwritten).
+	keep := map[string]bool{
+		"fundamentals/cluster-architecture": true, "workloads/inspect-a-pod": true, "workloads/scaling-deployments": true,
+	}
+	for id := range b.Challenges {
+		if !keep[id] {
+			delete(b.Challenges, id)
+		}
+	}
 	if _, err := content.Import(ctx, pool, b, true); err != nil {
 		t.Fatal(err)
 	}

@@ -1,0 +1,109 @@
+schemaVersion: 1
+id: configuration/environment-from-configmaps
+version: 1
+course: configuration
+lesson: environment-from-configmaps
+title: Feed environment variables from a ConfigMap
+summary: Wire ConfigMap keys into a container's environment, and fix Pods stuck because the ConfigMap they need is missing.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 12
+lastReviewed: 2026-10-25
+objectives:
+  - Read env and envFrom references in a Pod template
+  - Recognize CreateContainerConfigError and find which reference failed
+  - Fix a missing ConfigMap so the Pods start
+prerequisites:
+  - configuration/editing-manifests
+glossary: [configmap, pod, container, deployment, event]
+body: |
+  A container reads a ConfigMap through its environment. There are two ways to wire it up.
+
+  **One key at a time**, with `valueFrom`:
+
+  ```yaml
+  env:
+    - name: QUEUE_NAME              # the variable the app sees
+      valueFrom:
+        configMapKeyRef:
+          name: worker-config       # which ConfigMap
+          key: QUEUE_NAME           # which key in it
+  ```
+
+  **Every key at once**, with `envFrom`:
+
+  ```yaml
+  envFrom:
+    - configMapRef:
+        name: worker-config
+  ```
+
+  ## When the reference is broken
+
+  The kubelet resolves these references just before it starts the container. If the ConfigMap
+  doesn't exist, or the key isn't in it, the container can't be configured, so it's never started.
+  The Pod shows `CreateContainerConfigError`:
+
+  ```sh
+  kubectl get pods
+  kubectl describe pod <pod-name>
+  ```
+
+  The events name the exact problem, for example `configmap "worker-config" not found` or
+  `couldn't find key QUEUE_NAME in ConfigMap default/worker-config`. Kubernetes keeps retrying, so
+  once you create what's missing, the Pods start by themselves: no restart or redeploy needed.
+
+  ## Pick the right fix
+
+  Usually the Deployment is right and the ConfigMap was never created in this namespace, perhaps
+  because it was forgotten in a new environment. Create it with the key the Deployment expects:
+
+  ```sh
+  kubectl create configmap <name> --from-literal=<KEY>=<value>
+  ```
+
+  If a reference isn't actually needed, it can be marked `optional: true`, which lets the container
+  start without it.
+
+  ## Your task
+
+  The `worker` Deployment was just deployed to this cluster and none of its Pods start. Find out what
+  they're missing and fix it. The jobs it should process are on the queue called `orders`.
+
+  > **Simulated cluster:** the values are never injected anywhere, because nothing runs. What's
+  > simulated is the kubelet's check that every reference resolves.
+references:
+  - title: Configure a Pod to use a ConfigMap (Kubernetes docs)
+    url: https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/
+  - title: Define environment variables for a container (Kubernetes docs)
+    url: https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/
+initialFixture: fixtures/worker-missing-config.yaml
+terminal:
+  allowedFamilies: [get, describe, logs, events, create, apply, delete, explain]
+goals:
+  - id: worker-ready
+    type: state
+    description: Both worker Pods are running and ready.
+    failureMessage: Describe a worker Pod and read its newest event. Which ConfigMap or key is it looking for?
+    target: { kind: Deployment, namespace: default, name: worker }
+    assertions:
+      - { path: status.readyReplicas, operator: equals, value: 2 }
+  - id: worker-config
+    type: state
+    description: The worker-config ConfigMap sets QUEUE_NAME to the orders queue.
+    failureMessage: Check `kubectl get configmap worker-config -o yaml`. The key name must match the Deployment's reference exactly.
+    target: { kind: ConfigMap, namespace: default, name: worker-config }
+    assertions:
+      - { path: data.QUEUE_NAME, operator: equals, value: orders }
+hints:
+  - Describe one of the worker Pods and read the Events at the bottom.
+  - The event names a ConfigMap; `kubectl describe deployment worker` shows which key it needs.
+  - "Try: kubectl create configmap worker-config --from-literal=QUEUE_NAME=orders"
+solution:
+  commands:
+    - kubectl describe deployment worker
+    - kubectl create configmap worker-config --from-literal=QUEUE_NAME=orders
+    - kubectl get pods
+reward:
+  baseXP: 125
+  firstTryBonusXP: 25
+  hintPenaltyPerHintXP: 10

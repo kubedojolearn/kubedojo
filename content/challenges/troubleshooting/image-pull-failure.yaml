@@ -1,0 +1,97 @@
+schemaVersion: 1
+id: troubleshooting/image-pull-failure
+version: 1
+course: troubleshooting
+lesson: image-pull-failure
+title: Fix an image pull failure
+summary: Diagnose ErrImagePull and ImagePullBackOff from the events, and fix the image reference.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 10
+lastReviewed: 2026-10-25
+objectives:
+  - Recognize ErrImagePull and ImagePullBackOff
+  - Find the exact image reference that failed in a Pod's events
+  - Fix a Deployment's image with kubectl set image or a manifest
+prerequisites:
+  - workloads/rollout-and-rollback
+glossary: [image, pod, deployment, event, rollout]
+body: |
+  Before a container can start, the node has to pull its **image** from a registry. When that fails,
+  the Pod never runs. You'll see one of two statuses, which are really two stages of the same
+  problem:
+
+  - **`ErrImagePull`**: the latest pull attempt just failed.
+  - **`ImagePullBackOff`**: it failed repeatedly, and the kubelet is waiting longer between retries.
+
+  ## Find the real error
+
+  The status says *that* it failed. The events say *why*:
+
+  ```sh
+  kubectl get pods
+  kubectl describe pod <pod-name>
+  ```
+
+  Look for a `Failed` event with the image name in it. The most common causes:
+
+  | Message contains | Likely cause |
+  | --- | --- |
+  | `not found`, `manifest unknown` | A typo in the name, or a tag that doesn't exist. |
+  | `unauthorized`, `denied` | A private registry and missing pull credentials. |
+  | `timeout`, `no such host` | The node can't reach the registry. |
+
+  Read the image reference in the message character by character. `ngnix` and `nginx` look alike at a
+  glance.
+
+  ## Fix it where it's defined
+
+  Don't delete the Pods: the ReplicaSet would only recreate them from the same broken template. Fix
+  the Deployment's template instead, which starts a rollout:
+
+  ```sh
+  kubectl set image deployment/frontend web=nginx:1.27
+  kubectl rollout status deployment/frontend
+  ```
+
+  `web=` is the *container* name. Find it with `kubectl describe deployment frontend`. If your team
+  manages the Deployment with a manifest, fix the image there and apply it; otherwise the next apply
+  brings the typo back.
+
+  ## Your task
+
+  The `frontend` Deployment's two Pods are stuck in `ImagePullBackOff`. It's meant to run
+  `nginx:1.27`. Find the problem and get both replicas running.
+
+  > **Simulated cluster:** no registry is contacted. An image is "found" if it's in the simulator's
+  > catalog, which includes the common nginx, busybox, redis and httpd versions.
+references:
+  - title: Images (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/containers/images/
+  - title: Debug Pods (Kubernetes docs)
+    url: https://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/
+initialFixture: fixtures/frontend-bad-image.yaml
+terminal:
+  allowedFamilies: [get, describe, logs, events, set, rollout, apply, explain]
+goals:
+  - id: frontend-fixed
+    type: state
+    description: The frontend Deployment runs nginx:1.27 and both replicas are ready.
+    failureMessage: Check `kubectl describe deployment frontend` for the image, and `kubectl get pods` for their status.
+    target: { kind: Deployment, namespace: default, name: frontend }
+    assertions:
+      - { path: 'spec.template.spec.containers[0].image', operator: equals, value: "nginx:1.27" }
+      - { path: status.readyReplicas, operator: equals, value: 2 }
+      - { path: status.updatedReplicas, operator: equals, value: 2 }
+hints:
+  - Describe one of the failing Pods and read the Failed event's message.
+  - Compare the image name in the event with the one you expect, letter by letter.
+  - "Try: kubectl set image deployment/frontend web=nginx:1.27"
+solution:
+  commands:
+    - kubectl describe pod -l app=frontend
+    - kubectl set image deployment/frontend web=nginx:1.27
+    - kubectl rollout status deployment/frontend
+reward:
+  baseXP: 100
+  firstTryBonusXP: 20
+  hintPenaltyPerHintXP: 10

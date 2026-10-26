@@ -1,0 +1,96 @@
+schemaVersion: 1
+id: workloads/create-a-deployment
+version: 1
+course: workloads
+lesson: create-a-deployment
+title: Create a Deployment
+summary: Run an app as a Deployment, then trace the chain from Deployment to ReplicaSet to Pods.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 10
+lastReviewed: 2026-10-25
+objectives:
+  - Explain why applications run as Deployments rather than bare Pods
+  - Create a Deployment with a chosen image and replica count
+  - Follow ownership from a Deployment to its ReplicaSet and Pods
+prerequisites:
+  - workloads/troubleshoot-pending-pod
+glossary: [deployment, replicaset, pod, controller, desired-state, label]
+body: |
+  A bare Pod is gone for good if its node fails. A **Deployment** fixes that: you tell it how many
+  copies of a Pod you want, and controllers keep that many running, replacing any that disappear.
+
+  ## Create one
+
+  ```sh
+  kubectl create deployment shop --image=nginx:1.27 --replicas=3
+  ```
+
+  ## Three layers
+
+  ```sh
+  kubectl get deployments,replicasets,pods
+  ```
+
+  You asked for one object and got several, because each layer has one job:
+
+  | Object | Its job |
+  | --- | --- |
+  | **Deployment** `shop` | Holds your desired state: the Pod template and the replica count. Manages rollouts when the template changes. |
+  | **ReplicaSet** `shop-<hash>` | Keeps exactly `replicas` Pods matching one version of the template. |
+  | **Pods** `shop-<hash>-<id>` | The running copies. |
+
+  The hash in the ReplicaSet name comes from the Pod template. Change the template, for example the
+  image, and the Deployment creates a new ReplicaSet for the new version. That's how rollouts work,
+  as you'll see in a later lesson.
+
+  ## Who owns what
+
+  Every Pod records its owner:
+
+  ```sh
+  kubectl describe pod <pod-name>
+  ```
+
+  Look for `Controlled By: ReplicaSet/shop-…`. Delete one of the Pods and the ReplicaSet makes a new
+  one straight away, because the number that exist no longer matches the number wanted.
+
+  `kubectl create deployment` labels the Pods `app=shop` and uses that label as the Deployment's
+  selector, which is how it finds its own Pods among everything else in the namespace.
+
+  ## Your task
+
+  Create a Deployment called `shop` that runs **three** replicas of `nginx:1.27`, then trace the
+  Deployment, ReplicaSet and Pods with `kubectl get` and `describe`.
+
+  > **Simulated cluster:** all three Pods become ready immediately. On a real cluster you'd see them
+  > go through `ContainerCreating` first.
+references:
+  - title: Deployments (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+  - title: Owners and dependents (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/
+initialFixture: fixtures/empty-cluster.yaml
+terminal:
+  allowedFamilies: [get, describe, logs, events, create, apply, delete, scale, explain]
+goals:
+  - id: shop-deployment
+    type: state
+    description: A Deployment called shop runs nginx:1.27 with 3 replicas, all ready.
+    failureMessage: Check `kubectl get deployment shop -o wide` for the image and the READY count.
+    target: { kind: Deployment, namespace: default, name: shop }
+    assertions:
+      - { path: 'spec.template.spec.containers[0].image', operator: equals, value: "nginx:1.27" }
+      - { path: spec.replicas, operator: equals, value: 3 }
+      - { path: status.readyReplicas, operator: equals, value: 3 }
+hints:
+  - "`kubectl create deployment <name> --image=<image>` creates a Deployment."
+  - "`--replicas` sets how many Pods it keeps running. Already created it with one? `kubectl scale` changes the count."
+  - "Try: kubectl create deployment shop --image=nginx:1.27 --replicas=3"
+solution:
+  commands:
+    - kubectl create deployment shop --image=nginx:1.27 --replicas=3
+    - kubectl get deployments,replicasets,pods
+reward:
+  baseXP: 100
+  firstTryBonusXP: 20
+  hintPenaltyPerHintXP: 10

@@ -1,0 +1,150 @@
+schemaVersion: 1
+id: troubleshooting/replica-mismatch
+version: 1
+course: troubleshooting
+lesson: replica-mismatch
+title: Desired 4, ready 1
+summary: Work out why a Deployment runs fewer replicas than it wants, and right-size its memory request so all four fit.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 15
+lastReviewed: 2026-10-25
+objectives:
+  - Read a Deployment's desired, up-to-date, available and ready counts
+  - Trace missing replicas through the ReplicaSet to Pending Pods and their events
+  - Compare Pod requests with a node's allocatable memory and fix the request
+prerequisites:
+  - troubleshooting/wrong-labels
+  - cluster-operations/requests-limits-scheduling
+glossary: [deployment, replicaset, resource-requests, scheduler, node, event]
+body: |
+  `kubectl get deployment` shows `READY 1/4`: four Pods wanted, one ready. The Deployment and
+  ReplicaSet controllers have done their part and created all four Pods. Something further down
+  stopped them.
+
+  ## Walk down the chain
+
+  ```sh
+  kubectl get deployment render          # READY, UP-TO-DATE, AVAILABLE
+  kubectl describe replicaset -l app=render
+  kubectl get pods -l app=render
+  ```
+
+  `UP-TO-DATE 4` says the Pods exist and use the current template. So the question becomes: why
+  aren't they ready? The Pod status narrows it down:
+
+  | Pod status | Look at |
+  | --- | --- |
+  | `Pending` | Scheduling: the `FailedScheduling` event. |
+  | `ImagePullBackOff`, `CrashLoopBackOff`, `CreateContainerConfigError` | The container: events and logs. |
+  | `Running` but `0/1` ready | Readiness checks (not simulated here). |
+
+  ## Pending: compare requests with capacity
+
+  ```sh
+  kubectl describe pod <a-pending-pod>
+  kubectl describe node worker-1
+  ```
+
+  `Insufficient memory` means no node has enough unreserved memory for one more Pod's
+  **request**. Divide: a node with 7Gi allocatable fits only one Pod requesting 4Gi.
+
+  You have three options. Add nodes, which isn't possible here. Run fewer replicas, which defeats the
+  purpose. Or request what the app really needs.
+
+  ## Your task
+
+  `render` should run **four** replicas on this one-worker cluster. Monitoring shows each render Pod
+  peaks at about **700Mi** of memory, but someone requested 4Gi "to be safe". Set a realistic request
+  (1Gi leaves comfortable headroom) in `manifests/render.yaml`, keep the memory limit equal to the
+  request, apply it, and get all four replicas ready.
+
+  > **Simulated cluster:** memory limits are recorded but nothing is ever OOM-killed, because
+  > nothing actually runs. On a real cluster, a limit below real usage gets the container killed.
+references:
+  - title: Resource management for Pods and containers (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+  - title: Debug Pods (Kubernetes docs)
+    url: https://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/
+initialFixture: fixtures/render-memory.yaml
+terminal:
+  allowedFamilies: [get, describe, logs, events, apply, rollout, explain]
+initialFiles:
+  - path: manifests/render.yaml
+    content: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: render
+        labels:
+          app: render
+      spec:
+        replicas: 4
+        selector:
+          matchLabels:
+            app: render
+        template:
+          metadata:
+            labels:
+              app: render
+          spec:
+            containers:
+              - name: render
+                image: kubedojo/demo-api:2.0
+                resources:
+                  requests:
+                    cpu: 250m
+                    memory: 4Gi
+                  limits:
+                    memory: 4Gi
+goals:
+  - id: render-ready
+    type: state
+    description: The render Deployment runs all four replicas, each requesting no more than 1Gi of memory.
+    failureMessage: Check READY in `kubectl get deployment render`. Describe a Pending Pod and compare its memory request with the node's allocatable memory.
+    target: { kind: Deployment, namespace: default, name: render }
+    assertions:
+      - { path: spec.replicas, operator: equals, value: 4 }
+      - { path: status.readyReplicas, operator: equals, value: 4 }
+      - { path: status.updatedReplicas, operator: equals, value: 4 }
+      - { path: 'spec.template.spec.containers[0].resources.requests.memory', operator: lessThanOrEqual, value: "1Gi" }
+hints:
+  - Describe one of the Pending render Pods and read its FailedScheduling event.
+  - "`kubectl describe node worker-1` shows allocatable memory and what's already requested."
+  - "In manifests/render.yaml set both the memory request and limit to 1Gi, save, then apply."
+solution:
+  files:
+    - path: manifests/render.yaml
+      content: |
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: render
+          labels:
+            app: render
+        spec:
+          replicas: 4
+          selector:
+            matchLabels:
+              app: render
+          template:
+            metadata:
+              labels:
+                app: render
+            spec:
+              containers:
+                - name: render
+                  image: kubedojo/demo-api:2.0
+                  resources:
+                    requests:
+                      cpu: 250m
+                      memory: 1Gi
+                    limits:
+                      memory: 1Gi
+  commands:
+    - kubectl describe pod -l app=render
+    - kubectl apply -f manifests/render.yaml
+    - kubectl get deployment render
+reward:
+  baseXP: 150
+  firstTryBonusXP: 30
+  hintPenaltyPerHintXP: 10

@@ -1,0 +1,106 @@
+schemaVersion: 1
+id: cluster-operations/inspect-nodes
+version: 1
+course: cluster-operations
+lesson: inspect-nodes
+title: Inspect Nodes
+summary: Read a node's capacity, allocatable resources, labels and conditions, and find nodes by label.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 12
+lastReviewed: 2026-10-25
+objectives:
+  - Tell a node's capacity from its allocatable resources
+  - Read a node's conditions, labels and the Pods running on it
+  - Select nodes by label
+prerequisites:
+  - workloads/troubleshoot-pending-pod
+glossary: [node, label, scheduler, resource-requests, pod]
+body: |
+  Operators look at nodes to answer questions like "why won't this Pod fit?" and "which machines
+  have fast disks?". Everything you need is in two commands.
+
+  ## The overview
+
+  ```sh
+  kubectl get nodes -o wide
+  kubectl get nodes --show-labels
+  ```
+
+  `STATUS` should say `Ready`. Labels describe each node: some are set automatically, like
+  `kubernetes.io/hostname`, and others are added by the team, like `disk=ssd` or a zone.
+
+  ## The detail
+
+  ```sh
+  kubectl describe node node-2
+  ```
+
+  Read it from top to bottom:
+
+  | Section | What it tells you |
+  | --- | --- |
+  | `Labels`, `Taints` | How the node is described, and which Pods it repels. |
+  | `Conditions` | Health checks. `Ready True` means the kubelet is healthy and can run Pods. |
+  | `Capacity` | The machine's total CPU, memory and Pod slots. |
+  | `Allocatable` | What's left for your Pods after the system's own reservation. **The scheduler uses this.** |
+  | `Non-terminated Pods` | What runs here now, with each Pod's requests. |
+  | `Allocated resources` | Requests added up, as a share of allocatable. |
+
+  CPU is measured in cores or **millicores**: `1900m` is 1.9 cores. Memory uses binary units like
+  `Mi` and `Gi`.
+
+  ## Find nodes by label
+
+  Selectors work on nodes just as on Pods:
+
+  ```sh
+  kubectl get nodes -l disk=ssd
+  kubectl get nodes -l 'zone in (zone-a)'
+  ```
+
+  ## Your task
+
+  This cluster has four workers of different sizes. Find how much CPU `node-2` offers to Pods, and
+  how many nodes are labelled `disk=ssd`.
+
+  > **Simulated cluster:** node sizes and labels come from the lab's setup. Nodes can't be added or
+  > removed here, but they can be labelled.
+references:
+  - title: Nodes (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/architecture/nodes/
+  - title: Reserve compute resources for system daemons (Kubernetes docs)
+    url: https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/
+initialFixture: fixtures/mixed-nodes.yaml
+terminal:
+  allowedFamilies: [get, describe, events, explain, api-resources]
+goals:
+  - id: node-2-allocatable-cpu
+    type: answer
+    description: Find how much CPU node-2 can give to Pods.
+    prompt: What is the allocatable CPU of `node-2`, exactly as kubectl shows it?
+    input: text
+    failureMessage: Look under Allocatable, not Capacity, in `kubectl describe node node-2`.
+    expected:
+      path:
+        target: { kind: Node, name: node-2 }
+        path: status.allocatable.cpu
+  - id: ssd-node-count
+    type: answer
+    description: Count the nodes labelled disk=ssd.
+    prompt: How many nodes carry the label `disk=ssd`?
+    input: number
+    failureMessage: Try `kubectl get nodes -l disk=ssd` and count the rows.
+    expected:
+      count: { kind: Node, labelSelector: "disk=ssd" }
+hints:
+  - "`kubectl describe node node-2` lists Capacity and Allocatable separately."
+  - Allocatable is what the scheduler can hand out; it's smaller than Capacity.
+  - "`-l disk=ssd` filters nodes by label."
+solution:
+  commands:
+    - kubectl describe node node-2
+    - kubectl get nodes -l disk=ssd
+reward:
+  baseXP: 75
+  firstTryBonusXP: 15
+  hintPenaltyPerHintXP: 5

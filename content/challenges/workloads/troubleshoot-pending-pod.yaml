@@ -1,0 +1,101 @@
+schemaVersion: 1
+id: workloads/troubleshoot-pending-pod
+version: 1
+course: workloads
+lesson: troubleshoot-pending-pod
+title: Why is my Pod Pending?
+summary: Read the scheduler's FailedScheduling message and fix the mismatch that keeps a Pod off every node.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 12
+lastReviewed: 2026-10-25
+objectives:
+  - Recognize a Pod the scheduler couldn't place
+  - Read a FailedScheduling event and work out which rule ruled out each node
+  - Fix a nodeSelector mismatch by labelling a node
+prerequisites:
+  - workloads/inspect-a-pod
+glossary: [pod, scheduler, node, label, selector, event]
+body: |
+  A Pod stays `Pending` until the scheduler finds a node for it. Usually that takes a moment. When
+  it doesn't, the scheduler isn't stuck: it tried every node and ruled each one out. It writes down
+  why in an event.
+
+  ## Find the reason
+
+  ```sh
+  kubectl get pods
+  kubectl describe pod <pod-name>
+  ```
+
+  At the bottom of `describe`, look for a `FailedScheduling` warning like this:
+
+  ```text
+  0/3 nodes are available: 1 node(s) had untolerated taint {node-role.kubernetes.io/control-plane: },
+  2 node(s) didn't match Pod's node affinity/selector.
+  ```
+
+  Read it as a tally: of three nodes, one was ruled out for one reason and two for another. The
+  common reasons are:
+
+  | Message | Meaning |
+  | --- | --- |
+  | `didn't match Pod's node affinity/selector` | The Pod asks for node labels that the node doesn't have. |
+  | `had untolerated taint` | The node repels Pods that don't explicitly tolerate it. Control-plane nodes usually do. |
+  | `Insufficient cpu` / `Insufficient memory` | The node doesn't have enough unreserved capacity for the Pod's requests. |
+
+  ## nodeSelector
+
+  A Pod's `nodeSelector` limits it to nodes carrying certain labels, for example nodes with fast
+  disks:
+
+  ```yaml
+  spec:
+    nodeSelector:
+      disk: ssd
+  ```
+
+  If no node has that label, every node is ruled out. There are two fixes: remove or correct the
+  `nodeSelector`, or label a node that really does meet the requirement:
+
+  ```sh
+  kubectl get nodes --show-labels
+  kubectl label node <node-name> disk=ssd
+  ```
+
+  Once a matching node exists, the scheduler places the waiting Pods on its next attempt.
+
+  ## Your task
+
+  The `reports` Deployment has two Pods stuck in `Pending`. Find out why. Your platform team
+  confirms that `worker-1` has an SSD but nobody labelled it. Get both Pods running.
+
+  > **Simulated cluster:** the scheduler here checks taints, nodeSelector and resource requests,
+  > in the same order as kube-scheduler. Affinity and spreading rules aren't simulated.
+references:
+  - title: Assigning Pods to nodes (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+  - title: Debug Pods (Kubernetes docs)
+    url: https://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/
+initialFixture: fixtures/pending-reports.yaml
+terminal:
+  allowedFamilies: [get, describe, events, label, apply, explain, logs]
+goals:
+  - id: reports-ready
+    type: state
+    description: Both reports Pods are scheduled and ready.
+    failureMessage: Check `kubectl get pods` and the newest FailedScheduling event. Which label does the Pod ask for, and which node should have it?
+    target: { kind: Deployment, namespace: default, name: reports }
+    assertions:
+      - { path: status.readyReplicas, operator: equals, value: 2 }
+hints:
+  - Describe one of the Pending Pods and read its Events.
+  - "Compare the Pod's Node-Selectors line with `kubectl get nodes --show-labels`."
+  - "Try: kubectl label node worker-1 disk=ssd"
+solution:
+  commands:
+    - kubectl describe pod -l app=reports
+    - kubectl label node worker-1 disk=ssd
+reward:
+  baseXP: 100
+  firstTryBonusXP: 25
+  hintPenaltyPerHintXP: 10

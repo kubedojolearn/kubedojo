@@ -1,0 +1,90 @@
+schemaVersion: 1
+id: workloads/launch-a-pod
+version: 1
+course: workloads
+lesson: launch-a-pod
+title: Launch your first Pod
+summary: Start a single Pod from an image with kubectl run and watch it get scheduled and start.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 8
+lastReviewed: 2026-10-25
+objectives:
+  - Explain what a Pod is and why it's the smallest thing Kubernetes runs
+  - Start a Pod from an image with kubectl run
+  - Check a Pod's status and the node it was scheduled to
+prerequisites:
+  - fundamentals/declarative-vs-imperative
+glossary: [pod, container, image, scheduler, node, kubectl]
+body: |
+  A **Pod** is the smallest thing Kubernetes runs: one or more containers that share a network
+  address and are always scheduled onto the same node. Most Pods hold a single container.
+
+  ## Start one
+
+  ```sh
+  kubectl run web --image=nginx:1.27
+  ```
+
+  `kubectl run` creates one Pod called `web`, running one container from the **image**
+  `nginx:1.27`. The part after the colon is the *tag*, usually a version. Always pin a tag: an
+  image without one means `latest`, which can change under you.
+
+  ## What happens next
+
+  1. The API server stores the new Pod. It has no node yet, so its status is `Pending`.
+  2. The **scheduler** picks a node with room for it.
+  3. The kubelet on that node pulls the image and starts the container. The status becomes
+     `Running`.
+
+  Watch the result:
+
+  ```sh
+  kubectl get pods
+  kubectl get pod web -o wide
+  kubectl describe pod web
+  ```
+
+  `describe` ends with **Events** that record each step: *Scheduled*, *Pulled*, *Created*,
+  *Started*.
+
+  ## Pods on their own are fragile
+
+  If a node fails, a Pod created this way is gone for good: nothing recreates it. That's why real
+  applications use a **Deployment**, which you'll meet shortly. Standalone Pods are still useful for
+  quick experiments and for learning.
+
+  ## Your task
+
+  Start a Pod called `web` running `nginx:1.27`, and check that it reaches `Running`.
+
+  > **Simulated cluster:** no image is downloaded and nothing actually runs. The Pod goes through the
+  > same states and events as on a real cluster, just instantly.
+references:
+  - title: Pods (Kubernetes docs)
+    url: https://kubernetes.io/docs/concepts/workloads/pods/
+  - title: kubectl run (Kubernetes docs)
+    url: https://kubernetes.io/docs/reference/kubectl/generated/kubectl_run/
+initialFixture: fixtures/empty-cluster.yaml
+terminal:
+  allowedFamilies: [get, describe, logs, events, run, delete, explain]
+goals:
+  - id: web-running
+    type: state
+    description: A Pod called web runs the image nginx:1.27 and is Running.
+    failureMessage: Check `kubectl get pod web -o wide` and the image in `kubectl describe pod web`. To start over, delete the Pod and run it again.
+    target: { kind: Pod, namespace: default, name: web }
+    assertions:
+      - { path: 'spec.containers[0].image', operator: equals, value: "nginx:1.27" }
+      - { path: status.phase, operator: equals, value: Running }
+hints:
+  - "`kubectl run <name> --image=<image>` creates a single Pod."
+  - Include the tag in the image name, after a colon.
+  - "Try: kubectl run web --image=nginx:1.27"
+solution:
+  commands:
+    - kubectl run web --image=nginx:1.27
+    - kubectl get pods
+reward:
+  baseXP: 75
+  firstTryBonusXP: 15
+  hintPenaltyPerHintXP: 5

@@ -35,7 +35,7 @@ test("a new learner's dashboard shows honest empty states", async ({ page }) => 
   await expect(page.getByText("No activity yet")).toBeVisible();
   await expect(page.getByText("No achievements yet")).toBeVisible();
   await expect(page.getByRole("progressbar", { name: "Pods and workloads: 0% complete" })).toBeVisible();
-  await expect(page.getByText("0 of 2 lessons")).toBeVisible();
+  await expect(page.getByText("0 of 6 lessons")).toBeVisible();
 });
 
 test("opening a lesson updates continue-learning and activity", async ({ page }) => {
@@ -48,7 +48,7 @@ test("opening a lesson updates continue-learning and activity", async ({ page })
   await expect(page.getByRole("heading", { level: 3, name: "Scale a Deployment" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Recent activity" })).toContainText("Opened Scale a Deployment");
   // Opening is not completing.
-  await expect(page.getByText("0 of 2 lessons")).toBeVisible();
+  await expect(page.getByText("0 of 6 lessons")).toBeVisible();
 });
 
 test("progress can't be written from the browser", async ({ page }) => {
@@ -62,7 +62,7 @@ test("progress can't be written from the browser", async ({ page }) => {
     (
       await page.request.post("/api/bff/v1/users/me/progress/opened", {
         headers,
-        data: { courseSlug: "workloads", lessonSlug: "launch-a-pod" },
+        data: { courseSlug: "workloads", lessonSlug: "does-not-exist" },
       })
     ).status(),
   ).toBe(404);

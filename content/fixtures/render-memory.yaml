@@ -1,0 +1,45 @@
+schemaVersion: 1
+simulatorVersion: kubernetes-1.37-subset-1
+description: One worker and a render Deployment that wants four Pods but requests too much memory for more than one to fit.
+resources:
+  - apiVersion: v1
+    kind: Node
+    metadata:
+      name: control-plane
+      labels: { kubernetes.io/hostname: control-plane, node-role.kubernetes.io/control-plane: "" }
+    spec:
+      taints:
+        - { key: node-role.kubernetes.io/control-plane, effect: NoSchedule }
+    status:
+      capacity: { cpu: "2", memory: 4Gi, pods: "110" }
+      allocatable: { cpu: "1800m", memory: 3Gi, pods: "110" }
+      conditions:
+        - { type: Ready, status: "True" }
+    ageSeconds: 2592000
+  - apiVersion: v1
+    kind: Node
+    metadata:
+      name: worker-1
+      labels: { kubernetes.io/hostname: worker-1 }
+    status:
+      capacity: { cpu: "4", memory: 8Gi, pods: "110" }
+      allocatable: { cpu: "3800m", memory: 7Gi, pods: "110" }
+      conditions:
+        - { type: Ready, status: "True" }
+    ageSeconds: 2592000
+  - apiVersion: apps/v1
+    kind: Deployment
+    metadata: { name: render, namespace: default, labels: { app: render } }
+    spec:
+      replicas: 4
+      selector: { matchLabels: { app: render } }
+      template:
+        metadata: { labels: { app: render } }
+        spec:
+          containers:
+            - name: render
+              image: kubedojo/demo-api:2.0
+              resources:
+                requests: { cpu: 250m, memory: 4Gi }
+                limits: { memory: 4Gi }
+    ageSeconds: 1800

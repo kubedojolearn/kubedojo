@@ -1,0 +1,161 @@
+schemaVersion: 1
+id: fundamentals/declarative-vs-imperative
+version: 1
+course: fundamentals
+lesson: declarative-vs-imperative
+title: Imperative commands vs. declarative manifests
+summary: Compare telling kubectl what to do with describing what you want in a manifest and applying it.
+simulatorVersion: kubernetes-1.37-subset-1
+estimatedMinutes: 12
+lastReviewed: 2026-10-25
+objectives:
+  - Explain the difference between imperative commands and declarative manifests
+  - Read the main parts of a Deployment manifest
+  - Create and update objects with kubectl apply -f
+  - Say why teams keep manifests in version control
+prerequisites:
+  - fundamentals/labels-and-selectors
+glossary: [manifest, deployment, desired-state, controller, kubectl]
+body: |
+  There are two ways to tell Kubernetes what you want.
+
+  ## Imperative: give an order
+
+  ```sh
+  kubectl create deployment catalog --image=nginx:1.27 --replicas=2
+  ```
+
+  Quick and handy for experiments. But the command lives only in your shell history. Nobody can
+  review it, and to rebuild the cluster someone has to remember exactly what you typed.
+
+  ## Declarative: describe the result
+
+  A **manifest** is a YAML file describing the objects you want:
+
+  ```yaml
+  apiVersion: apps/v1        # which API the kind belongs to
+  kind: Deployment
+  metadata:
+    name: catalog
+  spec:
+    replicas: 2              # desired state: two Pods
+    selector:
+      matchLabels:
+        app: catalog
+    template:                # what each Pod looks like
+      metadata:
+        labels:
+          app: catalog
+      spec:
+        containers:
+          - name: catalog
+            image: nginx:1.27
+  ```
+
+  You hand it to the cluster with:
+
+  ```sh
+  kubectl apply -f manifests/catalog.yaml
+  ```
+
+  `apply` creates the object if it doesn't exist and updates it if it does, so you run the same
+  command after every edit. It also records what you applied in the annotation
+  `kubectl.kubernetes.io/last-applied-configuration`, which lets the next `apply` work out which
+  fields you removed.
+
+  Manifests can be stored in Git, reviewed in pull requests and applied again to rebuild everything.
+  That's why most teams treat them as the source of truth and keep imperative commands for
+  exploring.
+
+  ## Your task
+
+  The editor has a manifest for a `catalog` Deployment, but it asks for **one** replica and the team
+  wants **two**. Change `replicas` to `2`, save, and apply the file. Then look at the result:
+
+  ```sh
+  kubectl get deployment catalog
+  kubectl get deployment catalog -o yaml
+  ```
+
+  Find the `last-applied-configuration` annotation in the YAML.
+
+  > **Simulated cluster:** `apply` here is client-side apply on the fields the simulator supports.
+  > Real clusters also offer server-side apply (`--server-side`), which isn't simulated.
+references:
+  - title: Declarative management of objects (Kubernetes docs)
+    url: https://kubernetes.io/docs/tasks/manage-kubernetes-objects/declarative-config/
+  - title: Imperative commands (Kubernetes docs)
+    url: https://kubernetes.io/docs/tasks/manage-kubernetes-objects/imperative-command/
+initialFixture: fixtures/empty-cluster.yaml
+terminal:
+  allowedFamilies: [get, describe, create, apply, events, explain]
+initialFiles:
+  - path: manifests/catalog.yaml
+    content: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: catalog
+        labels:
+          app: catalog
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: catalog
+        template:
+          metadata:
+            labels:
+              app: catalog
+          spec:
+            containers:
+              - name: catalog
+                image: nginx:1.27
+                ports:
+                  - containerPort: 80
+goals:
+  - id: catalog-applied
+    type: state
+    description: A catalog Deployment wants 2 replicas, all ready, and was created or last updated with kubectl apply.
+    failureMessage: Edit replicas in manifests/catalog.yaml, save, then run `kubectl apply -f manifests/catalog.yaml`. An object made only with `create` has no last-applied annotation.
+    target: { kind: Deployment, namespace: default, name: catalog }
+    assertions:
+      - { path: spec.replicas, operator: equals, value: 2 }
+      - { path: status.readyReplicas, operator: equals, value: 2 }
+      - path: metadata.annotations["kubectl.kubernetes.io/last-applied-configuration"]
+        operator: exists
+hints:
+  - Open manifests/catalog.yaml in the editor and look for `replicas`.
+  - "`kubectl apply -f <file>` creates the Deployment if it's missing and updates it if it exists."
+  - "Set replicas: 2, save, then run: kubectl apply -f manifests/catalog.yaml"
+solution:
+  files:
+    - path: manifests/catalog.yaml
+      content: |
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: catalog
+          labels:
+            app: catalog
+        spec:
+          replicas: 2
+          selector:
+            matchLabels:
+              app: catalog
+          template:
+            metadata:
+              labels:
+                app: catalog
+            spec:
+              containers:
+                - name: catalog
+                  image: nginx:1.27
+                  ports:
+                    - containerPort: 80
+  commands:
+    - kubectl apply -f manifests/catalog.yaml
+reward:
+  baseXP: 100
+  firstTryBonusXP: 20
+  hintPenaltyPerHintXP: 10

@@ -7,6 +7,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-10-25",
+    title: "Every lesson is written",
+    items: [
+      "All 30 lessons across the six belts are open, from namespaces and labels to a capstone that brings a broken shop back online.",
+      "Each lab starts from its own simulated cluster. The troubleshooting labs start broken, the way you'd meet the problem at work.",
+      "Ten new glossary terms, including annotation, EndpointSlice, NodePort and CrashLoopBackOff.",
+      "Labs that change the cluster need kubectl create, apply, scale and friends, which are coming to the terminal next. Until then you can read every lesson and explore its cluster.",
+    ],
+  },
+  {
     date: "2026-10-24",
     title: "One header and footer everywhere",
     items: [
