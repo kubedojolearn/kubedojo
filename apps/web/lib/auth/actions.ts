@@ -3,7 +3,7 @@
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 import { safeCallbackPath, signIn, signOut, TEST_PROVIDER_ID } from "@/lib/auth/config";
-import { serverEnv, testAuthEnabled } from "@/lib/server-env";
+import { githubAuthConfigured, serverEnv, testAuthEnabled } from "@/lib/server-env";
 
 function destination(formData: FormData): string {
   return safeCallbackPath(String(formData.get("callbackUrl") ?? ""), serverEnv.webOrigin);
@@ -11,6 +11,9 @@ function destination(formData: FormData): string {
 
 /** Starts the GitHub OAuth flow. */
 export async function signInWithGitHub(formData: FormData) {
+  if (!githubAuthConfigured()) {
+    redirect(`/login?error=GitHubNotConfigured&callbackUrl=${encodeURIComponent(destination(formData))}`);
+  }
   await signIn("github", { redirectTo: destination(formData) });
 }
 

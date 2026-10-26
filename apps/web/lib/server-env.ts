@@ -39,3 +39,11 @@ export function testAuthEnabled(): boolean {
   }
   return true;
 }
+
+/**
+ * GitHub sign-in needs an OAuth app (docs/operations/auth.md). Without its ID, GitHub answers the
+ * authorize redirect with a 404, so the sign-in button is disabled instead.
+ */
+export function githubAuthConfigured(): boolean {
+  return Boolean(process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET);
+}

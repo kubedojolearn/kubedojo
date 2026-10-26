@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signInAsTestUser, signInWithGitHub } from "@/lib/auth/actions";
-import { testAuthEnabled } from "@/lib/server-env";
+import { githubAuthConfigured, serverEnv, testAuthEnabled } from "@/lib/server-env";
 
 export const metadata: Metadata = { title: "Sign in", robots: { index: false } };
 
@@ -19,6 +19,7 @@ const errorMessages: Record<string, string> = {
   OAuthSignin: "We couldn't start signing in with GitHub. Please try again.",
   Configuration: "Sign-in isn't configured correctly on this server. Please try again later.",
   ProvisioningFailed: "You signed in with GitHub, but we couldn't set up your KubeDojo account. Please try again.",
+  GitHubNotConfigured: "GitHub sign-in isn't set up on this server yet.",
   TestSignInFailed: "Test sign-in failed. Check the GitHub ID and login.",
   SessionRequired: "Please sign in to continue.",
 };
@@ -28,6 +29,7 @@ async function LoginForm({ searchParams }: { searchParams: PageProps<"/login">["
   const callbackUrl = typeof params.callbackUrl === "string" ? params.callbackUrl : "/dashboard";
   const error = typeof params.error === "string" ? params.error : undefined;
   const testMode = testAuthEnabled();
+  const githubReady = githubAuthConfigured();
   return (
     <>
       {error && (
@@ -38,11 +40,24 @@ async function LoginForm({ searchParams }: { searchParams: PageProps<"/login">["
           className="p-4"
         />
       )}
-      <form action={signInWithGitHub}>
+      <form action={signInWithGitHub} className="grid gap-2">
         <input type="hidden" name="callbackUrl" value={callbackUrl} />
-        <Button type="submit" size="lg" className="w-full">
+        <Button
+          type="submit"
+          size="lg"
+          className="w-full"
+          disabled={!githubReady}
+          aria-describedby={githubReady ? undefined : "github-not-configured"}
+        >
           <GithubIcon /> Continue with GitHub
         </Button>
+        {!githubReady && (
+          <p id="github-not-configured" className="text-caption text-muted-foreground">
+            {serverEnv.isProduction
+              ? "GitHub sign-in isn't available right now."
+              : "GitHub sign-in isn't set up: add AUTH_GITHUB_ID and AUTH_GITHUB_SECRET to .env (see docs/operations/auth.md)."}
+          </p>
+        )}
       </form>
       {testMode && (
         <form
@@ -54,11 +69,34 @@ async function LoginForm({ searchParams }: { searchParams: PageProps<"/login">["
           <input type="hidden" name="callbackUrl" value={callbackUrl} />
           <div className="grid gap-1.5">
             <Label htmlFor="test-github-id">GitHub ID</Label>
-            <Input id="test-github-id" name="githubId" inputMode="numeric" required pattern="[1-9][0-9]{0,19}" />
+            <Input
+              id="test-github-id"
+              name="githubId"
+              inputMode="numeric"
+              required
+              pattern="[1-9][0-9]{0,19}"
+              title="Digits only, for example 1001"
+              placeholder="1001"
+              aria-describedby="test-github-id-hint"
+            />
+            <p id="test-github-id-hint" className="text-caption text-muted-foreground">
+              Any number. The same number signs you back into the same account.
+            </p>
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="test-login">Login</Label>
-            <Input id="test-login" name="login" required pattern="[A-Za-z0-9-]{1,39}" />
+            <Input
+              id="test-login"
+              name="login"
+              required
+              pattern="[A-Za-z0-9-]{1,39}"
+              title="Letters, numbers and hyphens, for example test-user"
+              placeholder="test-user"
+              aria-describedby="test-login-hint"
+            />
+            <p id="test-login-hint" className="text-caption text-muted-foreground">
+              A GitHub-style username: letters, numbers and hyphens.
+            </p>
           </div>
           <Button type="submit" variant="outline">
             Sign in as test user
