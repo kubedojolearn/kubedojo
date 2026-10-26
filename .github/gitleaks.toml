@@ -11,3 +11,7 @@ paths = ['''^apps/api/internal/kubectl/testdata/golden/''']
 description = "GitHub's documented example token, used to test that raw tokens are rejected"
 regexTarget = "match"
 regexes = ['''gho_16C7e42F292c6912E7710c838347Ae178B4a''']
+
+[[allowlists]]
+description = "The Secrets lesson's training fixture: a fictional token learners decode to see that base64 isn't encryption"
+paths = ['''^content/fixtures/secrets-demo\.yaml$''']

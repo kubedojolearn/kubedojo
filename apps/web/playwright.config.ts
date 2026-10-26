@@ -29,8 +29,11 @@ export default defineConfig({
     : {
         command: process.env.E2E_SKIP_BUILD ? serve : `pnpm build && ${serve}`,
         // Signed-out browsing needs only a session secret; no API is running for these tests.
+        // Placeholder OAuth values render the sign-in page as production does; no test signs in with GitHub.
         env: {
           AUTH_SECRET: process.env.AUTH_SECRET ?? "playwright-only-secret-not-used-anywhere-else",
+          AUTH_GITHUB_ID: process.env.AUTH_GITHUB_ID ?? "playwright-placeholder-client-id",
+          AUTH_GITHUB_SECRET: process.env.AUTH_GITHUB_SECRET ?? "playwright-placeholder-client-secret",
           WEB_ORIGIN: baseURL,
         },
         url: `${baseURL}/api/healthz`,
