@@ -20,7 +20,7 @@
     "licenses:check": "node scripts/check-licenses.mjs"
   },
   "devDependencies": {
-    "@redocly/cli": "2.69.0",
+    "@redocly/cli": "2.71.0",
     "lefthook": "2.2.2",
     "prettier": "3.9.10"
   },
