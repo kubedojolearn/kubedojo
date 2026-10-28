@@ -29,6 +29,10 @@ updates:
   - package-ecosystem: docker
     directories: ["/apps/api", "/apps/web"]
     schedule: { interval: weekly }
+    # Node majors move with CI's NODE_VERSION and package.json engines, by hand: odd releases never get LTS.
+    ignore:
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: docker-compose
     directory: /
     schedule: { interval: weekly }
