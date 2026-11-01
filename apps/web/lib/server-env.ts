@@ -23,6 +23,15 @@ export const serverEnv = {
   get signingKid() {
     return required("BFF_SIGNING_KID");
   },
+  get asgardeoClientId() {
+    return required("AUTH_ASGARDEO_ID");
+  },
+  get asgardeoClientSecret() {
+    return required("AUTH_ASGARDEO_SECRET");
+  },
+  get asgardeoIssuer() {
+    return required("AUTH_ASGARDEO_ISSUER");
+  },
   get isProduction() {
     return process.env.APP_ENV === "production";
   },

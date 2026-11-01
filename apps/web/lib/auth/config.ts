@@ -4,7 +4,7 @@ import Credentials from "next-auth/providers/credentials";
 import Asgardeo from "next-auth/providers/asgardeo";
 import { asgardeoSubject, provisionProfile, testUserId, type AsgardeoClaims } from "@/lib/auth/identity";
 import { provisionAccount } from "@/lib/auth/provision";
-import { testAuthEnabled } from "@/lib/server-env";
+import { asgardeoConfigured, serverEnv, testAuthEnabled } from "@/lib/server-env";
 
 declare module "next-auth" {
   interface Session {
@@ -20,23 +20,33 @@ type TokenWithSubject = { subject?: string };
 const TEST_PROVIDER_ID = "test-login";
 
 function providers(): NextAuthConfig["providers"] {
-  const list: NextAuthConfig["providers"] = [
-    // Asgardeo brokers Google, GitHub and email/password sign-in (ADR-0008). Credentials and
-    // issuer come from AUTH_ASGARDEO_ID, AUTH_ASGARDEO_SECRET and AUTH_ASGARDEO_ISSUER.
-    Asgardeo({
-      authorization: {
-        params: {
-          // Only the profile: we never request or store email addresses (requirements PR1).
-          scope: "openid profile",
-          // Always authenticate at Asgardeo, so signing out of KubeDojo on a shared computer
-          // isn't undone by Asgardeo's own session on the next click.
-          prompt: "login",
+  const list: NextAuthConfig["providers"] = [];
+  // Keep the provider out of the test-only setup unless real Asgardeo credentials are configured.
+  // Auth.js rejects an OIDC provider without an issuer even when another provider is used.
+  if (asgardeoConfigured()) {
+    const issuer = serverEnv.asgardeoIssuer;
+    list.push(
+      Asgardeo({
+        clientId: serverEnv.asgardeoClientId,
+        clientSecret: serverEnv.asgardeoClientSecret,
+        issuer,
+        // AUTH_ASGARDEO_ISSUER is the issuer URL including /oauth2/token. The built-in provider
+        // assumes a tenant base URL, so point discovery at the issuer's standard metadata path.
+        wellKnown: `${issuer}/.well-known/openid-configuration`,
+        authorization: {
+          params: {
+            // Only the profile: we never request or store email addresses (requirements PR1).
+            scope: "openid profile",
+            // Always authenticate at Asgardeo, so signing out of KubeDojo on a shared computer
+            // isn't undone by Asgardeo's own session on the next click.
+            prompt: "login",
+          },
         },
-      },
-      // Drop everything but the user ID, name and picture, so no email reaches the session.
-      profile: (p) => ({ id: String(p.sub ?? ""), name: typeof p.name === "string" ? p.name : null, image: null }),
-    }),
-  ];
+        // Drop everything but the user ID, name and picture, so no email reaches the session.
+        profile: (p) => ({ id: String(p.sub ?? ""), name: typeof p.name === "string" ? p.name : null, image: null }),
+      }),
+    );
+  }
   if (testAuthEnabled()) {
     list.push(
       Credentials({
