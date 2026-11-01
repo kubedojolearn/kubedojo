@@ -83,7 +83,7 @@ func (s *Service) Export(ctx context.Context, userID uuid.UUID) (json.RawMessage
 	return doc, nil
 }
 
-// RequestDeletion tombstones the account, unlinks its GitHub identity, hides it from the
+// RequestDeletion tombstones the account, unlinks its sign-in identity, hides it from the
 // leaderboard and profiles, and ends its labs, in one transaction. confirmHandle must match the
 // account's handle (case-insensitive). The rest is erased by EraseDue after ErasureDelay.
 func (s *Service) RequestDeletion(ctx context.Context, userID uuid.UUID, confirmHandle string) error {

@@ -235,7 +235,7 @@ const unlinkIdentities = `-- name: UnlinkIdentities :exec
 DELETE FROM oauth_identities WHERE user_id = $1
 `
 
-// After this the GitHub account can sign up again as a new user (the old handle stays reserved).
+// After this the same sign-in can sign up again as a new user (the old handle stays reserved).
 func (q *Queries) UnlinkIdentities(ctx context.Context, userID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, unlinkIdentities, userID)
 	return err

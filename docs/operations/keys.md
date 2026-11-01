@@ -5,7 +5,7 @@
 | `AUTH_SECRET` | Next.js (Auth.js session encryption) | 32+ random bytes, base64 | `openssl rand -base64 32` |
 | `BFF_SIGNING_PRIVATE_KEY` + `BFF_SIGNING_KID` | Next.js BFF (signs internal assertions) | Ed25519, base64 of PKCS#8 DER | `node scripts/gen-env.mjs --print-keypair <kid>` |
 | `API_JWT_PUBLIC_KEYS` | Go API (verifies assertions) | comma-separated `kid:base64(SPKI DER)` | printed with the keypair above |
-| `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` | Next.js (GitHub OAuth) | from the GitHub OAuth app | GitHub → Settings → Developer settings |
+| `AUTH_ASGARDEO_ID` / `AUTH_ASGARDEO_SECRET` | Next.js (Asgardeo OIDC) | from the Asgardeo application | Asgardeo console → Applications → KubeDojo → Protocol |
 | `POSTGRES_PASSWORD` / `DATABASE_URL` | API, worker | — | platform-managed in production |
 
 `make setup` generates development values automatically. **Development and production keys must differ.** Production secrets live only in the deployment platform's secret store, never in Git, images or logs.

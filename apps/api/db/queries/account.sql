@@ -77,7 +77,7 @@ WHERE id = sqlc.arg(id) AND deleted_at IS NULL AND lower(handle) = lower(sqlc.ar
 RETURNING id;
 
 -- name: UnlinkIdentities :exec
--- After this the GitHub account can sign up again as a new user (the old handle stays reserved).
+-- After this the same sign-in can sign up again as a new user (the old handle stays reserved).
 DELETE FROM oauth_identities WHERE user_id = $1;
 
 -- name: HideUser :exec

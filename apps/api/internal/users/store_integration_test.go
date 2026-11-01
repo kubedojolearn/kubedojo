@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth/authtest"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/database"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/testdb"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/users"
@@ -22,7 +23,7 @@ var ctx = context.Background()
 
 func input(subject, login string) users.ProvisionInput {
 	return users.ProvisionInput{
-		Provider: "github", ProviderSubject: subject, Login: login, Name: "Name of " + login,
+		Provider: auth.ProviderAsgardeo, ProviderSubject: authtest.Subject(subject), Login: login, Name: "Name of " + login,
 		AvatarURL: "https://avatars.githubusercontent.com/u/" + subject,
 	}
 }
@@ -45,7 +46,7 @@ func TestProvisionCreatesOnceAndReuses(t *testing.T) {
 		t.Fatal(err)
 	}
 	if me.Handle != "octocat" {
-		t.Fatalf("handle must not follow GitHub renames, got %q", me.Handle)
+		t.Fatalf("handle must not follow provider renames, got %q", me.Handle)
 	}
 	if me.Role != auth.RoleLearner || me.Settings.Theme != "system" || me.Settings.ProfilePublic || me.Settings.LeaderboardOptIn {
 		t.Fatalf("defaults: %+v", me)
@@ -198,11 +199,11 @@ func TestResolve(t *testing.T) {
 	s := users.NewStore(pool)
 	r, _ := s.Provision(ctx, input("31", "resolver"))
 
-	p, err := s.Resolve(ctx, "github", "31")
+	p, err := s.Resolve(ctx, auth.ProviderAsgardeo, authtest.Subject("31"))
 	if err != nil || p.UserID != r.UserID || p.Role != auth.RoleLearner {
 		t.Fatalf("%+v %v", p, err)
 	}
-	if _, err := s.Resolve(ctx, "github", "32"); !errors.Is(err, auth.ErrIdentityNotLinked) {
+	if _, err := s.Resolve(ctx, auth.ProviderAsgardeo, authtest.Subject("32")); !errors.Is(err, auth.ErrIdentityNotLinked) {
 		t.Fatalf("unknown identity: %v", err)
 	}
 
@@ -210,7 +211,7 @@ func TestResolve(t *testing.T) {
 	if _, err := pool.Exec(ctx, "UPDATE users SET role = 'admin' WHERE id = $1", r.UserID); err != nil {
 		t.Fatal(err)
 	}
-	if p, _ := s.Resolve(ctx, "github", "31"); p.Role != auth.RoleAdmin {
+	if p, _ := s.Resolve(ctx, auth.ProviderAsgardeo, authtest.Subject("31")); p.Role != auth.RoleAdmin {
 		t.Fatal("role must come from the database")
 	}
 
@@ -218,7 +219,7 @@ func TestResolve(t *testing.T) {
 	if _, err := pool.Exec(ctx, "UPDATE users SET deleted_at = now() WHERE id = $1", r.UserID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.Resolve(ctx, "github", "31"); !errors.Is(err, auth.ErrIdentityNotLinked) {
+	if _, err := s.Resolve(ctx, auth.ProviderAsgardeo, authtest.Subject("31")); !errors.Is(err, auth.ErrIdentityNotLinked) {
 		t.Fatalf("deleted user resolved: %v", err)
 	}
 	if _, err := s.GetMe(ctx, r.UserID); !errors.Is(err, users.ErrNotFound) {
@@ -288,7 +289,7 @@ func TestUpdateMe(t *testing.T) {
 		t.Fatalf("partial update changed other fields: %+v", me)
 	}
 
-	// The chosen display name survives the next GitHub sign-in.
+	// The chosen display name survives the next sign-in.
 	if _, err := s.Provision(ctx, input("1", "alice")); err != nil {
 		t.Fatal(err)
 	}

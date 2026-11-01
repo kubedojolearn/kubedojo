@@ -33,8 +33,8 @@ export default function TermsPage() {
 
         <h2>Your account</h2>
         <p>
-          You sign in with GitHub. Keep your GitHub account secure; you are responsible for activity under it. You can
-          delete your KubeDojo account at any time from settings.
+          You sign in with Google, GitHub or an email and password, through Asgardeo. Keep that sign-in secure; you are
+          responsible for activity under it. You can delete your KubeDojo account at any time from settings.
         </p>
 
         <h2>Acceptable use</h2>

@@ -67,8 +67,10 @@ Long-form pages use `Prose`. FAQ uses an accordion (all items independently expa
  ▢ [Coming soon]
    h1 Sign in to KubeDojo
    Save your progress…
+   G Continue with Google
    ◷ Continue with GitHub
-   We only use your GitHub ID, username, name and avatar (privacy)
+   ✉ Continue with email
+   Sign-in is handled by Asgardeo. We only receive your account ID, username, name and picture (privacy)
 ```
 
 States (Part 06): OAuth cancelled → message + retry; provisioning failed → error with request reference; already signed in → redirect to `callbackUrl` (same-origin only).

@@ -1,35 +1,43 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
+import { Mail } from "lucide-react";
 import { GithubIcon } from "@/components/brand/github-icon";
+import { GoogleIcon } from "@/components/brand/google-icon";
 import { LogoMark } from "@/components/brand/logo";
 import { ErrorState } from "@/components/feedback/states";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { signInAsTestUser, signInWithGitHub } from "@/lib/auth/actions";
-import { githubAuthConfigured, serverEnv, testAuthEnabled } from "@/lib/server-env";
+import { signInAsTestUser, signInWithAsgardeo } from "@/lib/auth/actions";
+import { asgardeoConfigured, serverEnv, testAuthEnabled, type SignInMethod } from "@/lib/server-env";
 
 export const metadata: Metadata = { title: "Sign in", robots: { index: false } };
 
 /** Auth.js error codes mapped to plain-language explanations. */
 const errorMessages: Record<string, string> = {
-  AccessDenied: "Sign-in was cancelled or GitHub denied access. Try again when you're ready.",
-  OAuthCallbackError: "GitHub didn't complete the sign-in. Please try again.",
-  OAuthSignin: "We couldn't start signing in with GitHub. Please try again.",
+  AccessDenied: "Sign-in was cancelled or access was denied. Try again when you're ready.",
+  OAuthCallbackError: "The sign-in didn't complete. Please try again.",
+  OAuthSignin: "We couldn't start signing in. Please try again.",
   Configuration: "Sign-in isn't configured correctly on this server. Please try again later.",
-  ProvisioningFailed: "You signed in with GitHub, but we couldn't set up your KubeDojo account. Please try again.",
-  GitHubNotConfigured: "GitHub sign-in isn't set up on this server yet.",
-  TestSignInFailed: "Test sign-in failed. Check the GitHub ID and login.",
+  ProvisioningFailed: "You signed in, but we couldn't set up your KubeDojo account. Please try again.",
+  SignInNotConfigured: "Sign-in isn't set up on this server yet.",
+  TestSignInFailed: "Test sign-in failed. Check the test ID and username.",
   SessionRequired: "Please sign in to continue.",
 };
+
+const signInMethods: { method: SignInMethod; label: string; icon: ReactNode }[] = [
+  { method: "google", label: "Continue with Google", icon: <GoogleIcon /> },
+  { method: "github", label: "Continue with GitHub", icon: <GithubIcon /> },
+  { method: "email", label: "Continue with email", icon: <Mail aria-hidden /> },
+];
 
 async function LoginForm({ searchParams }: { searchParams: PageProps<"/login">["searchParams"] }) {
   const params = await searchParams;
   const callbackUrl = typeof params.callbackUrl === "string" ? params.callbackUrl : "/dashboard";
   const error = typeof params.error === "string" ? params.error : undefined;
   const testMode = testAuthEnabled();
-  const githubReady = githubAuthConfigured();
+  const ready = asgardeoConfigured();
   return (
     <>
       {error && (
@@ -40,25 +48,31 @@ async function LoginForm({ searchParams }: { searchParams: PageProps<"/login">["
           className="p-4"
         />
       )}
-      <form action={signInWithGitHub} className="grid gap-2">
-        <input type="hidden" name="callbackUrl" value={callbackUrl} />
-        <Button
-          type="submit"
-          size="lg"
-          className="w-full"
-          disabled={!githubReady}
-          aria-describedby={githubReady ? undefined : "github-not-configured"}
-        >
-          <GithubIcon /> Continue with GitHub
-        </Button>
-        {!githubReady && (
-          <p id="github-not-configured" className="text-caption text-muted-foreground">
+      <div className="grid gap-2">
+        {signInMethods.map((m) => (
+          <form key={m.method} action={signInWithAsgardeo}>
+            <input type="hidden" name="callbackUrl" value={callbackUrl} />
+            <input type="hidden" name="method" value={m.method} />
+            <Button
+              type="submit"
+              size="lg"
+              variant={m.method === "email" ? "outline" : "default"}
+              className="w-full"
+              disabled={!ready}
+              aria-describedby={ready ? undefined : "sign-in-not-configured"}
+            >
+              {m.icon} {m.label}
+            </Button>
+          </form>
+        ))}
+        {!ready && (
+          <p id="sign-in-not-configured" className="text-caption text-muted-foreground">
             {serverEnv.isProduction
-              ? "GitHub sign-in isn't available right now."
-              : "GitHub sign-in isn't set up: add AUTH_GITHUB_ID and AUTH_GITHUB_SECRET to .env (see docs/operations/auth.md)."}
+              ? "Sign-in isn't available right now."
+              : "Sign-in isn't set up: add AUTH_ASGARDEO_ID, AUTH_ASGARDEO_SECRET and AUTH_ASGARDEO_ISSUER to .env (see docs/operations/auth.md)."}
           </p>
         )}
-      </form>
+      </div>
       {testMode && (
         <form
           action={signInAsTestUser}
@@ -68,23 +82,23 @@ async function LoginForm({ searchParams }: { searchParams: PageProps<"/login">["
           <p className="text-sm font-medium">Test sign-in (development only)</p>
           <input type="hidden" name="callbackUrl" value={callbackUrl} />
           <div className="grid gap-1.5">
-            <Label htmlFor="test-github-id">GitHub ID</Label>
+            <Label htmlFor="test-id">Test ID</Label>
             <Input
-              id="test-github-id"
-              name="githubId"
+              id="test-id"
+              name="testId"
               inputMode="numeric"
               required
               pattern="[1-9][0-9]{0,19}"
               title="Digits only, for example 1001"
               placeholder="1001"
-              aria-describedby="test-github-id-hint"
+              aria-describedby="test-id-hint"
             />
-            <p id="test-github-id-hint" className="text-caption text-muted-foreground">
+            <p id="test-id-hint" className="text-caption text-muted-foreground">
               Any number. The same number signs you back into the same account.
             </p>
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="test-login">Login</Label>
+            <Label htmlFor="test-login">Username</Label>
             <Input
               id="test-login"
               name="login"
@@ -95,7 +109,7 @@ async function LoginForm({ searchParams }: { searchParams: PageProps<"/login">["
               aria-describedby="test-login-hint"
             />
             <p id="test-login-hint" className="text-caption text-muted-foreground">
-              A GitHub-style username: letters, numbers and hyphens.
+              Letters, numbers and hyphens. It becomes your handle on a new account.
             </p>
           </div>
           <Button type="submit" variant="outline">
@@ -121,16 +135,27 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
       <div className="grid gap-4">
         <Suspense
           fallback={
-            <Button size="lg" className="w-full" disabled>
-              <GithubIcon /> Continue with GitHub
-            </Button>
+            <div className="grid gap-2">
+              {signInMethods.map((m) => (
+                <Button
+                  key={m.method}
+                  size="lg"
+                  variant={m.method === "email" ? "outline" : "default"}
+                  className="w-full"
+                  disabled
+                >
+                  {m.icon} {m.label}
+                </Button>
+              ))}
+            </div>
           }
         >
           <LoginForm searchParams={searchParams} />
         </Suspense>
       </div>
       <p className="border-t border-border-subtle pt-4 text-caption text-muted-foreground">
-        We only use your GitHub ID, username, name and avatar, never your email. See the{" "}
+        Sign-in is handled by Asgardeo. We only receive your account ID, username, name and picture, never your email.
+        See the{" "}
         <Link href="/privacy" className="text-link underline underline-offset-4">
           privacy policy
         </Link>

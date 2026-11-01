@@ -31,7 +31,7 @@ function signingKey(): Promise<CryptoKey> {
 }
 
 /**
- * Signs a short-lived Ed25519 assertion. `subject` must be "github:<numeric id>". Provisioning
+ * Signs a short-lived Ed25519 assertion. `subject` must be "asgardeo:<user id>". Provisioning
  * assertions carry profile claims; request assertions must not. Never send the result to a browser.
  */
 export async function mintAssertion(
@@ -39,7 +39,9 @@ export async function mintAssertion(
   audience: typeof AUDIENCE_API | typeof AUDIENCE_PROVISION,
   profile?: ProvisionProfile,
 ): Promise<string> {
-  if (!/^github:[1-9][0-9]{0,19}$/.test(subject)) throw new Error("invalid assertion subject");
+  if (!/^asgardeo:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(subject)) {
+    throw new Error("invalid assertion subject");
+  }
   if ((audience === AUDIENCE_PROVISION) !== Boolean(profile)) {
     throw new Error("profile claims belong on provisioning assertions only");
   }

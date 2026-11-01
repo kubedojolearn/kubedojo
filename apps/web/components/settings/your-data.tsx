@@ -88,8 +88,8 @@ export function YourData({ handle }: { handle: string }) {
         <div>
           <h3 className="font-semibold">Delete account</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Your account disappears immediately and is unlinked from GitHub. Everything else is erased within 30 days.
-            This can&apos;t be undone.
+            Your account disappears immediately and is unlinked from your sign-in. Everything else is erased within 30
+            days. This can&apos;t be undone.
           </p>
           <Dialog
             onOpenChange={(open) => {
@@ -110,7 +110,7 @@ export function YourData({ handle }: { handle: string }) {
                   <DialogTitle>Delete your account?</DialogTitle>
                   <DialogDescription>
                     Your progress, XP, achievements and labs will be erased. You can sign up again later with the same
-                    GitHub account, but you&apos;ll start from scratch.
+                    sign-in, but you&apos;ll start from scratch.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-1.5">

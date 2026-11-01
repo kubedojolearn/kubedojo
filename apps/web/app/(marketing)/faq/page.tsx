@@ -53,8 +53,8 @@ const faqs: Array<{ q: string; a: ReactNode }> = [
     q: "What data do you collect?",
     a: (
       <>
-        Only what&apos;s needed to save your progress: your GitHub account ID, username, display name and avatar. We
-        don&apos;t request your email. Read the{" "}
+        Only what&apos;s needed to save your progress: your account ID, username, display name and picture. You sign in
+        with Google, GitHub or email through Asgardeo, and we never receive your email address. Read the{" "}
         <Link href="/privacy" className="text-link underline underline-offset-4">
           privacy policy
         </Link>

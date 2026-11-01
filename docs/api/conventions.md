@@ -18,7 +18,7 @@ Middleware, outermost first:
 
 - `Authorization: Bearer <assertion>` where the assertion is an EdDSA JWT from the BFF ([ADR-0003](../adr/0003-auth-bff.md)). Accepted only if: alg is `EdDSA`; `kid` is in `API_JWT_PUBLIC_KEYS`; `iss=kubedojo-web`; `aud` is exactly the endpoint's audience; `exp`, `iat`, `jti` present; lifetime ≤ 60 s; ±10 s clock skew; `sub` matches `github:<numeric id>`; request assertions carry no profile claims.
 - Every failure is the same `401 UNAUTHENTICATED` with a generic message; the reason is logged at info level.
-- Identity and role are never read from headers (`X-User-Id`, `X-Role`, …), query strings or bodies. Raw GitHub tokens are not accepted.
+- Identity and role are never read from headers (`X-User-Id`, `X-Role`, …), query strings or bodies. Raw Asgardeo, Google or GitHub tokens are not accepted.
 - A verified identity with no linked user (not provisioned, or deleted) is 401.
 
 ## Errors

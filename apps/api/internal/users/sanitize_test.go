@@ -26,14 +26,16 @@ func TestSanitizeDisplayName(t *testing.T) {
 }
 
 func TestSanitizeAvatarURL(t *testing.T) {
-	ok := "https://avatars.githubusercontent.com/u/583231?v=4"
-	if got := sanitizeAvatarURL(ok); got == nil || *got != ok {
-		t.Fatalf("valid avatar rejected: %v", got)
+	for _, ok := range []string{"https://avatars.githubusercontent.com/u/583231?v=4", "https://lh3.googleusercontent.com/a/ACg8ocK=s96-c"} {
+		if got := sanitizeAvatarURL(ok); got == nil || *got != ok {
+			t.Fatalf("valid avatar %s rejected: %v", ok, got)
+		}
 	}
 	for _, bad := range []string{
 		"http://avatars.githubusercontent.com/u/1",
 		"https://evil.example/u/1",
 		"https://avatars.githubusercontent.com.evil.example/u/1",
+		"https://lh3.googleusercontent.com.evil.example/a/1",
 		"https://user:pw@avatars.githubusercontent.com/u/1",
 		"javascript:alert(1)",
 		"",

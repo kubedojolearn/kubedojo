@@ -1,6 +1,7 @@
 # ADR-0003: Auth.js BFF, signed internal assertions, edge proxy and explicit provisioning
 
 - **Status:** Accepted · **Date:** 2026-10-22
+- **Amended by [ADR-0008](0008-asgardeo-identity-broker.md):** sign-in now goes through Asgardeo and the subject is `asgardeo:<user id>`. Wherever this record says GitHub and `github:<numeric account id>`, read Asgardeo and `asgardeo:<user id>`; everything else stands.
 - Resolves plan-review items 4 and 5.
 
 ## Context

@@ -41,9 +41,22 @@ export function testAuthEnabled(): boolean {
 }
 
 /**
- * GitHub sign-in needs an OAuth app (docs/operations/auth.md). Without its ID, GitHub answers the
- * authorize redirect with a 404, so the sign-in button is disabled instead.
+ * Sign-in needs an Asgardeo application (docs/operations/auth.md). Without it the sign-in
+ * buttons are disabled instead of failing after the click.
  */
-export function githubAuthConfigured(): boolean {
-  return Boolean(process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET);
+export function asgardeoConfigured(): boolean {
+  return Boolean(process.env.AUTH_ASGARDEO_ID && process.env.AUTH_ASGARDEO_SECRET && process.env.AUTH_ASGARDEO_ISSUER);
+}
+
+/** The sign-in options on /login. Google and GitHub are Asgardeo connections; email is Asgardeo's own login. */
+export type SignInMethod = "google" | "github" | "email";
+
+/**
+ * Asgardeo's `fidp` value for each connection: the connection's name in the Asgardeo console.
+ * It sends the learner straight to Google or GitHub instead of Asgardeo's login page.
+ */
+export function asgardeoConnection(method: SignInMethod): string | undefined {
+  if (method === "google") return process.env.AUTH_ASGARDEO_GOOGLE_CONNECTION || "Google";
+  if (method === "github") return process.env.AUTH_ASGARDEO_GITHUB_CONNECTION || "GitHub";
+  return undefined;
 }

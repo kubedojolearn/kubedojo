@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, GitFork, LayoutDashboard, Route, ShieldCheck, Trophy, UserRoundX } from "lucide-react";
+import { ArrowRight, GitFork, LayoutDashboard, LogIn, Route, ShieldCheck, Trophy, UserRoundX } from "lucide-react";
 import { Suspense } from "react";
 import { GithubIcon } from "@/components/brand/github-icon";
 import { LogoMark } from "@/components/brand/logo";
@@ -102,7 +102,7 @@ export default function HomePage() {
               </Button>
               <Button asChild size="hero" variant="outline">
                 <Link href="/login">
-                  <GithubIcon /> Sign in with GitHub
+                  <LogIn /> Sign in
                 </Link>
               </Button>
             </div>
@@ -167,7 +167,7 @@ export default function HomePage() {
             <Link href="/dashboard" className="text-foreground-secondary underline hover:text-foreground">
               dashboard
             </Link>{" "}
-            shows where to continue. Sign in with GitHub to save progress and run labs.
+            shows where to continue. Sign in with Google, GitHub or email to save progress and run labs.
           </span>
         </p>
       </Section>
@@ -336,8 +336,7 @@ export default function HomePage() {
             Your first kubectl command is a few minutes away.
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-body-lg text-pretty text-foreground-secondary">
-            No install and no cloud account. Read the lessons straight away; sign in with GitHub when you want a lab of
-            your own.
+            No install and no cloud account. Read the lessons straight away; sign in when you want a lab of your own.
           </p>
           <div className="mx-auto mt-8 flex max-w-sm flex-col gap-3 sm:max-w-none sm:flex-row sm:justify-center">
             <Button asChild size="hero">
