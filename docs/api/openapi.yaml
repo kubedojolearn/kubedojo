@@ -83,7 +83,7 @@ paths:
     post:
       tags: [auth]
       operationId: provisionUser
-      summary: Create or update the local user for a GitHub identity
+      summary: Create or update the local user for an Asgardeo identity
       description: |
         Called once per sign-in by the BFF. Requires a provisioning assertion
         (`aud: kubedojo-api-provision`) carrying `login`, `name` and `avatar_url` claims.
@@ -246,7 +246,7 @@ paths:
       tags: [users]
       operationId: requestAccountDeletion
       summary: Delete the current user's account
-      description: Tombstones the account and unlinks the GitHub identity immediately; remaining personal data is erased within 30 days.
+      description: Tombstones the account and unlinks the sign-in identity immediately; remaining personal data is erased within 30 days.
       x-kubedojo-part: 19
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
@@ -1001,7 +1001,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Ed25519 (EdDSA) JWT from the BFF. iss=kubedojo-web, aud=kubedojo-api, sub=github:<id>, exp-iat ≤ 60 s.
+      description: Ed25519 (EdDSA) JWT from the BFF. iss=kubedojo-web, aud=kubedojo-api, sub=asgardeo:<user id>, exp-iat ≤ 60 s.
     provisionAssertion:
       type: http
       scheme: bearer

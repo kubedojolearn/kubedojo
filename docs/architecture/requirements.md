@@ -65,7 +65,7 @@ Baseline: OWASP ASVS 5.0 level 2 for authentication, session management, access 
 
 | ID | Requirement |
 | --- | --- |
-| PR1 | Data collected at sign-in: GitHub numeric ID, login, display name, avatar URL. Email is not requested or stored. |
+| PR1 | Data collected at sign-in: Asgardeo user ID, username, display name, picture URL ([ADR-0008](../adr/0008-asgardeo-identity-broker.md)). Email is not requested or stored. |
 | PR2 | Profiles are private by default. Leaderboard is opt-in. Public profiles show handle, display name, avatar, XP, completed lessons and achievements only. |
 | PR3 | Activity analytics are first-party, tied to the user ID, and contain event type, lesson ID and timestamps only—never command text, YAML or answers. Users can opt out in settings; opted-out users still get progress and XP. |
 | PR4 | No third-party trackers or ad pixels. |

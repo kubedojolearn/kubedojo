@@ -217,9 +217,10 @@ type OauthIdentity struct {
 	Provider        string
 	ProviderSubject string
 	UserID          uuid.UUID
-	ProviderLogin   string
-	CreatedAt       time.Time
-	LastLoginAt     time.Time
+	// Last seen provider username; informational only, never used for identity, never an email address.
+	ProviderLogin string
+	CreatedAt     time.Time
+	LastLoginAt   time.Time
 }
 
 type OutboxEvent struct {

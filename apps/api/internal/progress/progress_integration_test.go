@@ -7,6 +7,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth/authtest"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/content"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/testdb"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/progress"
@@ -40,7 +42,7 @@ func setup(t *testing.T) (*progress.Service, *users.Store, func(subject, login s
 	}
 	us := users.NewStore(pool)
 	mk := func(subject, login string) users.ProvisionResult {
-		r, err := us.Provision(ctx, users.ProvisionInput{Provider: "github", ProviderSubject: subject, Login: login, Name: login})
+		r, err := us.Provision(ctx, users.ProvisionInput{Provider: auth.ProviderAsgardeo, ProviderSubject: authtest.Subject(subject), Login: login, Name: login})
 		if err != nil {
 			t.Fatal(err)
 		}

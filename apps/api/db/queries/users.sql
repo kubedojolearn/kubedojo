@@ -36,7 +36,7 @@ SET last_login_at = now(), provider_login = sqlc.arg(provider_login)
 WHERE provider = sqlc.arg(provider) AND provider_subject = sqlc.arg(provider_subject);
 
 -- name: RefreshProviderProfile :exec
--- Updates fields GitHub owns, without overwriting a display name the user chose themselves.
+-- Updates fields the sign-in provider owns, without overwriting a display name the user chose themselves.
 UPDATE users
 SET display_name = CASE WHEN display_name_customized THEN display_name ELSE sqlc.arg(display_name) END,
     avatar_url   = sqlc.narg(avatar_url),

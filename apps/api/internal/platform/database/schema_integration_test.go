@@ -42,7 +42,7 @@ func TestMigrationsUpDownUp(t *testing.T) {
 	if n := tableCount(t, pool); n != 23 {
 		t.Fatalf("expected 23 tables after up, got %d", n)
 	}
-	if v, _ := m.Version(ctx); v != 8 {
+	if v, _ := m.Version(ctx); v != 9 {
 		t.Fatalf("version %d", v)
 	}
 	if _, err := m.DownTo(ctx, 0); err != nil {
@@ -97,16 +97,26 @@ func TestIdentityConstraints(t *testing.T) {
 		t.Fatal(err)
 	}
 	b := testdb.CreateUser(t, pool, "second")
-	if err := q.InsertIdentity(ctx, dbgen.InsertIdentityParams{Provider: "github", ProviderSubject: "583231", UserID: lone, ProviderLogin: "a"}); err != nil {
+	const asgardeoID = "5d1b7c1e-8f43-4c2a-9a51-3e0f1d2c4b6a"
+	if err := q.InsertIdentity(ctx, dbgen.InsertIdentityParams{Provider: "asgardeo", ProviderSubject: asgardeoID, UserID: lone, ProviderLogin: "a"}); err != nil {
 		t.Fatal(err)
 	}
 	// And one identity per provider per user.
-	err = q.InsertIdentity(ctx, dbgen.InsertIdentityParams{Provider: "github", ProviderSubject: "999", UserID: a, ProviderLogin: "a"})
+	err = q.InsertIdentity(ctx, dbgen.InsertIdentityParams{Provider: "asgardeo", ProviderSubject: "6e2c8d2f-9054-4d3b-8b62-4f1e2e3d5c7b", UserID: a, ProviderLogin: "a"})
 	expectViolation(t, err, database.CodeUniqueViolation)
-	err = q.InsertIdentity(ctx, dbgen.InsertIdentityParams{Provider: "github", ProviderSubject: "583231", UserID: b, ProviderLogin: "b"})
+	err = q.InsertIdentity(ctx, dbgen.InsertIdentityParams{Provider: "asgardeo", ProviderSubject: asgardeoID, UserID: b, ProviderLogin: "b"})
 	expectViolation(t, err, database.CodeUniqueViolation)
-	err = q.InsertIdentity(ctx, dbgen.InsertIdentityParams{Provider: "github", ProviderSubject: "octocat", UserID: b, ProviderLogin: "b"})
-	expectViolation(t, err, database.CodeCheckViolation)
+	// Subjects must be the provider's immutable ID: an Asgardeo UUID, or a retired numeric GitHub ID.
+	for _, bad := range []dbgen.InsertIdentityParams{
+		{Provider: "asgardeo", ProviderSubject: "octocat", UserID: b, ProviderLogin: "b"},
+		{Provider: "asgardeo", ProviderSubject: "5D1B7C1E-8F43-4C2A-9A51-3E0F1D2C4B6A", UserID: b, ProviderLogin: "b"},
+		{Provider: "asgardeo", ProviderSubject: "583231", UserID: b, ProviderLogin: "b"},
+		{Provider: "github", ProviderSubject: asgardeoID, UserID: b, ProviderLogin: "b"},
+		{Provider: "google", ProviderSubject: asgardeoID, UserID: b, ProviderLogin: "b"},
+	} {
+		err = q.InsertIdentity(ctx, bad)
+		expectViolation(t, err, database.CodeCheckViolation)
+	}
 
 	// Roles are constrained and default to learner.
 	var role string

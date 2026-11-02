@@ -3,18 +3,28 @@
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 import { safeCallbackPath, signIn, signOut, TEST_PROVIDER_ID } from "@/lib/auth/config";
-import { githubAuthConfigured, serverEnv, testAuthEnabled } from "@/lib/server-env";
+import {
+  asgardeoConfigured,
+  asgardeoConnection,
+  serverEnv,
+  testAuthEnabled,
+  type SignInMethod,
+} from "@/lib/server-env";
+
+const methods: readonly SignInMethod[] = ["google", "github", "email"];
 
 function destination(formData: FormData): string {
   return safeCallbackPath(String(formData.get("callbackUrl") ?? ""), serverEnv.webOrigin);
 }
 
-/** Starts the GitHub OAuth flow. */
-export async function signInWithGitHub(formData: FormData) {
-  if (!githubAuthConfigured()) {
-    redirect(`/login?error=GitHubNotConfigured&callbackUrl=${encodeURIComponent(destination(formData))}`);
+/** Starts Asgardeo sign-in, going straight to Google or GitHub when the learner picked one. */
+export async function signInWithAsgardeo(formData: FormData) {
+  if (!asgardeoConfigured()) {
+    redirect(`/login?error=SignInNotConfigured&callbackUrl=${encodeURIComponent(destination(formData))}`);
   }
-  await signIn("github", { redirectTo: destination(formData) });
+  const method = methods.find((m) => m === formData.get("method")) ?? "email";
+  const fidp = asgardeoConnection(method);
+  await signIn("asgardeo", { redirectTo: destination(formData) }, fidp ? { fidp } : undefined);
 }
 
 /** Test-only sign-in (AUTH_TEST_MODE=1, never in production). */
@@ -22,7 +32,7 @@ export async function signInAsTestUser(formData: FormData) {
   if (!testAuthEnabled()) throw new Error("Test sign-in is disabled.");
   try {
     await signIn(TEST_PROVIDER_ID, {
-      githubId: String(formData.get("githubId") ?? ""),
+      testId: String(formData.get("testId") ?? ""),
       login: String(formData.get("login") ?? ""),
       redirectTo: destination(formData),
     });

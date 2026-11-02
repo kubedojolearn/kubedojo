@@ -126,7 +126,7 @@ export function OnboardingForm({ handle, next }: { handle: string; next: string 
           aria-describedby={`${ids}-handle-help${handleError ? ` ${ids}-handle-error` : ""}`}
         />
         <p id={`${ids}-handle-help`} className="text-sm text-muted-foreground">
-          Taken from GitHub; change it if you like. Your profile stays private unless you make it public.
+          Taken from how you signed in; change it if you like. Your profile stays private unless you make it public.
         </p>
         {handleError && (
           <p id={`${ids}-handle-error`} className="text-sm text-danger">

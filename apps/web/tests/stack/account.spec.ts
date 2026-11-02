@@ -32,7 +32,12 @@ test("the data export downloads your own data", async ({ page }) => {
   expect(file.suggestedFilename()).toMatch(new RegExp(`^kubedojo-${who.login}-\\d{4}-\\d{2}-\\d{2}\\.json$`));
   const body = JSON.parse(await (await import("node:fs/promises")).readFile((await file.path())!, "utf8"));
   expect(body.profile.handle).toBe(who.login);
-  expect(body.identities[0].providerSubject).toBe(who.githubId);
+  expect(body.identities[0].provider).toBe("asgardeo");
+  expect(body.identities[0].providerSubject).toMatch(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+  );
+  // Never an email address (requirements PR1).
+  expect(JSON.stringify(body)).not.toMatch(/[^\s"@]+@[^\s"@]+\.[a-z]{2,}/i);
 });
 
 test("deleting the account needs the handle, signs you out and can't be undone by signing in", async ({ page }) => {
@@ -49,7 +54,7 @@ test("deleting the account needs the handle, signs you out and can't be undone b
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("link", { name: "Sign in" }).first()).toBeVisible();
 
-  // Signing in again with the same GitHub account starts a brand-new account.
+  // Signing in again with the same sign-in starts a brand-new account.
   await signIn(page, who, "/dashboard");
   const me = await (await page.request.get("/api/bff/v1/users/me")).json();
   expect(me.data.handle).not.toBe(who.login);

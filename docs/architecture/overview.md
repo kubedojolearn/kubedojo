@@ -18,7 +18,7 @@ flowchart LR
     subgraph Web["apps/web (Next.js, Node runtime)"]
         Pages["Pages & RSC"]
         BFF["BFF /api/bff/*<br/>Auth.js session check<br/>mints Ed25519 assertion"]
-        AuthJS["Auth.js<br/>GitHub OAuth"]
+        AuthJS["Auth.js<br/>Asgardeo OIDC"]
     end
 
     subgraph API["apps/api (Go, Chi) — private network"]
@@ -31,14 +31,14 @@ flowchart LR
     Worker["cmd/worker<br/>outbox · expiry · retention"]
     PG[("PostgreSQL<br/>system of record")]
     Redis[("Redis<br/>tickets · rate limits · pub/sub")]
-    GitHub["GitHub OAuth"]
+    Asgardeo["Asgardeo<br/>Google · GitHub · email"]
 
     UI -- "HTTPS" --> R
     UI -. "WSS" .-> R
     R -- "/api/v1/ws/*" --> WS
     R -- "everything else" --> Pages
     R --> BFF
-    AuthJS <--> GitHub
+    AuthJS <--> Asgardeo
     BFF -- "bearer assertion" --> REST
     REST --> Domains --> Sim
     WS --> Domains
@@ -53,7 +53,7 @@ flowchart LR
 | --- | --- | --- |
 | Browser | Nothing authoritative; UI state only | Nothing |
 | Edge proxy | TLS termination, routing | — |
-| Next.js / BFF | Browser sessions (Auth.js cookie), the signing key for internal assertions | GitHub (OAuth), Go responses |
+| Next.js / BFF | Browser sessions (Auth.js cookie), the signing key for internal assertions | Asgardeo (OIDC ID tokens), Go responses |
 | Go API | All business rules and authorization | Assertions signed by a configured `kid`; its own database |
 | Worker | Background jobs | Its own database |
 | PostgreSQL | All durable state | — |
@@ -68,16 +68,17 @@ sequenceDiagram
     autonumber
     participant B as Browser
     participant W as Next.js (Auth.js + BFF)
-    participant G as GitHub
+    participant G as Asgardeo
     participant A as Go API
     participant P as PostgreSQL
 
-    B->>W: GET /login → "Sign in with GitHub"
-    W->>G: OAuth authorize (state, PKCE)
-    G-->>B: redirect to /api/auth/callback/github?code=…
+    B->>W: GET /login → "Continue with Google / GitHub / email"
+    W->>G: OIDC authorize (state, PKCE, prompt=login, fidp = Google or GitHub)
+    Note over G: Asgardeo signs the learner in with Google, GitHub or email/password
+    G-->>B: redirect to /api/auth/callback/asgardeo?code=…
     B->>W: callback
-    W->>G: exchange code → access token + profile (id, login, name, avatar)
-    W->>W: mint provisioning assertion (aud=kubedojo-api-provision, sub=github:<id>, profile claims, exp ≤ 60 s)
+    W->>G: exchange code → ID token (sub = Asgardeo user ID, name, username, picture; no email)
+    W->>W: mint provisioning assertion (aud=kubedojo-api-provision, sub=asgardeo:<user id>, profile claims, exp ≤ 60 s)
     W->>A: POST /api/v1/auth/provision
     A->>P: upsert oauth_identities + users (one transaction)
     A-->>W: 200 {user}
@@ -97,7 +98,7 @@ sequenceDiagram
 
     B->>W: POST /api/bff/labs {challengeVersionId} (session cookie, Origin)
     W->>W: verify Auth.js session, then check Origin (CSRF)
-    W->>W: mint assertion (aud=kubedojo-api, sub=github:<id>, exp ≤ 60 s)
+    W->>W: mint assertion (aud=kubedojo-api, sub=asgardeo:<user id>, exp ≤ 60 s)
     W->>A: POST /api/v1/labs  Authorization: Bearer <assertion>
     A->>A: verify EdDSA signature, kid, iss, aud, exp, iat
     A->>P: resolve sub → user_id, role (oauth_identities, users)

@@ -9,14 +9,14 @@ const root = new URL("../.next/static", import.meta.url).pathname;
 const forbiddenNames = [
   "BFF_SIGNING_PRIVATE_KEY",
   "AUTH_SECRET",
-  "AUTH_GITHUB_SECRET",
+  "AUTH_ASGARDEO_SECRET",
   "API_JWT_PUBLIC_KEYS",
   "API_INTERNAL_URL",
   "kubedojo-api-provision",
   "BEGIN PRIVATE KEY",
 ];
 // Actual secret values, when present in the environment (CI and local builds).
-const forbiddenValues = ["BFF_SIGNING_PRIVATE_KEY", "AUTH_SECRET", "AUTH_GITHUB_SECRET"]
+const forbiddenValues = ["BFF_SIGNING_PRIVATE_KEY", "AUTH_SECRET", "AUTH_ASGARDEO_SECRET"]
   .map((k) => process.env[k])
   .filter((v) => v && v.length >= 16);
 

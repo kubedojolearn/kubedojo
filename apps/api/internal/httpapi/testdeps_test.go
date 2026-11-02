@@ -34,11 +34,11 @@ type identities struct{}
 
 func (identities) Resolve(_ context.Context, _, subject string) (auth.Principal, error) {
 	switch subject {
-	case "100":
+	case authtest.Subject("100"):
 		return auth.Principal{UserID: testUserID, Role: auth.RoleLearner}, nil
-	case "429":
+	case authtest.Subject("429"):
 		return auth.Principal{UserID: throttled, Role: auth.RoleLearner}, nil
-	case "900":
+	case authtest.Subject("900"):
 		return auth.Principal{UserID: adminUserID, Role: auth.RoleAdmin}, nil
 	}
 	return auth.Principal{}, auth.ErrIdentityNotLinked
