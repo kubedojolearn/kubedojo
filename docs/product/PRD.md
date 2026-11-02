@@ -48,7 +48,7 @@ These are product requirements, not engineering preferences:
 
 1. Lands on `/`, reads what KubeDojo is and that it is free and simulated. Clicks **Start learning**.
 2. Browses `/learn`, opens *Kubernetes fundamentals → Cluster architecture* and reads the public lesson preview.
-3. Clicks **Start lab**, is asked to sign in with GitHub, approves, and returns to the same lesson.
+3. Clicks **Start lab**, is asked to sign in with Google, GitHub or email, approves, and returns to the same lesson.
 4. Completes a three-question onboarding (experience level, goal, optional handle). Can skip.
 5. The lab opens: lesson text on the left; terminal, YAML editor and cluster map on the right (tabs on small screens).
 6. Types `kubectl get nodes`. Output appears in the terminal; the nodes are highlighted in the cluster map.
@@ -82,7 +82,7 @@ These are product requirements, not engineering preferences:
 | # | Feature | Priority | Acceptance criteria | Part |
 | --- | --- | --- | --- | --- |
 | F1 | Marketing site | P0 | `/`, `/learn`, `/about`, `/faq`, `/privacy`, `/terms`, `/changelog` render with real copy, are responsive and have no critical axe violations | 03 |
-| F2 | GitHub sign-in | P0 | New GitHub account → exactly one KubeDojo user; repeat sign-in reuses it; failed provisioning blocks sign-in with a visible error | 06 |
+| F2 | Sign-in with Google, GitHub or email (Asgardeo, ADR-0008) | P0 | New Asgardeo user → exactly one KubeDojo user; repeat sign-in reuses it; failed provisioning blocks sign-in with a visible error | 06 |
 | F3 | Onboarding | P1 | ≤ 3 questions, all skippable; completes in under 60 s | 08 |
 | F4 | Course catalog and lesson reader | P0 | 6 courses / 30 lessons browsable without signing in; hidden goals and solutions never appear in public responses or bundles | 07, 17 |
 | F5 | Persistent simulated lab | P0 | Lab state survives reload, API restart and reconnect; one active session per user per lesson | 09 |

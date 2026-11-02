@@ -5,6 +5,7 @@ package authtest
 import (
 	"crypto/ed25519"
 	"crypto/rand"
+	"fmt"
 	"testing"
 	"time"
 
@@ -34,12 +35,19 @@ func (s Signer) Keys() map[string]ed25519.PublicKey {
 	return map[string]ed25519.PublicKey{s.KID: s.Public}
 }
 
-// Claims returns valid request-assertion claims for GitHub account id at time now.
-func Claims(githubID string, now time.Time) jwt.MapClaims {
+// Subject turns a short test ID (up to 12 digits, e.g. "100") into the Asgardeo user ID it
+// stands for, so tests can name identities briefly: Subject("100") is
+// "00000000-0000-4000-8000-000000000100".
+func Subject(id string) string {
+	return fmt.Sprintf("00000000-0000-4000-8000-%012s", id)
+}
+
+// Claims returns valid request-assertion claims for the Asgardeo user Subject(id) at time now.
+func Claims(id string, now time.Time) jwt.MapClaims {
 	return jwt.MapClaims{
 		"iss": "kubedojo-web",
 		"aud": "kubedojo-api",
-		"sub": "github:" + githubID,
+		"sub": "asgardeo:" + Subject(id),
 		"iat": now.Unix(),
 		"exp": now.Add(60 * time.Second).Unix(),
 		"jti": uuid.NewString(),
@@ -59,7 +67,7 @@ func (s Signer) Sign(t testing.TB, claims jwt.MapClaims) string {
 }
 
 // Token is shorthand for a valid request assertion.
-func (s Signer) Token(t testing.TB, githubID string, now time.Time) string {
+func (s Signer) Token(t testing.TB, id string, now time.Time) string {
 	t.Helper()
-	return s.Sign(t, Claims(githubID, now))
+	return s.Sign(t, Claims(id, now))
 }

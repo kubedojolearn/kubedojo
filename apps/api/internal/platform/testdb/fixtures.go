@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -19,7 +18,7 @@ import (
 // SimulatorVersion used by fixtures.
 const SimulatorVersion = "kubernetes-1.37-subset-1"
 
-// CreateUser inserts an active user with a linked GitHub identity, settings and totals.
+// CreateUser inserts an active user with a linked Asgardeo identity, settings and totals.
 func CreateUser(t testing.TB, pool *pgxpool.Pool, handle string) uuid.UUID {
 	t.Helper()
 	ctx := context.Background()
@@ -28,14 +27,7 @@ func CreateUser(t testing.TB, pool *pgxpool.Pool, handle string) uuid.UUID {
 	if err != nil {
 		t.Fatalf("insert user %s: %v", handle, err)
 	}
-	subject := strings.TrimLeft(strings.ReplaceAll(uuid.NewString(), "-", "")[:12], "0")
-	subject = "1" + strings.Map(func(r rune) rune {
-		if r >= '0' && r <= '9' {
-			return r
-		}
-		return '7'
-	}, subject)
-	if err := q.InsertIdentity(ctx, dbgen.InsertIdentityParams{Provider: "github", ProviderSubject: subject, UserID: id, ProviderLogin: handle}); err != nil {
+	if err := q.InsertIdentity(ctx, dbgen.InsertIdentityParams{Provider: "asgardeo", ProviderSubject: uuid.NewString(), UserID: id, ProviderLogin: handle}); err != nil {
 		t.Fatal(err)
 	}
 	if err := q.InsertUserSettings(ctx, id); err != nil {

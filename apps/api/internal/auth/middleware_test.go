@@ -19,7 +19,7 @@ import (
 type fakeResolver map[string]Principal
 
 func (f fakeResolver) Resolve(_ context.Context, provider, subject string) (Principal, error) {
-	if subject == "500" {
+	if subject == authtest.Subject("500") {
 		return Principal{}, errors.New("database down")
 	}
 	p, ok := f[provider+":"+subject]
@@ -33,8 +33,8 @@ var (
 	learnerID = uuid.MustParse("11111111-1111-4111-8111-111111111111")
 	adminID   = uuid.MustParse("22222222-2222-4222-8222-222222222222")
 	resolver  = fakeResolver{
-		"github:100": {UserID: learnerID, Role: RoleLearner, Provider: "github", ProviderSubject: "100"},
-		"github:200": {UserID: adminID, Role: RoleAdmin, Provider: "github", ProviderSubject: "200"},
+		"asgardeo:" + authtest.Subject("100"): {UserID: learnerID, Role: RoleLearner, Provider: "asgardeo", ProviderSubject: authtest.Subject("100")},
+		"asgardeo:" + authtest.Subject("200"): {UserID: adminID, Role: RoleAdmin, Provider: "asgardeo", ProviderSubject: authtest.Subject("200")},
 	}
 )
 
@@ -76,7 +76,7 @@ func TestAuthenticate(t *testing.T) {
 		h := bearer(s.Token(t, "100", now))
 		h.Set("X-User-Id", adminID.String())
 		h.Set("X-Role", "admin")
-		h.Set("X-Forwarded-User", "github:200")
+		h.Set("X-Forwarded-User", "asgardeo:"+authtest.Subject("200"))
 		rec, _ := serve(t, s, echoPrincipal(), h)
 		if rec.Body.String() != learnerID.String()+" learner" {
 			t.Fatalf("headers influenced identity: %s", rec.Body.String())

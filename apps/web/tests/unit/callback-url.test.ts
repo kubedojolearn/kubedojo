@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next-auth", () => ({ default: () => ({ handlers: {}, auth: vi.fn(), signIn: vi.fn(), signOut: vi.fn() }) }));
-vi.mock("next-auth/providers/github", () => ({ default: () => ({ id: "github" }) }));
+vi.mock("next-auth/providers/asgardeo", () => ({ default: () => ({ id: "asgardeo" }) }));
 vi.mock("next-auth/providers/credentials", () => ({ default: () => ({ id: "test-login" }) }));
 
 const { safeCallbackPath } = await import("@/lib/auth/config");

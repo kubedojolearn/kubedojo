@@ -24,7 +24,7 @@ func TestVerifyAcceptsValidAssertion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Verify: %v", err)
 	}
-	if c.Provider != "github" || c.ProviderSubject != "583231" || c.KeyID != "dev-1" || c.JTI == "" {
+	if c.Provider != "asgardeo" || c.ProviderSubject != authtest.Subject("583231") || c.KeyID != "dev-1" || c.JTI == "" {
 		t.Fatalf("claims %+v", c)
 	}
 }
@@ -67,7 +67,7 @@ func TestVerifyRejects(t *testing.T) {
 		"empty":                  {"", AudienceAPI},
 		"garbage":                {"not.a.jwt", AudienceAPI},
 		"oversized":              {strings.Repeat("a", 5000), AudienceAPI},
-		"tampered payload":       {parts[0] + "." + strings.Split(with(func(c jwt.MapClaims) { c["sub"] = "github:1" }), ".")[1] + "." + parts[2], AudienceAPI},
+		"tampered payload":       {parts[0] + "." + strings.Split(with(func(c jwt.MapClaims) { c["sub"] = "asgardeo:" + authtest.Subject("1") }), ".")[1] + "." + parts[2], AudienceAPI},
 		"signed by another key":  {other.Token(t, "583231", now), AudienceAPI},
 		"alg none":               {noneToken, AudienceAPI},
 		"HS256 with public key":  {hsToken, AudienceAPI},
@@ -93,9 +93,10 @@ func TestVerifyRejects(t *testing.T) {
 		"missing iat":                 {with(func(c jwt.MapClaims) { delete(c, "iat") }), AudienceAPI},
 		"not yet valid":               {with(func(c jwt.MapClaims) { c["nbf"] = now.Add(time.Minute).Unix() }), AudienceAPI},
 		"missing subject":             {with(func(c jwt.MapClaims) { delete(c, "sub") }), AudienceAPI},
-		"username as subject":         {with(func(c jwt.MapClaims) { c["sub"] = "github:octocat" }), AudienceAPI},
-		"leading zero subject":        {with(func(c jwt.MapClaims) { c["sub"] = "github:0123" }), AudienceAPI},
-		"other provider":              {with(func(c jwt.MapClaims) { c["sub"] = "gitlab:123" }), AudienceAPI},
+		"username as subject":         {with(func(c jwt.MapClaims) { c["sub"] = "asgardeo:octocat" }), AudienceAPI},
+		"uppercase user id":           {with(func(c jwt.MapClaims) { c["sub"] = "asgardeo:0000000A-0000-4000-8000-000000000001" }), AudienceAPI},
+		"retired github subject":      {with(func(c jwt.MapClaims) { c["sub"] = "github:583231" }), AudienceAPI},
+		"other provider":              {with(func(c jwt.MapClaims) { c["sub"] = "google:" + authtest.Subject("1") }), AudienceAPI},
 		"email as subject":            {with(func(c jwt.MapClaims) { c["sub"] = "octo@example.com" }), AudienceAPI},
 		"missing jti":                 {with(func(c jwt.MapClaims) { delete(c, "jti") }), AudienceAPI},
 		"profile claims on API token": {with(func(c jwt.MapClaims) { c["login"] = "octo" }), AudienceAPI},
@@ -119,7 +120,7 @@ func TestVerifyIgnoresUnknownClaims(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Verify: %v", err)
 	}
-	if got.ProviderSubject != "42" {
+	if got.ProviderSubject != authtest.Subject("42") {
 		t.Fatalf("claims %+v", got)
 	}
 }
@@ -185,6 +186,10 @@ func TestProvisioningAssertion(t *testing.T) {
 	c["login"] = strings.Repeat("a", 40)
 	if _, err := v.Verify(s.Sign(t, c), AudienceProvision); err == nil {
 		t.Fatal("login over 39 chars must fail")
+	}
+	c["login"] = "octo@example.com"
+	if _, err := v.Verify(s.Sign(t, c), AudienceProvision); err == nil {
+		t.Fatal("an email address as login must fail")
 	}
 }
 

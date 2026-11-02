@@ -36,8 +36,8 @@ export default function PrivacyPage() {
           </thead>
           <tbody>
             <tr>
-              <td>GitHub account ID, username, display name and avatar URL</td>
-              <td>To sign you in and show your profile. The numeric ID identifies you; the rest is for display.</td>
+              <td>Your Asgardeo account ID, username, display name and picture URL</td>
+              <td>To sign you in and show your profile. The account ID identifies you; the rest is for display.</td>
             </tr>
             <tr>
               <td>Lesson progress, XP, streaks and achievements</td>
@@ -127,8 +127,10 @@ export default function PrivacyPage() {
 
         <h2>Who processes your data</h2>
         <p>
-          GitHub processes your sign-in under its own privacy policy. KubeDojo&apos;s hosting provider stores our
-          database and logs; it will be named here before launch.
+          Asgardeo, WSO2&apos;s identity service, handles sign-in under its own privacy policy. It holds your email
+          address and, if you sign in with email, your password; KubeDojo never receives either. If you sign in with
+          Google or GitHub, that provider also processes your sign-in under its own policy. KubeDojo&apos;s hosting
+          provider stores our database and logs; it will be named here before launch.
         </p>
 
         <h2>Contact</h2>

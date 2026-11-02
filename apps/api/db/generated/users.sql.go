@@ -177,7 +177,7 @@ type RefreshProviderProfileParams struct {
 	ID          uuid.UUID
 }
 
-// Updates fields GitHub owns, without overwriting a display name the user chose themselves.
+// Updates fields the sign-in provider owns, without overwriting a display name the user chose themselves.
 func (q *Queries) RefreshProviderProfile(ctx context.Context, arg RefreshProviderProfileParams) error {
 	_, err := q.db.Exec(ctx, refreshProviderProfile, arg.DisplayName, arg.AvatarUrl, arg.ID)
 	return err

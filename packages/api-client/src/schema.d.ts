@@ -54,7 +54,7 @@ export interface paths {
     get?: never;
     put?: never;
     /**
-     * Create or update the local user for a GitHub identity
+     * Create or update the local user for an Asgardeo identity
      * @description Called once per sign-in by the BFF. Requires a provisioning assertion
      *     (`aud: kubedojo-api-provision`) carrying `login`, `name` and `avatar_url` claims.
      *     Request assertions are rejected here, and provisioning assertions are rejected everywhere else.
@@ -173,7 +173,7 @@ export interface paths {
     put?: never;
     /**
      * Delete the current user's account
-     * @description Tombstones the account and unlinks the GitHub identity immediately; remaining personal data is erased within 30 days.
+     * @description Tombstones the account and unlinks the sign-in identity immediately; remaining personal data is erased within 30 days.
      */
     post: operations["requestAccountDeletion"];
     delete?: never;

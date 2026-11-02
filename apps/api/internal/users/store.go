@@ -208,10 +208,13 @@ func sanitizeDisplayName(name, fallback string) string {
 	return string(out)
 }
 
-// sanitizeAvatarURL keeps only https URLs on GitHub's avatar host.
+// avatarHosts are the picture hosts of the logins Asgardeo brokers (GitHub and Google).
+var avatarHosts = map[string]bool{"avatars.githubusercontent.com": true, "lh3.googleusercontent.com": true}
+
+// sanitizeAvatarURL keeps only https URLs on a known avatar host.
 func sanitizeAvatarURL(raw string) *string {
 	u, err := url.Parse(raw)
-	if err != nil || u.Scheme != "https" || u.Host != "avatars.githubusercontent.com" || u.User != nil || len(raw) > 512 {
+	if err != nil || u.Scheme != "https" || !avatarHosts[u.Host] || u.User != nil || len(raw) > 512 {
 		return nil
 	}
 	clean := u.String()

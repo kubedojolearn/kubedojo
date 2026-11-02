@@ -7,6 +7,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-10-27",
+    title: "Sign in with Google, GitHub or email",
+    items: [
+      "Sign in with your Google or GitHub account, or with an email and password.",
+      "Sign-in is handled by Asgardeo, WSO2's identity service. KubeDojo still never receives your email address.",
+      "Accounts created with the earlier GitHub-only sign-in don't carry over; signing in again starts a new account.",
+    ],
+  },
+  {
     date: "2026-10-25",
     title: "Every lesson is written",
     items: [

@@ -20,7 +20,7 @@ const (
 type Principal struct {
 	UserID uuid.UUID
 	Role   Role
-	// Provider identity the assertion was issued for, e.g. github / 12345.
+	// Provider identity the assertion was issued for, e.g. asgardeo / <user id>.
 	Provider        string
 	ProviderSubject string
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -18,13 +19,13 @@ const (
 	MaxLifetime        = 60 * time.Second
 	ClockSkew          = 10 * time.Second
 	maxTokenBytes      = 4096
-	ProviderGitHub     = "github"
+	ProviderAsgardeo   = "asgardeo"
 	maxProfileClaimLen = 512
 )
 
 var (
-	// sub is github:<numeric account id>; never a username or email.
-	subjectPattern = regexp.MustCompile(`^github:([1-9][0-9]{0,19})$`)
+	// sub is asgardeo:<Asgardeo user ID>, a lowercase UUID (ADR-0008); never a username or email.
+	subjectPattern = regexp.MustCompile(`^asgardeo:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$`)
 	jtiPattern     = regexp.MustCompile(`^[A-Za-z0-9-]{8,64}$`)
 )
 
@@ -124,19 +125,24 @@ func (v *Verifier) Verify(token, audience string) (Claims, error) {
 	}
 	m := subjectPattern.FindStringSubmatch(raw.Subject)
 	if m == nil {
-		return fail("subject must be github:<numeric id>")
+		return fail("subject must be asgardeo:<user id>")
 	}
 	if !jtiPattern.MatchString(raw.ID) {
 		return fail("jti is required")
 	}
 
 	c := Claims{
-		Provider: ProviderGitHub, ProviderSubject: m[1], JTI: raw.ID, KeyID: kid,
+		Provider: ProviderAsgardeo, ProviderSubject: m[1], JTI: raw.ID, KeyID: kid,
 		IssuedAt: iat, ExpiresAt: exp,
 	}
 	if audience == AudienceProvision {
 		if raw.Login == "" || len(raw.Login) > 39 || len(raw.Name) > maxProfileClaimLen || len(raw.AvatarURL) > maxProfileClaimLen {
 			return fail("provisioning profile claims missing or too long")
+		}
+		// KubeDojo never stores email addresses (requirements PR1); a login that looks like one
+		// means the web app passed through an Asgardeo username it should have replaced.
+		if strings.Contains(raw.Login, "@") {
+			return fail("provisioning login must not be an email address")
 		}
 		c.Login, c.Name, c.AvatarURL = raw.Login, raw.Name, raw.AvatarURL
 	} else if raw.Login != "" || raw.Name != "" || raw.AvatarURL != "" {

@@ -15,6 +15,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/account"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth/authtest"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/testdb"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/users"
 )
@@ -35,7 +37,7 @@ func setup(t *testing.T) env {
 
 func (e env) learner(t *testing.T, subject, login string, xp int32, optIn bool) uuid.UUID {
 	t.Helper()
-	r, err := e.users.Provision(ctx, users.ProvisionInput{Provider: "github", ProviderSubject: subject, Login: login, Name: login})
+	r, err := e.users.Provision(ctx, users.ProvisionInput{Provider: auth.ProviderAsgardeo, ProviderSubject: authtest.Subject(subject), Login: login, Name: login})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +111,7 @@ func TestExportHasTheUsersDataAndNobodyElses(t *testing.T) {
 	if err := json.Unmarshal(doc, &got); err != nil {
 		t.Fatal(err)
 	}
-	if got.Profile.Handle != "exporter" || len(got.Identities) != 1 || got.Identities[0].ProviderSubject != "10" ||
+	if got.Profile.Handle != "exporter" || len(got.Identities) != 1 || got.Identities[0].ProviderSubject != authtest.Subject("10") ||
 		!got.Settings.LeaderboardOptIn || got.Totals.TotalXp != 40 || got.Labs == nil {
 		t.Fatalf("export = %s", doc)
 	}
@@ -135,7 +137,7 @@ func TestDeletionNeedsTheHandleThenHidesAndUnlinksTheAccount(t *testing.T) {
 	if _, err := e.users.GetMe(ctx, me); !errors.Is(err, users.ErrNotFound) {
 		t.Fatalf("deleted user still resolves: %v", err)
 	}
-	if _, err := e.users.Resolve(ctx, "github", "20"); err == nil {
+	if _, err := e.users.Resolve(ctx, auth.ProviderAsgardeo, authtest.Subject("20")); err == nil {
 		t.Fatal("the GitHub identity still signs in to the deleted account")
 	}
 	board, _, err := e.svc.Leaderboard(ctx, nil, 10)
@@ -151,7 +153,7 @@ func TestDeletionNeedsTheHandleThenHidesAndUnlinksTheAccount(t *testing.T) {
 	}
 
 	// Signing in again with the same GitHub account creates a new user; the old handle stays reserved.
-	again, err := e.users.Provision(ctx, users.ProvisionInput{Provider: "github", ProviderSubject: "20", Login: "leaver", Name: "leaver"})
+	again, err := e.users.Provision(ctx, users.ProvisionInput{Provider: auth.ProviderAsgardeo, ProviderSubject: authtest.Subject("20"), Login: "leaver", Name: "leaver"})
 	if err != nil {
 		t.Fatal(err)
 	}

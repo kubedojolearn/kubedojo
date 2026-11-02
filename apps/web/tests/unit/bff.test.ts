@@ -19,7 +19,7 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
-  session.current = { subject: "github:42" };
+  session.current = { subject: "asgardeo:5d1b7c1e-8f43-4c2a-9a51-3e0f1d2c4b6a" };
   upstream = vi.fn(async () =>
     Response.json(
       { data: { ok: true }, meta: { requestId: "r" } },

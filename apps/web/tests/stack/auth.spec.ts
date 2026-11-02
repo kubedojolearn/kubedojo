@@ -7,8 +7,8 @@ test("signed-out visitors are sent to sign-in, then back", async ({ page }) => {
   await page.goto("/settings");
   await expect(page).toHaveURL(/\/login\?callbackUrl=%2Fsettings/);
   const who = testIdentity();
-  await page.getByLabel("GitHub ID").fill(who.githubId);
-  await page.getByLabel("Login").fill(who.login);
+  await page.getByLabel("Test ID").fill(who.testId);
+  await page.getByLabel("Username").fill(who.login);
   await page.getByRole("button", { name: "Sign in as test user" }).click();
   // New accounts are onboarded first; skipping returns to the requested page.
   await expect(page).toHaveURL(/\/(settings|onboarding)$/);
@@ -35,7 +35,7 @@ test("sign-in provisions one account and repeat sign-in reuses it", async ({ pag
   await expect(page).toHaveURL(/\/$/);
   await context.clearCookies();
 
-  await signIn(page, { githubId: who.githubId, login: "renamed-on-github" });
+  await signIn(page, { testId: who.testId, login: "renamed-elsewhere" });
   await expect(page.getByRole("button", { name: `Account menu for ${who.login}` })).toBeVisible();
 });
 
@@ -74,8 +74,8 @@ test("handles are unique across accounts", async ({ browser }) => {
 test("post-sign-in redirects stay on this site", async ({ page }) => {
   const who = testIdentity();
   await page.goto("/login?callbackUrl=https%3A%2F%2Fevil.example%2Fphish");
-  await page.getByLabel("GitHub ID").fill(who.githubId);
-  await page.getByLabel("Login").fill(who.login);
+  await page.getByLabel("Test ID").fill(who.testId);
+  await page.getByLabel("Username").fill(who.login);
   await page.getByRole("button", { name: "Sign in as test user" }).click();
   await expect(page).toHaveURL(/localhost:8000\/(dashboard|onboarding)$/);
 });
