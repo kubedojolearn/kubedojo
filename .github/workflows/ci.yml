@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # The merge queue tests each PR combined with the latest main before it merges, so main can't
+  # break from two PRs that each passed alone. The push run above stays: Release picks from it.
+  merge_group:
 
 permissions:
   contents: read
