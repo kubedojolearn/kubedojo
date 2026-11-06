@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Self-contained server bundle for the Docker image (apps/web/Dockerfile).
-  output: "standalone",
+  // Vercel builds Next.js into its native function output. Docker uses the standalone bundle.
+  ...(process.env.VERCEL ? {} : { output: "standalone" as const }),
   // Trace files from the monorepo root so workspace packages are included in the standalone output.
   outputFileTracingRoot: new URL("../..", import.meta.url).pathname,
   poweredByHeader: false,
