@@ -4,6 +4,9 @@ name: Release
 # (ghcr.io/kubedojolearn/kubedojo-api and -web), tagged latest, the release date and the commit,
 # plus a GitHub release carrying the self-host files. Self-hosters update with
 # `docker compose pull && docker compose up -d` (docs/operations/self-host.md).
+#
+# Nothing is built or published until a required reviewer of the `release` environment approves
+# the run (Settings -> Environments -> release).
 on:
   schedule:
     - cron: "0 3 * * 1" # Mondays 03:00 UTC
@@ -72,10 +75,23 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "::notice::Releasing $sha as $version"
 
-  build:
-    name: Build ${{ matrix.image }} (${{ matrix.arch }})
+  approve:
+    name: Approve release
     needs: prepare
     if: needs.prepare.outputs.release == 'true'
+    runs-on: ubuntu-24.04
+    # Pauses the run until a required reviewer of this environment approves it. Only the
+    # jobs after this one publish anything.
+    environment: release
+    steps:
+      - env:
+          SHA: ${{ needs.prepare.outputs.sha }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: echo "::notice::Approved release of $SHA as $VERSION"
+
+  build:
+    name: Build ${{ matrix.image }} (${{ matrix.arch }})
+    needs: [prepare, approve]
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
