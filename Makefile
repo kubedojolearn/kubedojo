@@ -38,7 +38,6 @@ dev: ## Postgres/Redis/edge in Docker, API + web on the host -> http://localhost
 up: ## Build and run the full stack in Docker -> http://localhost:8000
 	VERSION=$(VERSION) COMMIT=$(COMMIT) KUBEDOJO_VERSION=$(VERSION) KUBEDOJO_COMMIT=$(COMMIT) \
 	  $(COMPOSE) --profile app up -d --build --wait
-	@$(MAKE) content-import
 	@echo "KubeDojo is running at http://localhost:$${EDGE_PORT:-8000}"
 
 .PHONY: down

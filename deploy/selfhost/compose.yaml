@@ -1,0 +1,166 @@
+# KubeDojo self-host stack: the prebuilt images from GitHub Container Registry, a weekly release
+# from main. Setup, updates and backups: docs/operations/self-host.md.
+#
+#   docker compose up -d                          start (migrations and lessons apply automatically)
+#   docker compose pull && docker compose up -d   update to the newest release
+#
+# Secrets come from .env next to this file; nothing is baked into the images.
+# The project name differs from the development stack's, so both can live on one machine.
+name: kubedojo-selfhost
+
+x-hardening: &hardening
+  security_opt: ["no-new-privileges:true"]
+  restart: unless-stopped
+
+x-api-image: &api-image ghcr.io/kubedojolearn/kubedojo-api:${KUBEDOJO_TAG:-latest}
+
+x-backend-env: &backend-env
+  APP_ENV: production
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  DATABASE_URL: postgres://${POSTGRES_USER:-kubedojo}:${POSTGRES_PASSWORD:?create .env first}@postgres:5432/${POSTGRES_DB:-kubedojo}?sslmode=disable
+  REDIS_URL: redis://redis:6379/0
+  # Redis publishes no port: only containers in this stack can reach it, so TLS adds nothing.
+  REDIS_ALLOW_PLAINTEXT: "1"
+
+services:
+  postgres:
+    <<: *hardening
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-kubedojo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?create .env first}
+      POSTGRES_DB: ${POSTGRES_DB:-kubedojo}
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    <<: *hardening
+    image: redis:8-alpine
+    # Redis holds only disposable coordination data (ADR-0004): no persistence.
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # One-shot on every start: applies new migrations, seeds reference data, and imports and
+  # publishes the lessons shipped in the image. All idempotent.
+  migrate:
+    security_opt: ["no-new-privileges:true"]
+    image: *api-image
+    command: ["bootstrap", "-content", "/content"]
+    environment:
+      <<: *backend-env
+    depends_on:
+      postgres: { condition: service_healthy }
+    read_only: true
+    cap_drop: [ALL]
+    restart: "no"
+
+  api:
+    <<: *hardening
+    image: *api-image
+    environment:
+      <<: *backend-env
+      API_LISTEN_ADDR: ":8080"
+      API_JWT_PUBLIC_KEYS: ${API_JWT_PUBLIC_KEYS:?create .env first}
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    read_only: true
+    cap_drop: [ALL]
+    expose: ["8080"]
+
+  # Background jobs (lab expiry, idempotency retention). Same image as the API.
+  worker:
+    <<: *hardening
+    image: *api-image
+    entrypoint: ["/usr/local/bin/worker"]
+    command: ["run"]
+    environment:
+      <<: *backend-env
+    depends_on:
+      api: { condition: service_started }
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/worker", "healthcheck"]
+      interval: 10s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
+    read_only: true
+    cap_drop: [ALL]
+
+  web:
+    <<: *hardening
+    image: ghcr.io/kubedojolearn/kubedojo-web:${KUBEDOJO_TAG:-latest}
+    environment:
+      APP_ENV: production
+      API_INTERNAL_URL: http://api:8080
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8000}
+      AUTH_SECRET: ${AUTH_SECRET:?create .env first}
+      AUTH_ASGARDEO_ID: ${AUTH_ASGARDEO_ID:-}
+      AUTH_ASGARDEO_SECRET: ${AUTH_ASGARDEO_SECRET:-}
+      AUTH_ASGARDEO_ISSUER: ${AUTH_ASGARDEO_ISSUER:-}
+      AUTH_ASGARDEO_GOOGLE_CONNECTION: ${AUTH_ASGARDEO_GOOGLE_CONNECTION:-Google}
+      AUTH_ASGARDEO_GITHUB_CONNECTION: ${AUTH_ASGARDEO_GITHUB_CONNECTION:-GitHub}
+      BFF_SIGNING_PRIVATE_KEY: ${BFF_SIGNING_PRIVATE_KEY:?create .env first}
+      BFF_SIGNING_KID: ${BFF_SIGNING_KID:?create .env first}
+    depends_on:
+      api: { condition: service_healthy }
+    read_only: true
+    tmpfs: ["/app/apps/web/.next/cache"]
+    cap_drop: [ALL]
+    expose: ["3000"]
+
+  # The single public origin (ADR-0003). Serves plain HTTP; put HTTPS in front of it for anything
+  # beyond your own machine (docs/operations/self-host.md).
+  edge:
+    <<: *hardening
+    image: caddy:2-alpine
+    ports: ["${EDGE_BIND:-127.0.0.1}:${EDGE_PORT:-8000}:8000"]
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+    depends_on:
+      web: { condition: service_healthy }
+    cap_drop: [ALL]
+    # The official caddy binary carries a file capability (cap_net_bind_service); it cannot exec
+    # unless that capability is in the bounding set.
+    cap_add: [NET_BIND_SERVICE]
+
+configs:
+  # Same routing as infra/compose/Caddyfile, inline so this file is all you need to download.
+  caddyfile:
+    content: |
+      {
+      	admin off
+      	auto_https off
+      }
+
+      :8000 {
+      	encode zstd gzip
+
+      	@ws path /api/v1/ws/*
+      	handle @ws {
+      		reverse_proxy api:8080
+      	}
+
+      	@api_rest path /api/v1/*
+      	handle @api_rest {
+      		respond "Not Found" 404
+      	}
+
+      	handle {
+      		reverse_proxy web:3000
+      	}
+      }
+
+volumes:
+  pgdata:

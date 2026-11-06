@@ -5,10 +5,13 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/admin"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth"
@@ -84,7 +87,16 @@ func runOperator(cmd string, args []string) error {
 		}
 
 	case "seed", "bootstrap":
+		var contentDir string
 		if cmd == "bootstrap" {
+			fs := flag.NewFlagSet("bootstrap", flag.ContinueOnError)
+			fs.StringVar(&contentDir, "content", "", "after seeding, import and publish the lesson content in this directory")
+			if err := fs.Parse(args); err != nil {
+				return err
+			}
+			if fs.NArg() != 0 {
+				return errors.New("usage: api bootstrap [-content <content-dir>]")
+			}
 			m, err := database.NewMigrator(pool, log)
 			if err != nil {
 				return err
@@ -101,7 +113,10 @@ func runOperator(cmd string, args []string) error {
 			return err
 		}
 		log.Info("seed complete", "courses", c.Courses, "lessons", c.Lessons, "achievements", c.Achievements)
-		return nil
+		if contentDir == "" {
+			return nil
+		}
+		return importContent(ctx, pool, log, contentDir, true)
 
 	case "content":
 		if len(args) == 0 || args[0] != "import" {
@@ -115,20 +130,7 @@ func runOperator(cmd string, args []string) error {
 		if fs.NArg() != 1 {
 			return errors.New("usage: api content import [-publish] <content-dir>")
 		}
-		bundle, err := content.Load(fs.Arg(0))
-		if err != nil {
-			return err
-		}
-		rep, err := content.Import(ctx, pool, bundle, *publish)
-		if err != nil {
-			return err
-		}
-		log.Info("content imported", "courses", rep.Courses, "new_versions", rep.NewVersions, "unchanged", rep.Unchanged,
-			"published", rep.Published, "planned_lessons", rep.PlannedLessons)
-		for _, p := range rep.PublishedLabels {
-			log.Info("published", "lesson", p)
-		}
-		return nil
+		return importContent(ctx, pool, log, fs.Arg(0), *publish)
 
 	case "admin":
 		if len(args) == 0 || args[0] != "set-role" {
@@ -152,4 +154,22 @@ func runOperator(cmd string, args []string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown command %q", cmd)
+}
+
+// importContent loads the lesson bundle in dir and imports it, optionally publishing new versions.
+func importContent(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger, dir string, publish bool) error {
+	bundle, err := content.Load(dir)
+	if err != nil {
+		return err
+	}
+	rep, err := content.Import(ctx, pool, bundle, publish)
+	if err != nil {
+		return err
+	}
+	log.Info("content imported", "courses", rep.Courses, "new_versions", rep.NewVersions, "unchanged", rep.Unchanged,
+		"published", rep.Published, "planned_lessons", rep.PlannedLessons)
+	for _, p := range rep.PublishedLabels {
+		log.Info("published", "lesson", p)
+	}
+	return nil
 }
