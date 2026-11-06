@@ -69,9 +69,10 @@ Redis holds nothing worth backing up (ADR-0004). `docker compose down` keeps the
 [`.github/workflows/release.yml`](../../.github/workflows/release.yml) runs every Monday at 03:00 UTC and can be started by hand (`gh workflow run release.yml`, with `-f force=true` to release an unchanged commit). It:
 
 1. Picks the newest commit on `main` whose CI run succeeded, and skips the week if the last `release-*` tag already points at it.
-2. Builds the API image (with `content/` built in) and the web image natively on amd64 and arm64 runners.
-3. Tags both multi-platform images `latest`, the release date and `sha-<commit>`.
-4. Creates a GitHub release `release-<date>` with generated notes and the self-host files (`compose.yaml`, `env.example`, `gen-env.mjs`) attached.
+2. Waits for approval. The `approve` job uses the `release` environment, whose only required reviewer is the project owner, with admin bypass off and deployments limited to `main`. To approve, open the run in the **Actions** tab and choose **Review deployments** → **Approve and deploy**. A run nobody approves expires after 30 days without publishing anything.
+3. Builds the API image (with `content/` built in) and the web image natively on amd64 and arm64 runners.
+4. Tags both multi-platform images `latest`, the release date and `sha-<commit>`.
+5. Creates a GitHub release `release-<date>` with generated notes and the self-host files (`compose.yaml`, `env.example`, `gen-env.mjs`) attached.
 
 Because self-hosters may update unattended, every change merged to `main` must be safe to apply on top of the previous release:
 
