@@ -38,16 +38,19 @@ services:
       timeout: 3s
       retries: 20
 
-  # One-shot: applies migrations and idempotent seeds before the API starts.
+  # One-shot: applies migrations and idempotent seeds, then imports and publishes the lesson
+  # content built into the image, before the API starts.
   migrate:
     profiles: [app]
     security_opt: ["no-new-privileges:true"]
     build:
       context: apps/api
+      additional_contexts:
+        content: ./content
       args:
         VERSION: ${KUBEDOJO_VERSION:-dev}
         COMMIT: ${KUBEDOJO_COMMIT:-unknown}
-    command: ["bootstrap"]
+    command: ["bootstrap", "-content", "/content"]
     environment:
       APP_ENV: ${APP_ENV:-development}
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
@@ -63,6 +66,8 @@ services:
     profiles: [app]
     build:
       context: apps/api
+      additional_contexts:
+        content: ./content
       args:
         VERSION: ${KUBEDOJO_VERSION:-dev}
         COMMIT: ${KUBEDOJO_COMMIT:-unknown}
@@ -87,6 +92,8 @@ services:
     profiles: [app]
     build:
       context: apps/api
+      additional_contexts:
+        content: ./content
       args:
         VERSION: ${KUBEDOJO_VERSION:-dev}
         COMMIT: ${KUBEDOJO_COMMIT:-unknown}

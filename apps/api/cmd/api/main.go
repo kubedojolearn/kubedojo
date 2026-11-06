@@ -7,7 +7,7 @@
 //	api migrate up|status|version                  apply or inspect database migrations
 //	api migrate down|reset                         roll back one / all migrations (not in production)
 //	api seed                                       upsert reference data (idempotent)
-//	api bootstrap                                  migrate up, then seed (container start-up)
+//	api bootstrap [-content DIR]                   migrate up, seed, then optionally import and publish DIR (container start-up)
 //	api content import [-publish] DIR              import validated lesson content (operator)
 //	api admin set-role -handle H -role R -reason T change a user's role (audited)
 package main

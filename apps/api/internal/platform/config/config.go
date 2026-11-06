@@ -76,8 +76,10 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 	cfg.ShutdownTimeout = timeout
 
-	if cfg.Env == EnvProduction && strings.HasPrefix(cfg.RedisURL, "redis://") {
-		errs = append(errs, errors.New("REDIS_URL must use rediss:// (TLS) in production"))
+	// REDIS_ALLOW_PLAINTEXT=1 is for a Redis that only exists on a private container network
+	// (the self-host Compose stack), where nothing outside the host can reach it.
+	if cfg.Env == EnvProduction && strings.HasPrefix(cfg.RedisURL, "redis://") && getenv("REDIS_ALLOW_PLAINTEXT") != "1" {
+		errs = append(errs, errors.New("REDIS_URL must use rediss:// (TLS) in production, or set REDIS_ALLOW_PLAINTEXT=1 when Redis is reachable only on a private network"))
 	}
 
 	return cfg, errors.Join(errs...)

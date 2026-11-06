@@ -58,6 +58,15 @@ func TestProductionRequiresRedisTLS(t *testing.T) {
 	if _, err := Load(env(e)); err == nil || !strings.Contains(err.Error(), "rediss://") {
 		t.Fatalf("expected TLS requirement, got %v", err)
 	}
+	e["REDIS_ALLOW_PLAINTEXT"] = "true" // only the exact value 1 opts out
+	if _, err := Load(env(e)); err == nil {
+		t.Fatal("expected TLS requirement for REDIS_ALLOW_PLAINTEXT=true")
+	}
+	e["REDIS_ALLOW_PLAINTEXT"] = "1"
+	if _, err := Load(env(e)); err != nil {
+		t.Fatalf("Load with REDIS_ALLOW_PLAINTEXT=1: %v", err)
+	}
+	delete(e, "REDIS_ALLOW_PLAINTEXT")
 	e["REDIS_URL"] = "rediss://cache.internal:6380/0"
 	if _, err := Load(env(e)); err != nil {
 		t.Fatalf("Load: %v", err)
