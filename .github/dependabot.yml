@@ -19,13 +19,32 @@ updates:
             "@redocly/cli",
             "lefthook",
           ]
+      # Everything else that isn't a major upgrade, in one PR a week. Majors still get their own.
+      npm-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    ignore:
+      # Node's types follow the Node major we run (CI's NODE_VERSION, package.json engines), by hand.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # TypeScript majors wait until typescript-eslint and openapi-typescript support them.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
     open-pull-requests-limit: 10
   - package-ecosystem: gomod
     directory: /apps/api
     schedule: { interval: weekly }
+    groups:
+      go-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly }
+    groups:
+      actions-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: docker
     directories: ["/apps/api", "/apps/web"]
     schedule: { interval: weekly }
