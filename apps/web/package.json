@@ -24,7 +24,7 @@
     "@kubedojo/api-client": "workspace:*",
     "class-variance-authority": "0.7.1",
     "cmdk": "1.1.1",
-    "cn": "0.5.0",
+    "cn": "0.5.2",
     "jose": "6.2.13",
     "lucide-react": "1.63.0",
     "next": "16.4.2",
