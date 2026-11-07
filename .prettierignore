@@ -10,3 +10,5 @@ apps/api
 docs/api/openapi.yaml
 content
 packages/content-schema/examples
+# Helm templates are Go templates, not YAML until rendered.
+deploy/helm/kubedojo/templates

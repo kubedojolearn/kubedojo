@@ -1,0 +1,30 @@
+{{- if .Values.networkPolicy.enabled }}
+{{- $fullname := include "kubedojo.fullname" . -}}
+{{- range $store := list (dict "name" "postgresql" "port" 5432 "enabled" $.Values.postgresql.enabled) (dict "name" "redis" "port" 6379 "enabled" $.Values.redis.enabled) }}
+{{- if $store.enabled }}
+---
+# Only the API (including its bootstrap init container) and the worker may reach {{ $store.name }}.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $fullname }}-{{ $store.name }}
+  labels:
+    {{- include "kubedojo.labels" (dict "ctx" $ "component" $store.name) | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "kubedojo.selectorLabels" (dict "ctx" $ "component" $store.name) | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - { key: app.kubernetes.io/instance, operator: In, values: [{{ $.Release.Name | quote }}] }
+              - { key: app.kubernetes.io/name, operator: In, values: [{{ $.Chart.Name | quote }}] }
+              - { key: app.kubernetes.io/component, operator: In, values: [api, worker] }
+      ports:
+        - port: {{ $store.port }}
+          protocol: TCP
+{{- end }}
+{{- end }}
+{{- end }}

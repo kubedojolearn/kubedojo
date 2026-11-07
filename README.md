@@ -29,7 +29,7 @@ Open http://localhost:8000. Other ways to run it:
 | `make up` / `make down` | Everything in containers, as in production | http://localhost:8000 |
 | `make deps-up` | Only Postgres and Redis | — |
 
-To run KubeDojo without building it, use the weekly release images: [docs/operations/self-host.md](docs/operations/self-host.md).
+To run KubeDojo without building it, use the weekly release images with Docker Compose ([docs/operations/self-host.md](docs/operations/self-host.md)) or on Kubernetes with the Helm chart ([deploy/helm/kubedojo](deploy/helm/kubedojo/README.md)).
 
 Health checks: `curl localhost:8000/api/healthz` (web) and, in `make dev`, `curl localhost:8080/api/v1/readyz` (API). In the container stack the Go REST API is deliberately not reachable from the edge; see [ADR-0003](docs/adr/0003-auth-bff.md).
 

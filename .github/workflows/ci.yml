@@ -201,6 +201,34 @@ jobs:
       - if: always()
         run: make down
 
+  chart:
+    name: Helm chart (lint, Kubernetes schemas, install on kind)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/api/go.mod
+          cache-dependency-path: apps/api/go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: v4.3.1
+      - name: Install kind and kubeconform
+        run: |
+          go install sigs.k8s.io/kind@v0.33.0
+          go install github.com/yannh/kubeconform/cmd/kubeconform@v0.8.0
+      - run: make chart-check
+      - run: make test-chart
+        env:
+          KEEP_CLUSTER: "1" # the runner is thrown away; keep the cluster for the logs below
+      - if: failure()
+        run: |
+          kubectl -n kubedojo get pods,events -o wide || true
+          kubectl -n kubedojo logs -l app.kubernetes.io/instance=kubedojo --all-containers --prefix --tail 100 || true
+
   secrets:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-24.04

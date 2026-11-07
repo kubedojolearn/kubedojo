@@ -4,6 +4,8 @@ Run your own KubeDojo from prebuilt images. You need a machine with Docker and t
 
 The images are published weekly from `main` to GitHub Container Registry (`ghcr.io/kubedojolearn/kubedojo-api` and `-web`). Each release carries its lessons, so updating the images also updates the course content.
 
+Running Kubernetes? Use the [Helm chart](../../deploy/helm/kubedojo/README.md) instead; it's published with the same releases.
+
 ## Install
 
 ```sh
@@ -72,7 +74,8 @@ Redis holds nothing worth backing up (ADR-0004). `docker compose down` keeps the
 2. Waits for approval. The `approve` job uses the `release` environment, whose only required reviewer is the project owner, with admin bypass off and deployments limited to `main`. To approve, open the run in the **Actions** tab and choose **Review deployments** → **Approve and deploy**. A run nobody approves expires after 30 days without publishing anything.
 3. Builds the API image (with `content/` built in) and the web image natively on amd64 and arm64 runners.
 4. Tags both multi-platform images `latest`, the release date and `sha-<commit>`.
-5. Creates a GitHub release `release-<date>` with generated notes and the self-host files (`compose.yaml`, `env.example`, `gen-env.mjs`) attached.
+5. Publishes the Helm chart to `oci://ghcr.io/kubedojolearn/charts/kubedojo` as version `YYYY.MMDD.0`, with the release's image tag as its appVersion.
+6. Creates a GitHub release `release-<date>` with generated notes and the self-host files (`compose.yaml`, `env.example`, `gen-env.mjs`) attached.
 
 Because self-hosters may update unattended, every change merged to `main` must be safe to apply on top of the previous release:
 
@@ -80,4 +83,4 @@ Because self-hosters may update unattended, every change merged to `main` must b
 - Lessons are published on import, so anything merged under `content/` reaches every self-hosted copy in the next release.
 - A new required environment variable breaks existing installs. Give it a default, or add it to `deploy/selfhost/` and say so in the release notes.
 
-After the very first release, open each package on GitHub (organization → Packages → `kubedojo-api` and `kubedojo-web` → Package settings) and change its visibility to **Public**. New packages start private, and private images can't be pulled without logging in.
+After the very first release, open each package on GitHub (organization → Packages → `kubedojo-api`, `kubedojo-web` and `charts/kubedojo` → Package settings) and change its visibility to **Public**. New packages start private, and private images can't be pulled without logging in.

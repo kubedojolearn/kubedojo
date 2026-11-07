@@ -1,0 +1,2 @@
+# Bundled PostgreSQL and Redis, reached through port-forward (no Ingress).
+webOrigin: http://localhost:8000

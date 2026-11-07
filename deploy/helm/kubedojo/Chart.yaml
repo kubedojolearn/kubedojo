@@ -1,0 +1,18 @@
+apiVersion: v2
+name: kubedojo
+description: KubeDojo, master Kubernetes one command at a time. The web app, API and worker, with optional bundled PostgreSQL and Redis.
+type: application
+# The Release workflow publishes the chart with version YYYY.MMDD.N and appVersion set to the
+# release's image tag (its date), so the chart and the images always come from the same commit.
+version: 0.1.0
+appVersion: latest
+kubeVersion: ">=1.29.0-0"
+home: https://github.com/kubedojolearn/kubedojo
+sources:
+  - https://github.com/kubedojolearn/kubedojo
+keywords:
+  - kubernetes
+  - learning
+  - education
+annotations:
+  licenses: Apache-2.0

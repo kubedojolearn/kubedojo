@@ -1,0 +1,21 @@
+# Managed PostgreSQL and Redis from the Secret, an Ingress with TLS, more replicas.
+webOrigin: https://kubedojo.example.com
+image:
+  tag: 2026-11-07
+api:
+  replicas: 2
+web:
+  replicas: 2
+ingress:
+  enabled: true
+  className: nginx
+  host: kubedojo.example.com
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+  tls:
+    enabled: true
+    secretName: kubedojo-tls
+postgresql:
+  enabled: false
+redis:
+  enabled: false

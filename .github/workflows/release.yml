@@ -2,7 +2,8 @@ name: Release
 
 # Weekly release: publishes the newest commit on main that passed CI as multi-platform images
 # (ghcr.io/kubedojolearn/kubedojo-api and -web), tagged latest, the release date and the commit,
-# plus a GitHub release carrying the self-host files. Self-hosters update with
+# the Helm chart (oci://ghcr.io/kubedojolearn/charts/kubedojo), and a GitHub release carrying the
+# self-host files. Self-hosters update with
 # `docker compose pull && docker compose up -d` (docs/operations/self-host.md).
 #
 # Nothing is built or published until a required reviewer of the `release` environment approves
@@ -39,6 +40,7 @@ jobs:
       sha: ${{ steps.pick.outputs.sha }}
       short: ${{ steps.pick.outputs.short }}
       version: ${{ steps.pick.outputs.version }}
+      chart-version: ${{ steps.pick.outputs.chart-version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -64,14 +66,20 @@ jobs:
             exit 0
           fi
           version=$(date -u +%Y-%m-%d)
+          # Helm needs SemVer: YYYY.MMDD.N, where N is 0, or the time for a same-day re-release.
+          chart_version="$(date -u +%Y).$((10#$(date -u +%m) * 100 + 10#$(date -u +%d)))"
           if git rev-parse -q --verify "refs/tags/release-$version" >/dev/null; then
             version="$version.$(date -u +%H%M)" # a second release on the same day
+            chart_version="$chart_version.$((10#$(date -u +%H%M) + 1))"
+          else
+            chart_version="$chart_version.0"
           fi
           {
             echo "release=true"
             echo "sha=$sha"
             echo "short=${sha:0:7}"
             echo "version=$version"
+            echo "chart-version=$chart_version"
           } >> "$GITHUB_OUTPUT"
           echo "::notice::Releasing $sha as $version"
 
@@ -199,9 +207,36 @@ jobs:
             "${refs[@]}"
           docker buildx imagetools inspect "$IMAGE:$VERSION"
 
+  chart:
+    name: Publish Helm chart
+    needs: [prepare, merge]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: v4.3.1
+      - name: Package the chart for this release's images and push it
+        env:
+          TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.actor }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          CHART_VERSION: ${{ needs.prepare.outputs.chart-version }}
+        run: |
+          set -euo pipefail
+          echo "$TOKEN" | helm registry login ghcr.io --username "$ACTOR" --password-stdin
+          # appVersion is the image tag, so the chart deploys exactly this release's images.
+          helm package deploy/helm/kubedojo --version "$CHART_VERSION" --app-version "$VERSION" -d "$RUNNER_TEMP/chart"
+          helm push "$RUNNER_TEMP/chart/kubedojo-$CHART_VERSION.tgz" oci://ghcr.io/kubedojolearn/charts
+
   release:
     name: GitHub release
-    needs: [prepare, merge]
+    needs: [prepare, merge, chart]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -214,6 +249,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ needs.prepare.outputs.sha }}
           VERSION: ${{ needs.prepare.outputs.version }}
+          CHART_VERSION: ${{ needs.prepare.outputs.chart-version }}
           IMAGE_PREFIX: ${{ env.IMAGE_PREFIX }}
         run: |
           set -euo pipefail
@@ -224,6 +260,8 @@ jobs:
 
           Update a self-hosted stack: \`docker compose pull && docker compose up -d\`. Migrations and lessons apply on start.
           New install: [docs/operations/self-host.md]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/release-$VERSION/docs/operations/self-host.md).
+
+          Helm chart \`$CHART_VERSION\`: \`helm upgrade --install kubedojo oci://ghcr.io/kubedojolearn/charts/kubedojo --version $CHART_VERSION\` ([chart README]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/release-$VERSION/deploy/helm/kubedojo/README.md)).
           EOF
           )
           gh release create "release-$VERSION" \

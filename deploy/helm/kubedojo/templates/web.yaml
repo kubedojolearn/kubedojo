@@ -1,0 +1,80 @@
+{{- $fullname := include "kubedojo.fullname" . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-web
+  labels:
+    {{- include "kubedojo.labels" (dict "ctx" $ "component" "web") | nindent 4 }}
+spec:
+  replicas: {{ .Values.web.replicas }}
+  selector:
+    matchLabels:
+      {{- include "kubedojo.selectorLabels" (dict "ctx" $ "component" "web") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "kubedojo.labels" (dict "ctx" $ "component" "web") | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        {{- include "kubedojo.podSecurityContext" (dict "uid" 1000) | nindent 8 }}
+      {{- include "kubedojo.scheduling" . | nindent 6 }}
+      containers:
+        - name: web
+          image: {{ include "kubedojo.image" (dict "ctx" $ "name" "web") }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: APP_ENV
+              value: production
+            # Kubernetes sets HOSTNAME to the pod name; the Next.js server must listen on all interfaces.
+            - name: HOSTNAME
+              value: 0.0.0.0
+            - name: PORT
+              value: "3000"
+            - name: API_INTERNAL_URL
+              value: "http://{{ $fullname }}-api:8080"
+            - name: WEB_ORIGIN
+              value: {{ required "webOrigin is required: the URL people open, e.g. https://kubedojo.example.com" .Values.webOrigin | trimSuffix "/" | quote }}
+            {{- include "kubedojo.secretEnv" (dict "ctx" . "key" "AUTH_SECRET") | nindent 12 }}
+            {{- include "kubedojo.secretEnv" (dict "ctx" . "key" "BFF_SIGNING_PRIVATE_KEY") | nindent 12 }}
+            {{- include "kubedojo.secretEnv" (dict "ctx" . "key" "BFF_SIGNING_KID") | nindent 12 }}
+            {{- include "kubedojo.secretEnv" (dict "ctx" . "key" "AUTH_ASGARDEO_ID" "optional" true) | nindent 12 }}
+            {{- include "kubedojo.secretEnv" (dict "ctx" . "key" "AUTH_ASGARDEO_SECRET" "optional" true) | nindent 12 }}
+            {{- include "kubedojo.secretEnv" (dict "ctx" . "key" "AUTH_ASGARDEO_ISSUER" "optional" true) | nindent 12 }}
+            - name: AUTH_ASGARDEO_GOOGLE_CONNECTION
+              value: {{ .Values.auth.asgardeoGoogleConnection | quote }}
+            - name: AUTH_ASGARDEO_GITHUB_CONNECTION
+              value: {{ .Values.auth.asgardeoGithubConnection | quote }}
+          ports:
+            - name: http
+              containerPort: 3000
+          livenessProbe:
+            httpGet: { path: /api/healthz, port: http }
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /api/healthz, port: http }
+            periodSeconds: 5
+          securityContext:
+            {{- include "kubedojo.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - name: next-cache
+              mountPath: /app/apps/web/.next/cache
+          resources:
+            {{- toYaml .Values.web.resources | nindent 12 }}
+      volumes:
+        - name: next-cache
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}-web
+  labels:
+    {{- include "kubedojo.labels" (dict "ctx" $ "component" "web") | nindent 4 }}
+spec:
+  selector:
+    {{- include "kubedojo.selectorLabels" (dict "ctx" $ "component" "web") | nindent 4 }}
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
