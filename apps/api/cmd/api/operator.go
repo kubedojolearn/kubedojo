@@ -97,6 +97,13 @@ func runOperator(cmd string, args []string) error {
 			if fs.NArg() != 0 {
 				return errors.New("usage: api bootstrap [-content <content-dir>]")
 			}
+			// Several API pods can bootstrap at once (Kubernetes rolling updates, replicas). One
+			// runs at a time; the others wait, then find nothing left to do.
+			unlock, err := database.AdvisoryLock(ctx, pool, database.BootstrapLockKey)
+			if err != nil {
+				return err
+			}
+			defer unlock()
 			m, err := database.NewMigrator(pool, log)
 			if err != nil {
 				return err
