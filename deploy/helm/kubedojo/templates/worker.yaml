@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kubedojo.fullname" . }}-worker
+  labels:
+    {{- include "kubedojo.labels" (dict "ctx" $ "component" "worker") | nindent 4 }}
+spec:
+  # Background jobs (lab expiry, retention) run in exactly one process.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "kubedojo.selectorLabels" (dict "ctx" $ "component" "worker") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "kubedojo.labels" (dict "ctx" $ "component" "worker") | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        {{- include "kubedojo.podSecurityContext" (dict "uid" 65532) | nindent 8 }}
+      {{- include "kubedojo.scheduling" . | nindent 6 }}
+      containers:
+        - name: worker
+          image: {{ include "kubedojo.image" (dict "ctx" $ "name" "api") }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/usr/local/bin/worker"]
+          args: ["run"]
+          env:
+            {{- include "kubedojo.backendEnv" . | nindent 12 }}
+          livenessProbe:
+            exec:
+              command: ["/usr/local/bin/worker", "healthcheck"]
+            periodSeconds: 30
+            timeoutSeconds: 5
+          securityContext:
+            {{- include "kubedojo.containerSecurityContext" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}

@@ -1,0 +1,41 @@
+{{- if .Values.ingress.enabled }}
+{{- $fullname := include "kubedojo.fullname" . -}}
+{{- $host := required "ingress.host is required when ingress.enabled, e.g. kubedojo.example.com" .Values.ingress.host -}}
+# The single public origin (ADR-0003): /api/v1/ws goes to the API's realtime endpoint, everything
+# else to the web app. The rest of /api/v1 is never routed to the API; the web app answers 404.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "kubedojo.labels" (dict "ctx" $ "component" "web") | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts: [{{ $host | quote }}]
+      secretName: {{ required "ingress.tls.secretName is required when ingress.tls.enabled" .Values.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ $host | quote }}
+      http:
+        paths:
+          - path: /api/v1/ws
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $fullname }}-api
+                port: { name: http }
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $fullname }}-web
+                port: { name: http }
+{{- end }}

@@ -1,0 +1,20 @@
+KubeDojo {{ .Values.image.tag | default .Chart.AppVersion }} is starting in namespace {{ .Release.Namespace }}.
+
+The API's first start applies migrations and imports the lessons, so give it a minute:
+  kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }} -w
+
+{{- if .Values.ingress.enabled }}
+
+Then open {{ .Values.webOrigin }}
+{{- else }}
+
+No Ingress was created. To try it from this machine:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "kubedojo.fullname" . }}-web 8000:3000
+and open http://localhost:8000 (set webOrigin=http://localhost:8000 for sign-in to work).
+Lab terminals need the Ingress, which routes /api/v1/ws to the API.
+{{- end }}
+{{- if .Values.postgresql.enabled }}
+
+The bundled PostgreSQL keeps its data in the PersistentVolumeClaim data-{{ include "kubedojo.fullname" . }}-postgresql-0.
+`helm uninstall` leaves that claim in place; delete it yourself to remove the data.
+{{- end }}

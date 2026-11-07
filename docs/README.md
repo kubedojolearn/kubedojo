@@ -23,6 +23,7 @@
 | Design | [design/baseline.md](design/baseline.md) | Lighthouse and accessibility baseline |
 | Operations | [operations/keys.md](operations/keys.md) | Secrets, key generation and rotation |
 | Operations | [operations/auth.md](operations/auth.md) | Sign-in flow, BFF rules, Asgardeo setup, test sign-in, secret rotation |
+| Operations | [../deploy/helm/kubedojo/](../deploy/helm/kubedojo/README.md) | Helm chart: install on Kubernetes, the Secret's keys, upgrades, your own PostgreSQL and Redis |
 | Operations | [operations/self-host.md](operations/self-host.md) | Run KubeDojo from the weekly release images; updates, backups, and how releases are made |
 | Operations | [operations/database.md](operations/database.md) | Migrations, seeds, initial admin, retention and account deletion |
 | Content | [content/authoring.md](content/authoring.md) | How to write, validate, preview and publish a lesson |

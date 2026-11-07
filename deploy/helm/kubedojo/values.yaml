@@ -1,0 +1,92 @@
+# KubeDojo Helm chart values. Setup and the Secret's keys: README.md next to this file.
+
+# Required. The URL people open, without a trailing slash, e.g. https://kubedojo.example.com.
+# It must match the browser's address bar: sign-in callbacks and Origin checks use it.
+webOrigin: ""
+
+# Required. Name of a Secret in the release namespace holding the keys listed in README.md
+# (created from a generated .env with `kubectl create secret generic --from-env-file`).
+existingSecret: kubedojo
+
+image:
+  # Images are <registry>/kubedojo-api and <registry>/kubedojo-web.
+  registry: ghcr.io/kubedojolearn
+  # Defaults to the chart's appVersion, the release the chart was published with.
+  tag: ""
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+# debug | info | warn | error
+logLevel: info
+
+api:
+  # Each pod first runs `api bootstrap` (migrations, seed data, lesson import) in an init
+  # container. A database lock lets any number of pods start at once.
+  replicas: 1
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { memory: 256Mi }
+
+worker:
+  # Background jobs (lab expiry, retention). Always one replica.
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 128Mi }
+
+web:
+  replicas: 1
+  resources:
+    requests: { cpu: 100m, memory: 192Mi }
+    limits: { memory: 512Mi }
+
+auth:
+  # Asgardeo client ID, secret and issuer come from the Secret (optional keys). These are the
+  # names of the social connections in the Asgardeo console.
+  asgardeoGoogleConnection: Google
+  asgardeoGithubConnection: GitHub
+
+ingress:
+  enabled: false
+  # e.g. nginx or traefik; empty uses the cluster's default IngressClass.
+  className: ""
+  # Host name from webOrigin, e.g. kubedojo.example.com.
+  host: ""
+  annotations: {}
+  tls:
+    enabled: false
+    # A kubernetes.io/tls Secret for the host, e.g. one cert-manager issues.
+    secretName: ""
+
+# Bundled PostgreSQL: one pod with a PersistentVolumeClaim. Fine for a small install. For anything
+# you can't afford to lose, set enabled: false and put DATABASE_URL in the Secret instead
+# (a managed database with backups).
+postgresql:
+  enabled: true
+  image: postgres:18-alpine
+  user: kubedojo
+  database: kubedojo
+  persistence:
+    size: 8Gi
+    # Empty uses the cluster's default StorageClass.
+    storageClass: ""
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 512Mi }
+
+# Bundled Redis: disposable coordination data only (ADR-0004), no persistence. Set enabled: false
+# and put a rediss:// REDIS_URL in the Secret to use your own.
+redis:
+  enabled: true
+  image: redis:8-alpine
+  resources:
+    requests: { cpu: 10m, memory: 16Mi }
+    limits: { memory: 64Mi }
+
+# NetworkPolicies letting only KubeDojo's own pods reach the bundled PostgreSQL and Redis. They
+# take effect only if the cluster's network plugin enforces NetworkPolicy.
+networkPolicy:
+  enabled: true
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

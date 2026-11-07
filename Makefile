@@ -171,6 +171,23 @@ test-visual-update: ## Re-record visual baselines; review the image diffs before
 licenses: ## Check production dependency licenses
 	pnpm licenses:check
 
+##@ Kubernetes
+
+CHART := deploy/helm/kubedojo
+KUBERNETES_VERSION := 1.34.0
+
+.PHONY: chart-check
+chart-check: ## Lint and render the Helm chart with each ci/ values file; validate the manifests (needs helm, kubeconform)
+	@for values in $(CHART)/ci/*-values.yaml; do \
+	  echo "→ $$values"; \
+	  helm lint --strict $(CHART) -f $$values && \
+	  helm template kubedojo $(CHART) -f $$values | kubeconform -strict -summary -kubernetes-version $(KUBERNETES_VERSION) - || exit 1; \
+	done
+
+.PHONY: test-chart
+test-chart: ## Install the Helm chart on a throwaway kind cluster and check KubeDojo comes up (needs docker, kind, helm, kubectl)
+	./scripts/test-chart-kind.sh
+
 ##@ Build
 
 .PHONY: build
