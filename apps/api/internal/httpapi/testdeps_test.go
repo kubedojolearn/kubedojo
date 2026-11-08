@@ -24,6 +24,7 @@ import (
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/httpx"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/ratelimit"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/progress"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/realtime"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/users"
 )
 
@@ -350,6 +351,15 @@ func (labsFake) Goals(_ context.Context, _, id uuid.UUID) (labs.LabGoals, error)
 	}, labErr(id)
 }
 
+type ticketsFake struct{}
+
+func (ticketsFake) Issue(_ context.Context, _, labID uuid.UUID) (realtime.Ticket, error) {
+	return realtime.Ticket{
+		Ticket: strings.Repeat("t", 43), ExpiresAt: time.Date(2026, 10, 23, 9, 0, 30, 0, time.UTC),
+		URL: "/api/v1/ws/labs/" + labID.String(), ProtocolVersion: realtime.ProtocolVersion,
+	}, nil
+}
+
 type limiter struct{}
 
 func (limiter) Allow(ctx context.Context, key string, _ int, _ time.Duration) (ratelimit.Decision, error) {
@@ -380,6 +390,7 @@ func testRouter(t *testing.T, ready bool) (http.Handler, authtest.Signer) {
 		Catalog:        catalog{},
 		Progress:       progressFake{},
 		Labs:           labsFake{},
+		Tickets:        ticketsFake{},
 		Accounts:       accountsFake{},
 		Admin:          adminFake{},
 		Settings:       userStore{},

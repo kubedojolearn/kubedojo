@@ -96,6 +96,8 @@ test("the terminal runs kubectl commands, changes the cluster and keeps history"
   await startLab(page);
   const command = page.getByRole("textbox", { name: "Command" });
   const output = page.getByRole("log", { name: "Terminal output" });
+  // Commands run over the lab's WebSocket.
+  await expect(page.getByTestId("terminal-status")).toHaveText("Live");
 
   await command.fill("kubectl get pods");
   await command.press("Enter");
@@ -203,4 +205,22 @@ test("checking work grades the goals, completes the lab and awards XP once", asy
   await expect(page.getByRole("main").locator("header").first().getByText("Completed", { exact: true })).toBeVisible();
   await expect(page.getByRole("complementary", { name: "Goals" })).toContainText("Lab complete");
   await expect(page.getByRole("textbox", { name: "Command" })).toBeDisabled();
+});
+
+test("a change made in one tab shows up in another", async ({ page, context }) => {
+  await signIn(page, testIdentity("tabs"));
+  await startLab(page);
+  await expect(page.getByTestId("terminal-status")).toHaveText("Live");
+  const header = page.getByRole("main").locator("header").first();
+  await expect(header.getByText("Version 1")).toBeVisible();
+
+  const other = await context.newPage();
+  await other.goto(page.url());
+  const command = other.getByRole("textbox", { name: "Command" });
+  await command.fill("kubectl scale deployment nginx --replicas=2");
+  await command.press("Enter");
+  await expect(other.getByRole("log", { name: "Terminal output" })).toContainText("deployment.apps/nginx scaled");
+
+  // The first tab hears about it over its socket and refreshes, without a reload.
+  await expect(header.getByText("Version 2")).toBeVisible({ timeout: 10_000 });
 });

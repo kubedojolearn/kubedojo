@@ -41,6 +41,9 @@ spec:
             {{- include "kubedojo.backendEnv" . | nindent 12 }}
             - name: API_LISTEN_ADDR
               value: ":8080"
+            # Lab terminals connect over a WebSocket from the public origin.
+            - name: WS_ALLOWED_ORIGINS
+              value: {{ .Values.webOrigin | quote }}
             {{- include "kubedojo.secretEnv" (dict "ctx" . "key" "API_JWT_PUBLIC_KEYS") | nindent 12 }}
           ports:
             - name: http
