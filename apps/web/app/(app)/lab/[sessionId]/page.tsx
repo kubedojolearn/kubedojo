@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/feedback/states";
 import { EditorPanel } from "@/components/lab/editor-panel";
 import { GoalsPanel } from "@/components/lab/goals-panel";
 import { LabControls } from "@/components/lab/lab-controls";
-import { ResourceList } from "@/components/lab/resource-list";
+import { ClusterPanel } from "@/components/lab/cluster-map";
 import { Terminal } from "@/components/lab/terminal";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -133,10 +133,11 @@ async function LabView({ params }: Props) {
             <EditorPanel labId={lab.id} active={active} initial={files} />
           </TabsContent>
           <TabsContent value="cluster" className="mt-3">
-            <p className="mb-4 text-sm text-muted-foreground">
-              Every object in your simulated cluster ({snapshot.resources.length}). Nothing here runs on a real cluster.
-            </p>
-            <ResourceList resources={snapshot.resources} />
+            <ClusterPanel
+              resources={snapshot.resources}
+              currentNamespace={snapshot.currentNamespace}
+              version={snapshot.version}
+            />
           </TabsContent>
           <TabsContent value="events" className="mt-3">
             {events.length === 0 ? (

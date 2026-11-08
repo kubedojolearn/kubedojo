@@ -636,7 +636,20 @@ The controllers themselves (Deployment rollouts and history, ReplicaSet scaling,
 - Golden transcripts for apply, create -f and delete -f, including merges with imperative changes, namespace mismatches, unsupported kinds and fields, and bad YAML.
 - Integration tests for seeding, reset, stale saves, limits, ownership and ended labs; contract tests for the new routes; a browser test that edits, applies and reloads.
 
-### Part 16/20 — Grading, hints and XP
+### Part 15/20 — Cluster map
+
+**Priority:** P1 · **Dependencies:** Parts 09, 11 · **Outcome:** learners see how objects relate and watch them change.
+
+#### Implement
+
+1. A pure graph model (`apps/web/lib/cluster-graph.ts`) from the snapshot: Services, Deployments, ReplicaSets, Pods, ConfigMaps, Secrets and Nodes in fixed columns, joined by ownership (controller references), Service selection (with each Pod's endpoint readiness from the EndpointSlice), scheduling (`spec.nodeName`) and configuration references (`env`/`envFrom`). Layout is deterministic.
+2. A React Flow map in the lab's Cluster tab with a namespace filter, kind-specific shapes and icons (color is never the only signal), faded idle ReplicaSets and not-ready endpoints, and a highlight on everything the last command changed (resourceVersion moved).
+3. Text equivalents: every relationship as a sentence, nodes labelled for screen readers, and the existing list view one click away.
+
+#### Acceptance tests / gate
+
+- Unit tests for relationships, readiness, namespace scoping, deterministic layout, sentences and change detection.
+- The stack test checks the map, its relationship sentences and the list view.
 
 **Priority:** P0 · **Dependencies:** Parts 08, 11, 13 · **Outcome:** labs can be completed, and completing one earns XP.
 

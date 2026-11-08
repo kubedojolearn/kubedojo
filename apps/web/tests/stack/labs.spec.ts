@@ -26,6 +26,14 @@ test("starting a lab loads the lesson's simulated cluster", async ({ page }) => 
   await expect(header.getByText("Version 1")).toBeVisible();
   await page.getByRole("tab", { name: "Cluster" }).click();
   const cluster = page.getByRole("tabpanel", { name: "Cluster" });
+  // The map draws the Deployment, its ReplicaSet and Pod, and how they relate.
+  await expect(cluster.getByTestId("cluster-map")).toBeVisible();
+  await expect(cluster.getByLabel(/^Deployment nginx in default: 1\/1 ready/)).toBeVisible();
+  await cluster.getByText(/^Relationships as text/).click();
+  await expect(cluster.getByText(/^Deployment nginx owns ReplicaSet nginx-/)).toBeVisible();
+  await expect(cluster.getByText(/^ReplicaSet nginx-[a-z0-9]+ owns Pod nginx-/)).toBeVisible();
+  // The list view shows every object with its status.
+  await cluster.getByRole("button", { name: "List" }).click();
   await expect(cluster.getByRole("heading", { name: /^Deployment/ })).toBeVisible();
   await expect(cluster.getByText("1/1 ready").first()).toBeVisible();
   await expect(cluster.getByText(/^default\/nginx-[a-z0-9]{10}-[a-z0-9]{5}$/)).toBeVisible();

@@ -8,6 +8,15 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-11-08",
+    title: "A map of your cluster",
+    items: [
+      "The Cluster tab draws your lab as a map: which Deployment owns which ReplicaSet and Pods, which Pods each Service sends traffic to, where Pods run and which ConfigMaps and Secrets they read.",
+      "Everything your last command changed is highlighted, so you can watch a rollout or a scale-up happen.",
+      "Pods a Service selects but can't send traffic to are faded. Every relationship is also listed as text, and the list view is one click away.",
+    ],
+  },
+  {
+    date: "2026-11-08",
     title: "Complete labs and earn XP",
     items: [
       "Check my work grades every goal against your cluster and tells you which still need work, without giving the answer away.",
