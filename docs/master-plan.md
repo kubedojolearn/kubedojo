@@ -635,3 +635,21 @@ The controllers themselves (Deployment rollouts and history, ReplicaSet scaling,
 
 - Golden transcripts for apply, create -f and delete -f, including merges with imperative changes, namespace mismatches, unsupported kinds and fields, and bad YAML.
 - Integration tests for seeding, reset, stale saves, limits, ownership and ended labs; contract tests for the new routes; a browser test that edits, applies and reloads.
+
+### Part 16/20 — Grading, hints and XP
+
+**Priority:** P0 · **Dependencies:** Parts 08, 11, 13 · **Outcome:** labs can be completed, and completing one earns XP.
+
+#### Implement
+
+1. A pure evaluator (`internal/grading`) for the three goal types of ADR-0007 and its assertion DSL: paths with `[n]` and `["key"]`, the ten operators, numeric and CPU/memory-quantity comparison, answers computed from the live state (`static`, `path`, `count`), and observation goals matched on the parser's structured output of successful commands.
+2. `POST /labs/{id}/answers` stores an answer (shape-checked, never graded on submit; at most 10 per goal, and `choices − 1` for choice goals). `POST /labs/{id}/hints/{i}` reveals hints in order; seeing one again is free. `GET /labs/{id}/goals` restores the panel after a reload, also for ended labs.
+3. `POST /labs/{id}/validate` (Idempotency-Key) grades every goal, records the attempt and the lesson's best score. When all goals pass, the lab completes, and in the same transaction: the lesson's first completion, totals and streak (in the learner's time zone), XP and achievements.
+4. XP for a lesson is awarded once, through the ledger's event key: `baseXP`, plus `firstTryBonusXP` if the learner's first check of the lesson passes, minus `hintPenaltyPerHintXP` for each hint revealed in the passing lab, never below zero.
+5. A goals panel in the lab: status per goal with the lesson's feedback (never the expected answer), answer inputs, hints with their cost, Check my work, and the result with XP and achievements.
+
+#### Acceptance tests / gate
+
+- Every lesson's hidden reference solution, replayed through the simulator, passes all its goals, and no lesson passes before the learner does anything (`internal/grading` content test, run in CI).
+- Integration tests: a failing then passing check, hint order and cost, answer limits, idempotent replay after completion, XP and achievements awarded once across labs, the first-try bonus, ownership.
+- A browser test that fails a check, takes a hint, fixes the cluster, passes, and sees the completed lab after a reload.

@@ -8,6 +8,16 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-11-08",
+    title: "Complete labs and earn XP",
+    items: [
+      "Check my work grades every goal against your cluster and tells you which still need work, without giving the answer away.",
+      "Pass every goal to complete the lab and earn the lesson's XP. Your first check passing earns a bonus; each hint you reveal costs a little.",
+      "Questions in the goals panel take your answer, and hints appear one at a time when you ask.",
+      "Completing lessons builds your streak and unlocks achievements on your dashboard.",
+    ],
+  },
+  {
+    date: "2026-11-08",
     title: "Write manifests in the lab editor",
     items: [
       "Every lab has a YAML editor. Lessons that start from a manifest put it there for you.",

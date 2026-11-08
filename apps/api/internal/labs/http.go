@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -29,6 +30,10 @@ type Lifecycle interface {
 	Files(ctx context.Context, userID, labID uuid.UUID) ([]LabFile, error)
 	SaveFile(ctx context.Context, userID, labID uuid.UUID, path, content string, base *time.Time) (LabFile, error)
 	DeleteFile(ctx context.Context, userID, labID uuid.UUID, path string) error
+	SubmitAnswer(ctx context.Context, userID, labID uuid.UUID, goalID, answer string) (AnswerStatus, error)
+	RevealHint(ctx context.Context, userID, labID uuid.UUID, index int) (Hint, error)
+	Validate(ctx context.Context, userID, labID uuid.UUID, key string) (ValidationResult, error)
+	Goals(ctx context.Context, userID, labID uuid.UUID) (LabGoals, error)
 	Commands(ctx context.Context, userID, labID uuid.UUID, before *CommandCursor, limit int32) ([]CommandResult, *CommandCursor, error)
 }
 
@@ -61,6 +66,16 @@ func MapError(err error) error {
 			httpx.FieldError{Field: "content", Message: "must be UTF-8 text of at most 65536 bytes without NUL characters"})
 	case errors.Is(err, ErrFileLimit):
 		return httpx.Validation(fmt.Sprintf("A lab can hold at most %d files.", MaxFiles), httpx.FieldError{Field: "path", Message: "lab file limit reached"})
+	case errors.Is(err, ErrGoalNotFound):
+		return httpx.NotFound("Goal")
+	case errors.Is(err, ErrInvalidAnswer):
+		return httpx.Validation("Invalid answer.", httpx.FieldError{Field: "answer", Message: "must be 1-256 characters; a number for number questions, or one of the choices"})
+	case errors.Is(err, ErrNoSubmissionsLeft):
+		return httpx.Conflict("You've used every answer for this question in this lab. Reset the lab to try again.")
+	case errors.Is(err, ErrHintNotFound):
+		return httpx.NotFound("Hint")
+	case errors.Is(err, ErrHintOrder):
+		return httpx.Conflict("Reveal the earlier hints first.")
 	case errors.Is(err, ErrFileNotFound):
 		return httpx.NotFound("File")
 	case errors.Is(err, ErrStaleFile):
@@ -413,5 +428,103 @@ func (h Handler) DeleteFile(w http.ResponseWriter, r *http.Request) error {
 		return MapError(err)
 	}
 	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+// AnswerRequest is the POST /labs/{labId}/answers body.
+type AnswerRequest struct {
+	GoalID string `json:"goalId"`
+	Answer string `json:"answer"`
+}
+
+var goalID = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
+
+// SubmitAnswer handles POST /labs/{labId}/answers.
+func (h Handler) SubmitAnswer(w http.ResponseWriter, r *http.Request) error {
+	p, err := principal(r)
+	if err != nil {
+		return err
+	}
+	id, err := LabID(r)
+	if err != nil {
+		return err
+	}
+	var req AnswerRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		return err
+	}
+	if len(req.GoalID) > 64 || !goalID.MatchString(req.GoalID) {
+		return httpx.Validation("Invalid goal.", httpx.FieldError{Field: "goalId", Message: "must be a goal ID"})
+	}
+	if l := len(req.Answer); l == 0 || l > 256 {
+		return MapError(ErrInvalidAnswer)
+	}
+	st, err := h.Labs.SubmitAnswer(r.Context(), p.UserID, id, req.GoalID, req.Answer)
+	if err != nil {
+		return MapError(err)
+	}
+	httpx.WriteJSON(w, r, http.StatusOK, st)
+	return nil
+}
+
+// Validate handles POST /labs/{labId}/validate.
+func (h Handler) Validate(w http.ResponseWriter, r *http.Request) error {
+	key, err := readIdempotencyKey(r)
+	if err != nil {
+		return err
+	}
+	p, err := principal(r)
+	if err != nil {
+		return err
+	}
+	id, err := LabID(r)
+	if err != nil {
+		return err
+	}
+	res, err := h.Labs.Validate(r.Context(), p.UserID, id, key)
+	if err != nil {
+		return MapError(err)
+	}
+	httpx.WriteJSON(w, r, http.StatusOK, res)
+	return nil
+}
+
+// RevealHint handles POST /labs/{labId}/hints/{index}.
+func (h Handler) RevealHint(w http.ResponseWriter, r *http.Request) error {
+	p, err := principal(r)
+	if err != nil {
+		return err
+	}
+	id, err := LabID(r)
+	if err != nil {
+		return err
+	}
+	index, err := strconv.Atoi(chi.URLParam(r, "index"))
+	if err != nil || index < 0 || index > 9 {
+		return httpx.NotFound("Hint")
+	}
+	hint, err := h.Labs.RevealHint(r.Context(), p.UserID, id, index)
+	if err != nil {
+		return MapError(err)
+	}
+	httpx.WriteJSON(w, r, http.StatusOK, hint)
+	return nil
+}
+
+// GetGoals handles GET /labs/{labId}/goals.
+func (h Handler) GetGoals(w http.ResponseWriter, r *http.Request) error {
+	p, err := principal(r)
+	if err != nil {
+		return err
+	}
+	id, err := LabID(r)
+	if err != nil {
+		return err
+	}
+	goals, err := h.Labs.Goals(r.Context(), p.UserID, id)
+	if err != nil {
+		return MapError(err)
+	}
+	httpx.WriteJSON(w, r, http.StatusOK, goals)
 	return nil
 }

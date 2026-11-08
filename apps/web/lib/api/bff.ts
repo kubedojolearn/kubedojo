@@ -20,7 +20,7 @@ const ALLOWED_PATHS: RegExp[] = [
   /^profiles\/[A-Za-z0-9-]{1,39}$/,
   /^leaderboard$/,
   /^catalog\/courses(\/[a-z0-9-]+(\/lessons\/[a-z0-9-]+)?)?$/,
-  /^labs(\/[0-9a-f-]{36}(\/(resume|reset|finish|snapshot|events|commands|files|answers|validate|ws-ticket|hints\/\d))?)?$/,
+  /^labs(\/[0-9a-f-]{36}(\/(resume|reset|finish|snapshot|events|commands|files|goals|answers|validate|ws-ticket|hints\/\d))?)?$/,
   /^admin\/(content(\/(validate|publish))?|audit)$/,
 ];
 
