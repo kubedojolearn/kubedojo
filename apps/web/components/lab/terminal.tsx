@@ -6,6 +6,7 @@ import { Download } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { bff } from "@/lib/bff-client";
+import { onCommand } from "@/lib/lab-bus";
 import { cn } from "@/lib/utils";
 
 export interface TerminalEntry {
@@ -69,6 +70,19 @@ export function Terminal({ labId, active, initial }: { labId: string; active: bo
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight });
   }, [entries]);
+
+  // Commands run from other panels (the editor's Apply) appear here too.
+  useEffect(
+    () =>
+      onCommand(labId, (c) => {
+        history.current = [...history.current, c.input];
+        setEntries((es) => [
+          ...es,
+          { key: c.requestId, input: c.input, stdout: c.stdout, stderr: c.stderr, exitCode: c.exitCode },
+        ]);
+      }),
+    [labId],
+  );
 
   async function run(command: string) {
     const key = crypto.randomUUID();

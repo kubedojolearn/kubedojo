@@ -164,7 +164,7 @@ func runCreate(args []string, env Env, p *Parsed) (Result, *Failure) {
 		return r, nil
 	}
 	recordFlags(p, fl)
-	if fl.str("filename") != "" {
+	if len(fl.values["filename"]) > 0 {
 		return createFromFile(fl, env, p, pos)
 	}
 	if len(pos) == 0 {
@@ -188,9 +188,9 @@ func runCreate(args []string, env Env, p *Parsed) (Result, *Failure) {
 	case "namespace", "ns":
 		obj, f = newNamespace(rest)
 	case "configmap", "cm":
-		obj, f = newConfigMap(rest, fl, ns)
+		obj, f = newConfigMap(env, rest, fl, ns)
 	case "secret":
-		obj, f = newSecret(rest, fl, ns)
+		obj, f = newSecret(env, rest, fl, ns)
 	case "service", "svc":
 		obj, f = newService(rest, fl, ns)
 	default:
@@ -274,31 +274,57 @@ func newNamespace(pos []string) (simulator.Object, *Failure) {
 	return &simulator.Namespace{Metadata: simulator.ObjectMeta{Name: name}}, nil
 }
 
-// literalData reads --from-literal pairs, refusing duplicate keys as kubectl does.
-func literalData(fl flags, kind, name string) (map[string]string, *Failure) {
-	if fl.str("from-file") != "" || fl.str("from-env-file") != "" {
-		return nil, reject(CodeUnsupported, "error: --from-file and --from-env-file need files; the lab has none to read yet. Use --from-literal=KEY=VALUE.")
+// sourceData reads --from-literal pairs and --from-file virtual files (key = file name, or
+// KEY=PATH), refusing duplicate keys as kubectl does.
+func sourceData(env Env, fl flags, kind, name string) (map[string]string, *Failure) {
+	if fl.str("from-env-file") != "" {
+		return nil, reject(CodeUnsupported, "error: --from-env-file isn't supported; use --from-literal=KEY=VALUE or --from-file")
 	}
 	data := map[string]string{}
+	add := func(k, v string) *Failure {
+		if _, dup := data[k]; dup {
+			return reject(CodeValidation, "error: cannot add key %q, another key by that name already exists in Data for %s %q", k, kind, name)
+		}
+		data[k] = v
+		return nil
+	}
 	for _, kv := range fl.values["from-literal"] {
 		k, v, ok := strings.Cut(kv, "=")
 		if !ok || k == "" {
 			return nil, reject(CodeValidation, "error: invalid literal source %s, expected key=value", kv)
 		}
-		if _, dup := data[k]; dup {
-			return nil, reject(CodeValidation, "error: cannot add key %q, another key by that name already exists in Data for %s %q", k, kind, name)
+		if f := add(k, v); f != nil {
+			return nil, f
 		}
-		data[k] = v
+	}
+	for _, src := range fl.values["from-file"] {
+		key, p, hasKey := strings.Cut(src, "=")
+		if !hasKey {
+			key, p = "", src
+		}
+		paths, f := filePaths(env, []string{p})
+		if f != nil {
+			return nil, f
+		}
+		for _, fp := range paths {
+			k := key
+			if k == "" {
+				k = fp[strings.LastIndex(fp, "/")+1:]
+			}
+			if f := add(k, env.Files[fp]); f != nil {
+				return nil, f
+			}
+		}
 	}
 	return data, nil
 }
 
-func newConfigMap(pos []string, fl flags, ns string) (simulator.Object, *Failure) {
+func newConfigMap(env Env, pos []string, fl flags, ns string) (simulator.Object, *Failure) {
 	name, f := requireName(pos, "kubectl create configmap NAME --from-literal=KEY=VALUE")
 	if f != nil {
 		return nil, f
 	}
-	data, f := literalData(fl, "ConfigMap", name)
+	data, f := sourceData(env, fl, "ConfigMap", name)
 	if f != nil {
 		return nil, f
 	}
@@ -309,7 +335,7 @@ func newConfigMap(pos []string, fl flags, ns string) (simulator.Object, *Failure
 	return cm, nil
 }
 
-func newSecret(pos []string, fl flags, ns string) (simulator.Object, *Failure) {
+func newSecret(env Env, pos []string, fl flags, ns string) (simulator.Object, *Failure) {
 	if len(pos) == 0 {
 		return nil, reject(CodeValidation, "error: specify the type of Secret: kubectl create secret generic NAME --from-literal=KEY=VALUE")
 	}
@@ -327,7 +353,7 @@ func newSecret(pos []string, fl flags, ns string) (simulator.Object, *Failure) {
 	if f != nil {
 		return nil, f
 	}
-	data, f := literalData(fl, "Secret", name)
+	data, f := sourceData(env, fl, "Secret", name)
 	if f != nil {
 		return nil, f
 	}

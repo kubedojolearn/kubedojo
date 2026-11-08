@@ -463,7 +463,8 @@ export interface paths {
     /** Create or replace a virtual file */
     put: operations["saveLabFile"];
     post?: never;
-    delete?: never;
+    /** Delete a virtual file */
+    delete: operations["deleteLabFile"];
     options?: never;
     head?: never;
     patch?: never;
@@ -2022,7 +2023,44 @@ export interface operations {
       400: components["responses"]["ValidationFailed"];
       401: components["responses"]["Unauthenticated"];
       404: components["responses"]["NotFound"];
+      /** @description The lab has ended, or (STALE_VERSION) the file changed after baseUpdatedAt. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      410: components["responses"]["SessionExpired"];
+      429: components["responses"]["RateLimited"];
+    };
+  };
+  deleteLabFile: {
+    parameters: {
+      query: {
+        path: components["schemas"]["VirtualPath"];
+      };
+      header?: never;
+      path: {
+        labId: components["parameters"]["LabId"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Deleted. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      400: components["responses"]["ValidationFailed"];
+      401: components["responses"]["Unauthenticated"];
+      404: components["responses"]["NotFound"];
       409: components["responses"]["Conflict"];
+      410: components["responses"]["SessionExpired"];
       429: components["responses"]["RateLimited"];
     };
   };

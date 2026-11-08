@@ -72,7 +72,107 @@ func testEnv(t *testing.T) Env {
 		t.Fatal(err)
 	}
 	restored.Gen, restored.Revision, restored.CurrentNamespace = st.Gen, st.Revision, st.CurrentNamespace
-	return Env{State: restored, Events: events}
+	return Env{State: restored, Events: events, Files: testFiles()}
+}
+
+// testFiles are the lab editor's files in every test lab.
+func testFiles() map[string]string {
+	return map[string]string{
+		"manifests/web.yaml": `# A Deployment and its Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  labels: { app: web }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: web }
+  template:
+    metadata:
+      labels: { app: web }
+    spec:
+      containers:
+        - name: web
+          image: nginx:1.27
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  labels: { app: web }
+spec:
+  selector: { app: web }
+  ports:
+    - port: 80
+      targetPort: 80
+`,
+		"manifests/web-v2.yaml": `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  replicas: 3
+  selector:
+    matchLabels: { app: web }
+  template:
+    metadata:
+      labels: { app: web }
+    spec:
+      containers:
+        - name: web
+          image: nginx:1.26
+          ports:
+            - containerPort: 80
+`,
+		"manifests/nginx.yaml": `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  labels: { app: nginx }
+spec:
+  replicas: 3
+  selector:
+    matchLabels: { app: nginx }
+  template:
+    metadata:
+      labels: { app: nginx }
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27
+          ports:
+            - containerPort: 80
+          resources:
+            requests: { cpu: 100m, memory: 64Mi }
+`,
+		"manifests/team.yaml": `apiVersion: v1
+kind: Namespace
+metadata:
+  name: team
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: settings
+  namespace: team
+data:
+  mode: prod
+`,
+		"manifests/shop-config.yaml": `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orders-config
+  namespace: shop
+data:
+  mode: prod
+`,
+		"manifests/bad.yaml":   "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: x\n data: oops\n",
+		"manifests/job.yaml":   "apiVersion: batch/v1\nkind: Job\nmetadata:\n  name: nightly\n",
+		"manifests/probe.yaml": "apiVersion: v1\nkind: Pod\nmetadata:\n  name: probed\nspec:\n  containers:\n    - name: web\n      image: nginx:1.27\n      livenessProbe:\n        httpGet: { path: /, port: 80 }\n",
+	}
 }
 
 type fingerprint struct {

@@ -165,10 +165,11 @@ func (sv *Service) create(ctx context.Context, userID, challengeVersionID uuid.U
 		if !cv.IsCurrent || cv.SimulatorVersion != simulator.Version {
 			return ErrStaleChallenge
 		}
-		f, err := sv.fixtures.get(ctx, q, cv.ID)
+		def, err := sv.fixtures.definition(ctx, q, cv.ID)
 		if err != nil {
 			return err
 		}
+		f := def.Fixture
 		seed, err := newSeed()
 		if err != nil {
 			return err
@@ -186,6 +187,9 @@ func (sv *Service) create(ctx context.Context, userID, challengeVersionID uuid.U
 			return err
 		}
 		if _, err := persist(ctx, q, s, state, s.Version); err != nil {
+			return err
+		}
+		if err := seedFiles(ctx, q, s.ID, def.InitialFiles); err != nil {
 			return err
 		}
 		if err := q.RecordLabStarted(ctx, dbgen.RecordLabStartedParams{UserID: userID, LessonID: cv.LessonID}); err != nil {
@@ -325,15 +329,19 @@ func derefLab(l *Lab) Lab {
 	return *l
 }
 
-// Reset reloads the lab from its challenge version's fixture with the same seed. The version
-// and resource versions keep increasing; earlier events are dropped with the old state.
+// Reset reloads the lab from its challenge version's fixture with the same seed, and its
+// editor files from the lesson's initial files. The version and resource versions keep
+// increasing; earlier events are dropped with the old state.
 func (sv *Service) Reset(ctx context.Context, userID, labID uuid.UUID, key string) (Lab, error) {
 	return sv.idempotent(ctx, userID, labID, OpReset, key, func(ctx context.Context, q *dbgen.Queries, s dbgen.LabSession) (Change, error) {
-		f, err := sv.fixtures.get(ctx, q, s.ChallengeVersionID)
+		def, err := sv.fixtures.definition(ctx, q, s.ChallengeVersionID)
 		if err != nil {
 			return Change{}, err
 		}
-		state, err := simulator.Load(f, toUint(s.Seed))
+		if err := seedFiles(ctx, q, s.ID, def.InitialFiles); err != nil {
+			return Change{}, err
+		}
+		state, err := simulator.Load(def.Fixture, toUint(s.Seed))
 		if err != nil {
 			return Change{}, fmt.Errorf("reload fixture: %w", err)
 		}

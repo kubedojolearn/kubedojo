@@ -13,6 +13,8 @@ type Env struct {
 	State *simulator.State
 	// Events are the lab's persisted events, oldest first (the state only holds new ones).
 	Events []simulator.Event
+	// Files are the lab editor's virtual files by path (manifests/web.yaml), read by -f.
+	Files map[string]string
 }
 
 // Parsed is the structured form of a command, stored with its execution for observation goals.

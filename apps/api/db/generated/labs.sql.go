@@ -32,6 +32,17 @@ func (q *Queries) BumpLabVersion(ctx context.Context, arg BumpLabVersionParams) 
 	return version, err
 }
 
+const countLabFiles = `-- name: CountLabFiles :one
+SELECT count(*) FROM lab_files WHERE session_id = $1
+`
+
+func (q *Queries) CountLabFiles(ctx context.Context, sessionID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countLabFiles, sessionID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createLabSession = `-- name: CreateLabSession :one
 INSERT INTO lab_sessions (user_id, lesson_id, challenge_version_id, simulator_version, seed, sim_time, expires_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -87,6 +98,15 @@ func (q *Queries) CreateLabSession(ctx context.Context, arg CreateLabSessionPara
 	return i, err
 }
 
+const deleteAllLabFiles = `-- name: DeleteAllLabFiles :exec
+DELETE FROM lab_files WHERE session_id = $1
+`
+
+func (q *Queries) DeleteAllLabFiles(ctx context.Context, sessionID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteAllLabFiles, sessionID)
+	return err
+}
+
 const deleteAllLabResources = `-- name: DeleteAllLabResources :exec
 DELETE FROM lab_resources WHERE session_id = $1
 `
@@ -103,6 +123,23 @@ DELETE FROM lab_events WHERE session_id = $1
 func (q *Queries) DeleteLabEvents(ctx context.Context, sessionID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, deleteLabEvents, sessionID)
 	return err
+}
+
+const deleteLabFile = `-- name: DeleteLabFile :execrows
+DELETE FROM lab_files WHERE session_id = $1 AND path = $2
+`
+
+type DeleteLabFileParams struct {
+	SessionID uuid.UUID
+	Path      string
+}
+
+func (q *Queries) DeleteLabFile(ctx context.Context, arg DeleteLabFileParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteLabFile, arg.SessionID, arg.Path)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const deleteLabResource = `-- name: DeleteLabResource :exec
@@ -280,6 +317,27 @@ func (q *Queries) GetIdempotencyRecord(ctx context.Context, arg GetIdempotencyRe
 		&i.StatusCode,
 		&i.Response,
 		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getLabFile = `-- name: GetLabFile :one
+SELECT session_id, path, content, updated_at FROM lab_files WHERE session_id = $1 AND path = $2
+`
+
+type GetLabFileParams struct {
+	SessionID uuid.UUID
+	Path      string
+}
+
+func (q *Queries) GetLabFile(ctx context.Context, arg GetLabFileParams) (LabFile, error) {
+	row := q.db.QueryRow(ctx, getLabFile, arg.SessionID, arg.Path)
+	var i LabFile
+	err := row.Scan(
+		&i.SessionID,
+		&i.Path,
+		&i.Content,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -632,6 +690,35 @@ func (q *Queries) ListLabEvents(ctx context.Context, arg ListLabEventsParams) ([
 			&i.InvolvedName,
 			&i.Message,
 			&i.OccurredAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLabFiles = `-- name: ListLabFiles :many
+SELECT session_id, path, content, updated_at FROM lab_files WHERE session_id = $1 ORDER BY path
+`
+
+func (q *Queries) ListLabFiles(ctx context.Context, sessionID uuid.UUID) ([]LabFile, error) {
+	rows, err := q.db.Query(ctx, listLabFiles, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []LabFile{}
+	for rows.Next() {
+		var i LabFile
+		if err := rows.Scan(
+			&i.SessionID,
+			&i.Path,
+			&i.Content,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -999,6 +1086,31 @@ type TouchLabParams struct {
 func (q *Queries) TouchLab(ctx context.Context, arg TouchLabParams) error {
 	_, err := q.db.Exec(ctx, touchLab, arg.ExpiresAt, arg.ID)
 	return err
+}
+
+const upsertLabFile = `-- name: UpsertLabFile :one
+INSERT INTO lab_files (session_id, path, content)
+VALUES ($1, $2, $3)
+ON CONFLICT (session_id, path) DO UPDATE SET content = EXCLUDED.content, updated_at = now()
+RETURNING session_id, path, content, updated_at
+`
+
+type UpsertLabFileParams struct {
+	SessionID uuid.UUID
+	Path      string
+	Content   string
+}
+
+func (q *Queries) UpsertLabFile(ctx context.Context, arg UpsertLabFileParams) (LabFile, error) {
+	row := q.db.QueryRow(ctx, upsertLabFile, arg.SessionID, arg.Path, arg.Content)
+	var i LabFile
+	err := row.Scan(
+		&i.SessionID,
+		&i.Path,
+		&i.Content,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const upsertLabResource = `-- name: UpsertLabResource :exec

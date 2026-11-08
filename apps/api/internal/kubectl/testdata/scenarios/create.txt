@@ -212,17 +212,18 @@ error: must specify one of -f and -k, or a resource to create, e.g. kubectl crea
 See 'kubectl create -h' for help and examples
 
 $ kubectl create -f manifests/web.yaml
---- exit 1 (UNSUPPORTED_COMMAND)
+--- exit 1 (CONFLICT)
 --- stdout
+deployment.apps/web created
 --- stderr
-error: -f reads manifests from the lab's YAML editor, which isn't available yet. For now, use kubectl create deployment|namespace|configmap|secret|service, kubectl run and kubectl expose.
+Error from server (AlreadyExists): error when creating "manifests/web.yaml": services "web" already exists
 
 $ kubectl get ns
 --- exit 0
 --- stdout
 NAME              STATUS   AGE
 default           Active   30d
-dev               Active   30s
+dev               Active   40s
 kube-node-lease   Active   30d
 kube-public       Active   30d
 kube-system       Active   30d
