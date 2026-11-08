@@ -138,7 +138,7 @@ test("the editor saves manifests and applies them to the cluster", async ({ page
   await page.keyboard.press("ControlOrMeta+a");
   const manifest = (await code.innerText()).replace("replicas: 1", "replicas: 3");
   await page.keyboard.insertText(manifest);
-  await expect(editor.getByText("Unsaved")).toBeVisible();
+  await expect(editor.getByText("Unsaved", { exact: true })).toBeVisible();
   await editor.getByRole("button", { name: "Apply" }).click();
   await expect(editor.getByRole("status")).toContainText("deployment.apps/nginx configured");
   await expect(page.getByRole("main").locator("header").first().getByText("Version 2")).toBeVisible();
