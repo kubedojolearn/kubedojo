@@ -129,7 +129,7 @@ test("the editor saves manifests and applies them to the cluster", async ({ page
   const editor = page.getByRole("tabpanel", { name: "Editor" });
 
   // The lesson's starting manifest is there.
-  await expect(editor.getByRole("button", { name: "nginx.yaml" })).toBeVisible();
+  await expect(editor.getByRole("button", { name: "nginx.yaml", exact: true })).toBeVisible();
   const code = editor.getByRole("textbox", { name: "Editor for manifests/nginx.yaml" });
   await expect(code).toContainText("replicas: 1");
 
@@ -157,7 +157,7 @@ test("the editor saves manifests and applies them to the cluster", async ({ page
   // New files start from a template and can be used with -f.
   await page.getByRole("textbox", { name: "New file name" }).fill("extra");
   await page.getByRole("button", { name: "Create file" }).click();
-  await expect(page.getByRole("button", { name: "extra.yaml" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "extra.yaml", exact: true })).toBeVisible();
   await page.getByRole("tab", { name: "Terminal" }).click();
   const command = page.getByRole("textbox", { name: "Command" });
   await command.fill("kubectl apply -f manifests/extra.yaml");
