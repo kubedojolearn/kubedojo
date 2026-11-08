@@ -89,11 +89,50 @@ func reconcileDeployments(s *State) error {
 	return nil
 }
 
+// adopt gives orphans of kind in owner's namespace whose labels match sel a controller
+// reference to owner, as Kubernetes controllers adopt matching objects nobody controls (for
+// example ReplicaSets left behind by `delete --cascade=orphan`).
+func adopt(s *State, owner Object, kind string, sel Selector) error {
+	for _, o := range s.List(kind, owner.Meta().Namespace) {
+		m := o.Meta()
+		if ControllerOf(o) != "" || !sel.Matches(m.Labels) {
+			continue
+		}
+		m.OwnerReferences = append(m.OwnerReferences, controllerRef(owner))
+		if err := s.Put(o); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// release removes owner's controller reference from an object that no longer matches its
+// selector; the object keeps running on its own.
+func release(s *State, o Object, ownerUID string) error {
+	m := o.Meta()
+	var kept []OwnerReference
+	for _, ref := range m.OwnerReferences {
+		if ref.UID != ownerUID {
+			kept = append(kept, ref)
+		}
+	}
+	m.OwnerReferences = kept
+	return s.Put(o)
+}
+
 func reconcileDeployment(s *State, d *Deployment) error {
 	ns := d.Metadata.Namespace
 	desired := d.DesiredReplicas()
 	hash := TemplateHash(d.Spec.Template)
 	rsName := d.Metadata.Name + "-" + hash
+
+	depSel, err := SelectorFromLabelSelector(d.Spec.Selector)
+	if err != nil {
+		return err
+	}
+	if err := adopt(s, d, KindReplicaSet, depSel); err != nil {
+		return err
+	}
 
 	var owned []*ReplicaSet
 	for _, o := range ownedBy(s, KindReplicaSet, ns, d.Metadata.UID) {
@@ -346,12 +385,21 @@ func reconcileReplicaSet(s *State, rs *ReplicaSet) error {
 	if err != nil {
 		return err
 	}
+	// A Pod relabelled out of the selector is released (it keeps running, unmanaged) and a
+	// matching Pod nobody controls is adopted, as the ReplicaSet controller does.
+	if err := adopt(s, rs, KindPod, sel); err != nil {
+		return err
+	}
 	var pods []*Pod
 	for _, o := range ownedBy(s, KindPod, ns, rs.Metadata.UID) {
 		p := o.(*Pod)
-		if sel.Matches(p.Metadata.Labels) {
-			pods = append(pods, p)
+		if !sel.Matches(p.Metadata.Labels) {
+			if err := release(s, p, rs.Metadata.UID); err != nil {
+				return err
+			}
+			continue
 		}
+		pods = append(pods, p)
 	}
 	desired := int(rs.DesiredReplicas())
 	if desired > s.Limits.MaxPodsPerOwner {

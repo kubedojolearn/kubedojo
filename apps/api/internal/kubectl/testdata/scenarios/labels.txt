@@ -1,0 +1,220 @@
+$ kubectl label pod typo tier=web
+--- exit 0
+--- stdout
+pod/typo labeled
+--- stderr
+
+$ kubectl label pod typo run=other
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: 'run' already has a value (typo), and --overwrite is false
+
+$ kubectl label pod typo run=other --overwrite
+--- exit 0
+--- stdout
+pod/typo labeled
+--- stderr
+
+$ kubectl label pod typo tier=web
+--- exit 0
+--- stdout
+pod/typo not labeled
+--- stderr
+
+$ kubectl label pod typo tier- nope-
+--- exit 0
+--- stdout
+pod/typo labeled
+--- stderr
+label "nope" not found.
+
+$ kubectl label pod typo 'Bad Key=x'
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: invalid label spec: Bad Key=x: invalid label key "Bad Key": name part must be 63 characters or less, beginning and ending with an alphanumeric character
+
+$ kubectl label pod typo
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: at least one label update is required, e.g. kubectl label pod web app=web
+
+$ kubectl get pods --show-labels
+--- exit 0
+--- stdout
+NAME                     READY   STATUS             RESTARTS   AGE     LABELS
+nginx-4fzxcz7snh-tbjxs   1/1     Running            0          60m     app=nginx,pod-template-hash=4fzxcz7snh
+picky                    0/1     Pending            0          2m30s   <none>
+typo                     0/1     ImagePullBackOff   0          5m30s   run=other
+--- stderr
+
+$ kubectl label pods -l app=nginx app=debug --overwrite
+--- exit 0
+--- stdout
+pod/nginx-4fzxcz7snh-tbjxs labeled
+--- stderr
+
+$ kubectl get pods --show-labels
+--- exit 0
+--- stdout
+NAME                     READY   STATUS             RESTARTS   AGE     LABELS
+nginx-4fzxcz7snh-ckn96   1/1     Running            0          0s      app=nginx,pod-template-hash=4fzxcz7snh
+nginx-4fzxcz7snh-tbjxs   1/1     Running            0          60m     app=debug,pod-template-hash=4fzxcz7snh
+picky                    0/1     Pending            0          2m40s   <none>
+typo                     0/1     ImagePullBackOff   0          5m40s   run=other
+--- stderr
+
+$ kubectl get rs
+--- exit 0
+--- stdout
+NAME               DESIRED   CURRENT   READY   AGE
+nginx-4fzxcz7snh   1         1         1       60m
+--- stderr
+
+$ kubectl describe pod picky
+--- exit 0
+--- stdout
+Name:             picky
+Namespace:        default
+Priority:         0
+Service Account:  default
+Node:             <none>
+Labels:           <none>
+Annotations:      <none>
+Status:           Pending
+IP:
+IPs:              <none>
+Containers:
+  web:
+    Image:          nginx:1.27
+    Port:           <none>
+    Host Port:      <none>
+    State:          <none>
+    Ready:          False
+    Restart Count:  0
+    Environment:    <none>
+    Mounts:         <none>
+Conditions:
+  Type           Status
+  PodScheduled   False
+Volumes:         <none>
+QoS Class:       BestEffort
+Node-Selectors:  disktype=ssd
+Tolerations:     <none>
+Events:
+  Type     Reason            Age    From               Message
+  ----     ------            ----   ----               -------
+  Warning  FailedScheduling  2m40s  default-scheduler  0/3 nodes are available: 1 node(s) had untolerated taint {node-role.kubernetes.io/control-plane: }, 2 node(s) didn't match Pod's node affinity/selector.
+--- stderr
+
+$ kubectl label node node-2 disktype=ssd
+--- exit 0
+--- stdout
+node/node-2 labeled
+--- stderr
+
+$ kubectl get pod picky -o wide
+--- exit 0
+--- stdout
+NAME    READY   STATUS    RESTARTS   AGE     IP           NODE     NOMINATED NODE   READINESS GATES
+picky   1/1     Running   0          2m50s   10.244.1.5   node-2   <none>           <none>
+--- stderr
+
+$ kubectl label nodes --all zone=lab
+--- exit 0
+--- stdout
+node/node-1 labeled
+node/node-2 labeled
+node/node-3 labeled
+--- stderr
+
+$ kubectl get nodes --show-labels
+--- exit 0
+--- stdout
+NAME     STATUS   ROLES           AGE   VERSION   LABELS
+node-1   Ready    control-plane   10d   v1.37.1   kubernetes.io/hostname=node-1,kubernetes.io/os=linux,node-role.kubernetes.io/control-plane=,zone=lab
+node-2   Ready    <none>          10d   v1.37.1   disktype=ssd,kubernetes.io/hostname=node-2,kubernetes.io/os=linux,zone=lab
+node-3   Ready    <none>          10d   v1.37.1   kubernetes.io/hostname=node-3,kubernetes.io/os=linux,zone=lab
+--- stderr
+
+$ kubectl annotate deploy nginx team=platform owner=dojo
+--- exit 0
+--- stdout
+deployment.apps/nginx annotated
+--- stderr
+
+$ kubectl annotate deploy/nginx team=apps
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: 'team' already has a value (platform), and --overwrite is false
+
+$ kubectl annotate deploy/nginx team=apps --overwrite
+--- exit 0
+--- stdout
+deployment.apps/nginx annotated
+--- stderr
+
+$ kubectl annotate deploy nginx owner-
+--- exit 0
+--- stdout
+deployment.apps/nginx annotated
+--- stderr
+
+$ kubectl describe deploy nginx
+--- exit 0
+--- stdout
+Name:                   nginx
+Namespace:              default
+CreationTimestamp:      Wed, 31 Dec 2025 23:00:00 +0000
+Labels:                 app=nginx
+Annotations:            deployment.kubernetes.io/revision: 1
+                        team: apps
+Selector:               app=nginx
+Replicas:               1 desired | 1 updated | 1 total | 1 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=nginx
+  Containers:
+   nginx:
+    Image:      nginx:1.27
+    Port:       80/TCP
+    Host Port:  0/TCP
+    Requests:
+      cpu:         100m
+      memory:      64Mi
+    Environment:   <none>
+    Mounts:        <none>
+  Volumes:         <none>
+  Node-Selectors:  <none>
+  Tolerations:     <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      True    MinimumReplicasAvailable
+  Progressing    True    NewReplicaSetAvailable
+OldReplicaSets:  <none>
+NewReplicaSet:   nginx-4fzxcz7snh (1/1 replicas created)
+Events:
+  Type    Reason             Age   From                   Message
+  ----    ------             ----  ----                   -------
+  Normal  ScalingReplicaSet  61m   deployment-controller  Scaled up replica set nginx-4fzxcz7snh from 0 to 1
+--- stderr
+
+$ kubectl label endpointslices --all x=y
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+Error from server (Forbidden): endpointslices.discovery.k8s.io "web-np-4fhqh" is forbidden: EndpointSlices are managed by the EndpointSlice controller; change the Service or its Pods instead
+Error from server (Forbidden): endpointslices.discovery.k8s.io "web-sj9wz" is forbidden: EndpointSlices are managed by the EndpointSlice controller; change the Service or its Pods instead
+
+$ kubectl label events --all x=y
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: events are maintained by the simulator and can't be changed with kubectl label
+

@@ -40,6 +40,12 @@ type Result struct {
 	Parsed *Parsed
 	// Clear asks the terminal to clear its screen (the `clear` command).
 	Clear bool
+	// Mutated is set when the command changed the lab (cluster or kubeconfig). The state passed
+	// in has then been replaced by the reconciled result, which the caller must persist.
+	Mutated bool
+	// Err is a simulator bug (never a learner error): the caller must discard the state and
+	// report an internal error.
+	Err error
 }
 
 func failed(f *Failure, p *Parsed) Result {
@@ -62,10 +68,37 @@ var readVerbs = map[string]bool{
 	"api-versions": true, "cluster-info": true, "version": true, "config": true, "rollout": true, "help": true,
 }
 
-// mutatingVerbs are recognized kubectl commands that change the cluster (Parts 11–13).
+// mutatingVerbs are kubectl commands that may change the cluster. They run against a copy of
+// the state that replaces it only on success. `rollout undo|restart` and `config set-context`
+// are mutating too (see mutates).
 var mutatingVerbs = map[string]bool{
 	"create": true, "apply": true, "delete": true, "run": true, "expose": true, "scale": true, "set": true,
 	"label": true, "annotate": true, "edit": true, "patch": true, "replace": true,
+}
+
+// mutates reports whether a verb with these arguments may change the lab.
+func mutates(verb string, args []string) bool {
+	if mutatingVerbs[verb] {
+		return true
+	}
+	sub := ""
+	for i := 0; i < len(args); i++ {
+		if args[i] == "-n" || args[i] == "--namespace" {
+			i++
+			continue
+		}
+		if !strings.HasPrefix(args[i], "-") {
+			sub = args[i]
+			break
+		}
+	}
+	switch verb {
+	case "rollout":
+		return sub == "undo" || sub == "restart"
+	case "config":
+		return sub == "set-context"
+	}
+	return false
 }
 
 // otherVerbs are real kubectl commands the simulator doesn't run, with a reason.
@@ -132,7 +165,7 @@ func Plan(input string) *Invocation {
 	if inv.verb == "" {
 		inv.args = rest
 	}
-	inv.Mutating = mutatingVerbs[inv.verb]
+	inv.Mutating = mutates(inv.verb, inv.args)
 	return inv
 }
 
@@ -143,8 +176,8 @@ func truncateWord(s string) string {
 	return s
 }
 
-// Run executes a read-only invocation. Mutating invocations report that they aren't available
-// in this simulator version.
+// Run executes the invocation. Read commands never change env.State; mutating commands
+// replace it with the reconciled result when they succeed (Result.Mutated).
 func (inv *Invocation) Run(env Env) Result {
 	if inv.failure != nil {
 		return failed(inv.failure, nil)
@@ -169,7 +202,7 @@ func (inv *Invocation) Run(env Env) Result {
 	var res Result
 	switch {
 	case inv.Mutating:
-		return failed(reject(CodeUnsupported, "error: 'kubectl %s' changes the cluster, and changing the simulated cluster isn't available yet. For now you can inspect it with get, describe, logs and events.", inv.verb), p)
+		res = inv.runMutating(env, p)
 	case readVerbs[inv.verb]:
 		res = runRead(inv.verb, inv.args, env, p)
 	case otherVerbs[inv.verb] != "":
@@ -186,7 +219,7 @@ func (inv *Invocation) Run(env Env) Result {
 	return res
 }
 
-// Execute plans and runs input in one step (read-only commands).
+// Execute plans and runs input in one step.
 func Execute(input string, env Env) Result {
 	return Plan(input).Run(env)
 }

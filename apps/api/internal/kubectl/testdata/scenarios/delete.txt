@@ -1,0 +1,161 @@
+$ kubectl delete pod typo
+--- exit 0
+--- stdout
+pod "typo" deleted
+--- stderr
+
+$ kubectl delete pod typo
+--- exit 1 (NOT_FOUND)
+--- stdout
+--- stderr
+Error from server (NotFound): pods "typo" not found
+
+$ kubectl delete pod typo --ignore-not-found
+--- exit 0
+--- stdout
+--- stderr
+
+$ kubectl delete pods -l app=nginx
+--- exit 0
+--- stdout
+pod "nginx-4fzxcz7snh-tbjxs" deleted
+--- stderr
+
+$ kubectl get pods -l app=nginx
+--- exit 0
+--- stdout
+NAME                     READY   STATUS    RESTARTS   AGE
+nginx-4fzxcz7snh-ckn96   1/1     Running   0          0s
+--- stderr
+
+$ kubectl events --for replicaset/nginx-4fzxcz7snh
+--- exit 0
+--- stdout
+LAST SEEN   TYPE     REASON             OBJECT                        MESSAGE
+60m         Normal   SuccessfulCreate   replicaset/nginx-4fzxcz7snh   Created pod: nginx-4fzxcz7snh-tbjxs
+0s          Normal   SuccessfulCreate   replicaset/nginx-4fzxcz7snh   Created pod: nginx-4fzxcz7snh-ckn96
+--- stderr
+
+$ kubectl delete pods
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: resource(s) were provided, but no name was specified
+
+$ kubectl delete pods -l app=nope
+--- exit 0
+--- stdout
+--- stderr
+No resources found
+
+$ kubectl delete pod picky --force --grace-period=0
+--- exit 0
+--- stdout
+pod "picky" deleted
+--- stderr
+Warning: Immediate deletion does not wait for confirmation that the running resource has been terminated. The resource may continue to run on the cluster indefinitely.
+
+$ kubectl delete ns default
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+Error from server (Forbidden): namespaces "default" is forbidden: this namespace may not be deleted
+
+$ kubectl delete node node-1
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+Error from server (Forbidden): nodes "node-1" is forbidden: nodes are part of the simulated cluster and can't be created or deleted (labels and annotations can change)
+
+$ kubectl delete svc kubernetes
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+Error from server (Forbidden): services "kubernetes" is forbidden: this Service is managed by the API server (KubeDojo keeps it in place)
+
+$ kubectl delete endpointslices --all
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+Error from server (Forbidden): endpointslices.discovery.k8s.io "web-np-4fhqh" is forbidden: EndpointSlices are managed by the EndpointSlice controller; change the Service or its Pods instead
+Error from server (Forbidden): endpointslices.discovery.k8s.io "web-sj9wz" is forbidden: EndpointSlices are managed by the EndpointSlice controller; change the Service or its Pods instead
+
+$ kubectl delete events --all
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: events are maintained by the simulator and can't be changed with kubectl delete
+
+$ kubectl delete cm,secret --all -o name
+--- exit 0
+--- stdout
+configmap/app-config
+secret/db-creds
+--- stderr
+
+$ kubectl delete deploy nginx --cascade=orphan
+--- exit 0
+--- stdout
+deployment.apps "nginx" deleted
+--- stderr
+
+$ kubectl get deploy,rs,pods
+--- exit 0
+--- stdout
+NAME                               DESIRED   CURRENT   READY   AGE
+replicaset.apps/nginx-4fzxcz7snh   1         1         1       60m
+
+NAME                         READY   STATUS    RESTARTS   AGE
+pod/nginx-4fzxcz7snh-ckn96   1/1     Running   0          30s
+--- stderr
+
+$ kubectl delete rs --all
+--- exit 0
+--- stdout
+replicaset.apps "nginx-4fzxcz7snh" deleted
+--- stderr
+
+$ kubectl get pods
+--- exit 0
+--- stdout
+--- stderr
+No resources found in default namespace.
+
+$ kubectl delete ns shop
+--- exit 0
+--- stdout
+namespace "shop" deleted
+--- stderr
+
+$ kubectl get all -n shop
+--- exit 0
+--- stdout
+--- stderr
+No resources found in shop namespace.
+ⓘ The namespace "shop" doesn't exist. List namespaces with: kubectl get namespaces
+
+$ kubectl get ns
+--- exit 0
+--- stdout
+NAME              STATUS   AGE
+default           Active   30d
+kube-node-lease   Active   30d
+kube-public       Active   30d
+kube-system       Active   30d
+--- stderr
+
+$ kubectl delete svc web web-np nope
+--- exit 1 (NOT_FOUND)
+--- stdout
+service "web" deleted
+service "web-np" deleted
+--- stderr
+Error from server (NotFound): services "nope" not found
+
+$ kubectl get svc
+--- exit 0
+--- stdout
+NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   30d
+--- stderr
+

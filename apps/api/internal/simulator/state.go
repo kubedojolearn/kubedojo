@@ -108,6 +108,26 @@ func NewState(now time.Time, seed uint64, images ImageCatalog) *State {
 	}
 }
 
+// Clone returns an independent copy, including the changes and events recorded since load.
+// A command runs against a clone and the clone replaces the original only if it succeeds.
+func (s *State) Clone() *State {
+	c := *s
+	c.objects = make(map[Key]Object, len(s.objects))
+	for k, o := range s.objects {
+		c.objects[k] = o.DeepCopy()
+	}
+	c.events = append([]Event(nil), s.events...)
+	c.changed = make(map[Key]bool, len(s.changed))
+	for k := range s.changed {
+		c.changed[k] = true
+	}
+	c.deleted = make(map[Key]bool, len(s.deleted))
+	for k := range s.deleted {
+		c.deleted[k] = true
+	}
+	return &c
+}
+
 // Restore loads previously persisted objects without marking them changed.
 func (s *State) Restore(objs []Object) error {
 	for _, o := range objs {

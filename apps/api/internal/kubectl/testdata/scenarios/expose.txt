@@ -1,0 +1,126 @@
+$ kubectl expose deployment nginx --port=80 --name=nginx-svc
+--- exit 0
+--- stdout
+service/nginx-svc exposed
+--- stderr
+
+$ kubectl get svc nginx-svc -o wide
+--- exit 0
+--- stdout
+NAME        TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE   SELECTOR
+nginx-svc   ClusterIP   10.96.0.12   <none>        80/TCP    0s    app=nginx
+--- stderr
+
+$ kubectl get endpoints nginx-svc
+--- exit 0
+--- stdout
+NAME        ENDPOINTS       AGE
+nginx-svc   10.244.1.2:80   0s
+--- stderr
+Warning: v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
+
+$ kubectl describe svc nginx-svc
+--- exit 0
+--- stdout
+Name:                     nginx-svc
+Namespace:                default
+Labels:                   app=nginx
+Annotations:              <none>
+Selector:                 app=nginx
+Type:                     ClusterIP
+IP Family Policy:         SingleStack
+IP Families:              IPv4
+IP:                       10.96.0.12
+IPs:                      10.96.0.12
+Port:                     <unset>  80/TCP
+TargetPort:               80/TCP
+Endpoints:                10.244.1.2:80
+Session Affinity:         None
+Internal Traffic Policy:  Cluster
+Events:                   <none>
+--- stderr
+
+$ kubectl expose deployment nginx --port=80 --name=nginx-svc
+--- exit 1 (CONFLICT)
+--- stdout
+--- stderr
+Error from server (AlreadyExists): services "nginx-svc" already exists
+
+$ kubectl expose deploy nginx --type=NodePort --target-port=80 --name=nginx-np
+--- exit 0
+--- stdout
+service/nginx-np exposed
+--- stderr
+
+$ kubectl get svc nginx-np
+--- exit 0
+--- stdout
+NAME       TYPE       CLUSTER-IP   EXTERNAL-IP   PORT(S)        AGE
+nginx-np   NodePort   10.96.0.13   <none>        80:32490/TCP   0s
+--- stderr
+
+$ kubectl expose pod typo
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: couldn't find port via --port flag or introspection
+See 'kubectl expose -h' for help and examples
+
+$ kubectl expose pod typo --port=8080
+--- exit 0
+--- stdout
+service/typo exposed
+--- stderr
+
+$ kubectl expose svc web --name=web-copy --port=8080 --target-port=http
+--- exit 0
+--- stdout
+service/web-copy exposed
+--- stderr
+
+$ kubectl expose ns default
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: cannot expose a Namespace
+
+$ kubectl expose deploy nope --port=80
+--- exit 1 (NOT_FOUND)
+--- stdout
+--- stderr
+Error from server (NotFound): deployments.apps "nope" not found
+
+$ kubectl expose deploy nginx --port=80 --name=lb --type=LoadBalancer --dry-run=client -o yaml
+--- exit 0
+--- stdout
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: nginx
+  name: lb
+  namespace: default
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    app: nginx
+  type: LoadBalancer
+status: {}
+--- stderr
+
+$ kubectl expose deploy nginx --port=80 --name=lb --type=LoadBalancer
+--- exit 0
+--- stdout
+service/lb exposed
+--- stderr
+
+$ kubectl get svc lb
+--- exit 0
+--- stdout
+NAME   TYPE           CLUSTER-IP   EXTERNAL-IP   PORT(S)        AGE
+lb     LoadBalancer   10.96.0.16   <pending>     80:30088/TCP   0s
+--- stderr
+

@@ -455,7 +455,7 @@ func runConfig(args []string, env Env, p *Parsed) (Result, *Failure) {
 		}
 		return Result{Stdout: fmt.Sprintf("Switched to context %q.\n", contextName)}, nil
 	case "set-context":
-		return Result{}, reject(CodeUnsupported, "error: 'kubectl config set-context' changes your kubeconfig, which isn't available yet; use -n <namespace> on each command for now")
+		return setContext(pos, fl, env)
 	}
 	return Result{}, reject(CodeUnsupported, "error: 'kubectl config %s' isn't supported: the simulator has a single built-in context", pos[0])
 }
@@ -463,7 +463,7 @@ func runConfig(args []string, env Env, p *Parsed) (Result, *Failure) {
 // ---- rollout ----
 
 func runRollout(args []string, env Env, p *Parsed) (Result, *Failure) {
-	pos, fl, f := parseFlags(args, "rollout", []flagDef{{Long: "revision", Value: true}, {Long: "watch", Short: "w"}, {Long: "timeout", Value: true}})
+	pos, fl, f := parseFlags(args, "rollout", []flagDef{{Long: "revision", Value: true}, {Long: "to-revision", Value: true}, {Long: "watch", Short: "w"}, {Long: "timeout", Value: true}})
 	if f != nil {
 		return Result{}, f
 	}
@@ -477,9 +477,9 @@ func runRollout(args []string, env Env, p *Parsed) (Result, *Failure) {
 	sub := pos[0]
 	p.Subcommand = sub
 	switch sub {
-	case "status", "history":
-	case "undo", "restart", "pause", "resume":
-		return Result{}, reject(CodeUnsupported, "error: 'kubectl rollout %s' changes the cluster, and changing the simulated cluster isn't available yet", sub)
+	case "status", "history", "undo", "restart":
+	case "pause", "resume":
+		return Result{}, reject(CodeUnsupported, "error: 'kubectl rollout %s' isn't simulated: paused Deployments aren't part of the simulator", sub)
 	default:
 		return Result{}, reject(CodeUnsupported, "error: unknown command %q for \"kubectl rollout\"", sub)
 	}
@@ -501,8 +501,13 @@ func runRollout(args []string, env Env, p *Parsed) (Result, *Failure) {
 	if !ok {
 		return Result{}, reject(CodeNotFound, "%s", strings.TrimSuffix(notFound(tg.t, name), "\n"))
 	}
-	if sub == "status" {
+	switch sub {
+	case "status":
 		return rolloutStatus(d), nil
+	case "undo":
+		return rolloutUndo(env, d, fl.str("to-revision"))
+	case "restart":
+		return rolloutRestart(env, d)
 	}
 	return rolloutHistory(env, d, fl.str("revision"))
 }

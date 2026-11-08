@@ -83,7 +83,7 @@ test("another learner's lab is not found", async ({ browser }) => {
   expect((await post(intruder, `labs/${labId}/finish`, { "Idempotency-Key": "intruder-key-1" })).status()).toBe(404);
 });
 
-test("the terminal runs read-only kubectl commands and keeps history", async ({ page }) => {
+test("the terminal runs kubectl commands, changes the cluster and keeps history", async ({ page }) => {
   await signIn(page, testIdentity("term"));
   await startLab(page);
   const command = page.getByRole("textbox", { name: "Command" });
@@ -99,17 +99,22 @@ test("the terminal runs read-only kubectl commands and keeps history", async ({ 
 
   await command.fill("kubectl scale deploy nginx --replicas=3");
   await command.press("Enter");
-  await expect(output).toContainText("changing the simulated cluster isn't available yet");
+  await expect(output).toContainText("deployment.apps/nginx scaled");
+  // The resource list refreshes with the Pods the ReplicaSet created.
+  await expect(page.getByRole("main").locator("header").first().getByText("Version 2")).toBeVisible();
 
   // Up arrow recalls the previous command.
   await command.press("ArrowUp");
   await expect(command).toHaveValue("kubectl scale deploy nginx --replicas=3");
   await command.fill("");
 
-  // History survives a reload; the cluster didn't change.
+  // History and the change survive a reload.
   await page.reload();
   await expect(page.getByRole("log", { name: "Terminal output" })).toContainText("Command: kubectl get pods");
-  await expect(page.getByRole("main").locator("header").first().getByText("Version 1")).toBeVisible();
+  await expect(page.getByRole("main").locator("header").first().getByText("Version 2")).toBeVisible();
+  await command.fill("kubectl get deploy nginx");
+  await command.press("Enter");
+  await expect(output).toContainText(/nginx\s+3\/3/);
 
   // clear only clears the screen.
   await command.fill("clear");

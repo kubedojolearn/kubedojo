@@ -199,14 +199,14 @@ var goldenCommands = []string{
 	"kubectl rollout history deployment/nginx",
 	"kubectl rollout history deployment/nginx --revision=1",
 	"kubectl rollout status svc/web",
-	"kubectl rollout undo deploy/nginx",
+	"kubectl rollout pause deploy/nginx",
 	"help",
 	"kubectl",
 	"kubectl get --help",
 	"kubectl help logs",
 	"clear",
 	"",
-	"kubectl scale deploy nginx --replicas=3",
+	"kubectl edit deploy nginx",
 	"kubectl exec -it typo -- sh",
 	"kubectl port-forward svc/web 8080:80",
 	"kubectl frobnicate",
@@ -386,11 +386,16 @@ func TestSecretValuesAreRedactedInHistory(t *testing.T) {
 func TestPlanClassifiesMutations(t *testing.T) {
 	for in, mutating := range map[string]bool{
 		"kubectl get pods": false,
-		"kubectl -n shop scale deploy x --replicas=2": true,
-		"kubectl apply -f manifests/web.yaml":         true,
-		"kubectl delete pod x":                        true,
-		"kubectl describe pod x":                      false,
-		"kubectl get pods; kubectl delete pod":        false, // rejected, never mutating
+		"kubectl -n shop scale deploy x --replicas=2":           true,
+		"kubectl apply -f manifests/web.yaml":                   true,
+		"kubectl delete pod x":                                  true,
+		"kubectl describe pod x":                                false,
+		"kubectl get pods; kubectl delete pod":                  false, // rejected, never mutating
+		"kubectl rollout undo deploy/x":                         true,
+		"kubectl -n shop rollout restart deploy/x":              true,
+		"kubectl rollout status deploy/x":                       false,
+		"kubectl config set-context --current --namespace=shop": true,
+		"kubectl config view":                                   false,
 	} {
 		if got := Plan(in).Mutating; got != mutating {
 			t.Errorf("%q: mutating=%v", in, got)

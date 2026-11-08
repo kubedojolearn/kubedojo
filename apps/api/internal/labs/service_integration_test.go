@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"go.yaml.in/yaml/v3"
 
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/labs"
@@ -71,6 +72,7 @@ func count(rs []resource, kind string) int {
 
 type setup struct {
 	svc    *labs.Service
+	pool   *pgxpool.Pool
 	user   uuid.UUID
 	lesson testdb.Lesson
 }
@@ -80,6 +82,7 @@ func newSetup(t *testing.T) setup {
 	pool := testdb.New(t)
 	return setup{
 		svc:    labs.NewService(pool),
+		pool:   pool,
 		user:   testdb.CreateUser(t, pool, "learner"),
 		lesson: testdb.CreateLaunchableLesson(t, pool, "scale", nginxFixture(t)),
 	}

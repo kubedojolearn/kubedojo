@@ -1,0 +1,49 @@
+$ kubectl edit deploy nginx
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: 'kubectl edit' opens a text editor, which the browser terminal doesn't have. Change the manifest in the lab's YAML editor, then run kubectl apply -f <file>.
+
+$ kubectl patch deploy nginx -p '{}'
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: 'kubectl patch' isn't supported in the simulator. Use kubectl apply -f, kubectl set, kubectl scale or kubectl label instead.
+
+$ kubectl replace -f manifests/web.yaml
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: 'kubectl replace' isn't supported in the simulator. Use kubectl apply -f <file>.
+
+$ kubectl apply -f manifests/web.yaml
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: -f reads manifests from the lab's YAML editor, which isn't available yet. For now, use kubectl create deployment|namespace|configmap|secret|service, kubectl run and kubectl expose.
+
+$ kubectl delete -f manifests/web.yaml
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: -f reads manifests from the lab's YAML editor, which isn't available yet. For now, use kubectl create deployment|namespace|configmap|secret|service, kubectl run and kubectl expose.
+
+$ kubectl create cronjob x --image=busybox --schedule='* * * * *'
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: CronJobs are not part of the KubeDojo simulator yet. Run 'kubectl api-resources' to see what is.
+
+$ kubectl create deployment x --image=nginx:1.27 --dry-run
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: flag needs an argument: --dry-run
+See 'kubectl create --help' for usage.
+
+$ kubectl run x --image=nginx:1.27 --overrides='{}'
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: --overrides isn't supported; write a manifest in the lab editor and use kubectl apply -f
+

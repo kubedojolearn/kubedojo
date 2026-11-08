@@ -1,0 +1,5 @@
+$ kubectl rollout pause deploy/nginx
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: 'kubectl rollout pause' isn't simulated: paused Deployments aren't part of the simulator
