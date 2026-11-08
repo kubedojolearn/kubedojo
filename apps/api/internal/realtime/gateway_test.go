@@ -152,7 +152,7 @@ func TestSessionRunsCommandsAndForwardsNotifications(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer c.CloseNow()
+	defer func() { _ = c.CloseNow() }()
 	sendAuth(t, c, strings.Repeat("a", 43))
 	ok := read(t, c, "auth.ok")
 	if ok["snapshotVersion"] != float64(7) || ok["sessionId"] != labA.String() || ok["heartbeatIntervalMs"] != float64(150) {
@@ -221,7 +221,7 @@ func TestConnectionsAreAuthenticated(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer c.CloseNow()
+			defer func() { _ = c.CloseNow() }()
 			if tc.first != nil {
 				write(t, c, tc.first)
 			}
@@ -249,7 +249,7 @@ func TestRateLimitsAndReplacement(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer c.CloseNow()
+		defer func() { _ = c.CloseNow() }()
 		sendAuth(t, c, strings.Repeat("a", 43))
 		read(t, c, "auth.ok")
 		conns = append(conns, c)

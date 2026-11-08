@@ -107,7 +107,7 @@ func (h *Hub) Listen(ctx context.Context, rdb *goredis.Client) {
 	for ctx.Err() == nil {
 		sub := rdb.PSubscribe(ctx, "lab:*")
 		ch := sub.Channel()
-		backoff = time.Second
+		started := time.Now()
 		for msg := range ch {
 			labID, err := uuid.Parse(strings.TrimPrefix(msg.Channel, "lab:"))
 			if err != nil {
@@ -123,6 +123,9 @@ func (h *Hub) Listen(ctx context.Context, rdb *goredis.Client) {
 		_ = sub.Close()
 		if ctx.Err() != nil {
 			return
+		}
+		if time.Since(started) > time.Minute {
+			backoff = time.Second // it worked for a while: start the backoff over
 		}
 		h.log.Warn("lab notification subscription ended; resubscribing", "backoff", backoff.String())
 		select {
