@@ -10,19 +10,19 @@ import (
 // a learner asks for goes through Create, Update or Remove, so it is validated like a real
 // request and refused with the API server's reasons.
 
-// NotFoundError: the object, or the namespace a new object would live in, doesn't exist.
+// NotFoundError means the object, or the namespace a new object would live in, doesn't exist.
 type NotFoundError struct{ Kind, Name string }
 
 func (e *NotFoundError) Error() string { return fmt.Sprintf("%s %q not found", e.Kind, e.Name) }
 
-// AlreadyExistsError: an object with this kind, namespace and name exists.
+// AlreadyExistsError means an object with this kind, namespace and name exists.
 type AlreadyExistsError struct{ Kind, Name string }
 
 func (e *AlreadyExistsError) Error() string {
 	return fmt.Sprintf("%s %q already exists", e.Kind, e.Name)
 }
 
-// ForbiddenError: the cluster refuses the operation, e.g. deleting a system namespace.
+// ForbiddenError means the cluster refuses the operation, e.g. deleting a system namespace.
 type ForbiddenError struct{ Kind, Name, Reason string }
 
 func (e *ForbiddenError) Error() string {
