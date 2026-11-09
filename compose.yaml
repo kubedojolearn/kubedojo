@@ -78,6 +78,7 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
       REDIS_URL: redis://redis:6379/0
       API_JWT_PUBLIC_KEYS: ${API_JWT_PUBLIC_KEYS:?run make setup}
+      WS_ALLOWED_ORIGINS: ${WS_ALLOWED_ORIGINS:-http://localhost:8000}
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }

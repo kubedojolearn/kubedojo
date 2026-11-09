@@ -167,6 +167,7 @@ async function LabView({ params }: Props) {
             <Terminal
               labId={lab.id}
               active={active}
+              version={lab.version}
               initial={history.map((c) => ({
                 key: c.requestId,
                 input: c.input,

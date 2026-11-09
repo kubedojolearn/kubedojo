@@ -45,6 +45,7 @@ import (
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/ratelimit"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/redis"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/progress"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/realtime"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/users"
 )
 
@@ -100,6 +101,24 @@ func serve() error {
 	if _, err := rand.Read(cursorKey); err != nil {
 		return err
 	}
+	labService := labs.NewService(pool)
+	limiter := ratelimit.NewRedis(rdb)
+	ips, err := ratelimit.NewClientIPResolver(cfg.TrustedProxyCIDRs)
+	if err != nil {
+		return err
+	}
+	tickets := realtime.NewTickets(rdb)
+	var gateway http.Handler
+	if len(cfg.WSAllowedOrigins) > 0 {
+		hub := realtime.NewHub(log)
+		go hub.Listen(ctx, rdb)
+		gateway = &realtime.Gateway{
+			Log: log, Tickets: tickets, Labs: labService, Hub: hub, Limiter: limiter, IPs: ips,
+			AllowedOrigins: cfg.WSAllowedOrigins,
+		}
+	} else {
+		log.Warn("WS_ALLOWED_ORIGINS is empty: lab WebSockets are disabled and terminals use REST")
+	}
 	router := httpapi.NewRouter(httpapi.Deps{
 		Log: log,
 		Health: health.Handler{
@@ -111,12 +130,14 @@ func serve() error {
 		Users:          userStore,
 		Catalog:        courses.NewService(pool),
 		Progress:       progress.NewService(pool),
-		Labs:           labs.NewService(pool),
+		Labs:           labService,
 		Accounts:       account.NewService(pool),
 		Admin:          admin.NewService(pool),
 		Settings:       userStore,
 		Cursors:        httpx.NewCursors(cursorKey),
-		Limiter:        ratelimit.NewRedis(rdb),
+		Limiter:        limiter,
+		Realtime:       gateway,
+		Tickets:        tickets,
 		RequestTimeout: cfg.RequestTimeout,
 		MaxBodyBytes:   cfg.MaxBodyBytes,
 	})

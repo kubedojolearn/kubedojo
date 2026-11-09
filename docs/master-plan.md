@@ -50,7 +50,7 @@ A new learner can: (1) visit the landing page, (2) sign in with GitHub, (3) comp
 | UI | Tailwind CSS, shadcn/ui, Lucide | Fast, accessible, consistent system |
 | Data fetching | TanStack Query | Client queries, caching, mutation and refresh |
 | Local layout state | Zustand | Editor/terminal/graph panel settings |
-| Terminal | xterm.js | Browser terminal rendering; not server shell |
+| Terminal | Accessible HTML terminal ([ADR-0010](adr/0010-html-terminal.md); the plan first named xterm.js) | Browser terminal rendering; not server shell |
 | YAML editor | CodeMirror 6 ([ADR-0009](adr/0009-codemirror-yaml-editor.md); the plan first named Monaco) | Diagnostics and manifest editing |
 | Resource graph | React Flow (@xyflow/react) | Node/edge visual learning |
 | Backend | Go + Chi | Modular API and deterministic engine |
@@ -635,6 +635,22 @@ The controllers themselves (Deployment rollouts and history, ReplicaSet scaling,
 
 - Golden transcripts for apply, create -f and delete -f, including merges with imperative changes, namespace mismatches, unsupported kinds and fields, and bad YAML.
 - Integration tests for seeding, reset, stale saves, limits, ownership and ended labs; contract tests for the new routes; a browser test that edits, applies and reloads.
+
+### Part 14/20 — Live terminal
+
+**Priority:** P0 · **Dependencies:** Parts 10–11 · **Outcome:** the terminal runs over a live connection and every open view of a lab stays current.
+
+#### Implement
+
+1. `POST /labs/{id}/ws-ticket`: a one-use, 30-second ticket in Redis (only its hash is stored), for the learner's active lab.
+2. The WebSocket gateway at `/api/v1/ws/labs/{id}` (docs/api/websocket.md): Origin allowlist (`WS_ALLOWED_ORIGINS`), 30 upgrades per IP per minute, an auth frame within 3 s, commands through the same at-most-once path as REST and the same per-user command limit, heartbeats that also notice labs ended elsewhere, idle and replacement closes, and the documented close codes. It sits outside the request-deadline middleware.
+3. The worker relays committed `lab.state_changed` outbox events to Redis (`lab:<id>`); each API process subscribes once and forwards `state.changed` to its sockets for that lab (ADR-0004).
+4. The terminal connects with backoff and a fresh ticket per attempt, runs commands over the socket, falls back to HTTP (same request ID, so nothing runs twice) and refreshes the lab when a newer version is announced. The terminal stays HTML (ADR-0010).
+
+#### Acceptance tests / gate
+
+- Gateway tests over a real socket: auth (bad, foreign, late, missing, old protocol), commands, notifications, protocol errors, rate limits, replacement, labs ending.
+- Integration tests for one-use tickets and the outbox relay; client tests for reconnects, ordering and fallbacks; a stack test where a change in one tab appears in another.
 
 ### Part 15/20 — Cluster map
 

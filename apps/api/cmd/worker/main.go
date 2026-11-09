@@ -17,6 +17,7 @@ import (
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/database"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/logging"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/redis"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/realtime"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/worker"
 )
 
@@ -63,9 +64,14 @@ func run() error {
 	}
 	defer func() { _ = rdb.Close() }()
 
-	// Jobs are registered here as their parts land (outbox publishing: Part 14 with the
-	// WebSocket gateway; other retention: Part 19).
+	// Jobs are registered here as their parts land (other retention: Part 19).
 	runner := worker.NewRunner(log)
+	// Lab state notifications for WebSockets (ADR-0004). Short interval: it is the latency of
+	// "another tab changed this lab", and an idle pass is one indexed query.
+	runner.Register(worker.Job{Name: "outbox-relay", Interval: 500 * time.Millisecond, Run: func(ctx context.Context) error {
+		_, err := realtime.RelayOutbox(ctx, pool, rdb)
+		return err
+	}})
 	runner.Register(worker.Job{Name: "lab-expiry", Interval: time.Minute, Run: func(ctx context.Context) error {
 		n, err := labs.ExpireIdle(ctx, pool)
 		if n > 0 {

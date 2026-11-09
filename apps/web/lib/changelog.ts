@@ -8,6 +8,15 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-11-08",
+    title: "A live terminal",
+    items: [
+      "The lab terminal keeps a live connection to your cluster, shown as Live next to it.",
+      "Open a lab in two tabs and a change in one appears in the other within a moment.",
+      "If the connection drops, the terminal reconnects on its own and keeps working meanwhile; a command is never run twice.",
+    ],
+  },
+  {
+    date: "2026-11-08",
     title: "A map of your cluster",
     items: [
       "The Cluster tab draws your lab as a map: which Deployment owns which ReplicaSet and Pods, which Pods each Service sends traffic to, where Pods run and which ConfigMaps and Secrets they read.",
