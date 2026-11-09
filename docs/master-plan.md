@@ -51,7 +51,7 @@ A new learner can: (1) visit the landing page, (2) sign in with GitHub, (3) comp
 | Data fetching | TanStack Query | Client queries, caching, mutation and refresh |
 | Local layout state | Zustand | Editor/terminal/graph panel settings |
 | Terminal | xterm.js | Browser terminal rendering; not server shell |
-| YAML editor | Monaco Editor | Diagnostics and manifest editing |
+| YAML editor | CodeMirror 6 ([ADR-0009](adr/0009-codemirror-yaml-editor.md); the plan first named Monaco) | Diagnostics and manifest editing |
 | Resource graph | React Flow (@xyflow/react) | Node/edge visual learning |
 | Backend | Go + Chi | Modular API and deterministic engine |
 | Persistent DB | PostgreSQL | User, courses, sessions, commands, resource data |
@@ -613,3 +613,25 @@ The parts below were specified when they were built (November 2026), from this p
 - Golden transcripts for each command family, run as sequences against a fresh lab; replaying a sequence reproduces it byte for byte.
 - Every non-mutating or failed command leaves state, clock and version unchanged; every mutating one advances the clock exactly one tick and leaves a reconciled cluster.
 - Concurrent commands on one lab serialize; a limit breach refuses the whole command.
+
+### Part 12/20 — Controllers
+
+**Priority:** P0 · **Dependencies:** Part 09 · **Outcome:** controllers behave correctly under every command learners can run.
+
+The controllers themselves (Deployment rollouts and history, ReplicaSet scaling, scheduler, kubelet profiles, Service addresses, EndpointSlices, garbage collection) shipped with Part 09, because fixtures need them to load. Part 12's remaining work, done alongside Part 11, was what learner commands exposed: ReplicaSet release and adoption of Pods, Deployment adoption of orphaned ReplicaSets, NodePort allocation conflicts, and fixed-point reconciliation after every mutation with the whole command refused on a limit breach.
+
+### Part 13/20 — Virtual files, YAML editor and apply
+
+**Priority:** P0 · **Dependencies:** Parts 11–12 · **Outcome:** learners write manifests and apply them declaratively.
+
+#### Implement
+
+1. `GET/PUT/DELETE /labs/{id}/files`: up to 20 files of 64 KiB under `manifests/`, optimistic concurrency with `baseUpdatedAt` (STALE_VERSION), seeded from the lesson's `initialFiles` on start and reset. Saving a file is not a cluster change and doesn't move the lab version.
+2. `kubectl apply -f`, `create -f [--save-config]`, `delete -f` and `create configmap|secret --from-file` over virtual files (or the whole `manifests` directory): multi-document YAML, `kind: List`, namespace rules, kubectl's error wording, `--dry-run=client`, `-o name`.
+3. `apply` is kubectl's client-side apply: `last-applied-configuration`, three-way merge with strategic-merge keys for containers, env and ports, kubectl's warning for objects not created by apply, and `created` / `configured` / `unchanged` reporting.
+4. A YAML editor in the lab (ADR-0009) with in-browser syntax diagnostics, Save (Ctrl/Cmd+S) and Apply, whose command also appears in the terminal.
+
+#### Acceptance tests / gate
+
+- Golden transcripts for apply, create -f and delete -f, including merges with imperative changes, namespace mismatches, unsupported kinds and fields, and bad YAML.
+- Integration tests for seeding, reset, stale saves, limits, ownership and ended labs; contract tests for the new routes; a browser test that edits, applies and reloads.

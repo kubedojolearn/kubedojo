@@ -280,6 +280,31 @@ func (labsFake) Commands(_ context.Context, _, id uuid.UUID, _ *labs.CommandCurs
 	return []labs.CommandResult{fakeCommand("kubectl get pods")}, &labs.CommandCursor{Sequence: 1}, labErr(id)
 }
 
+func fakeFile(path, content string) labs.LabFile {
+	return labs.LabFile{Path: path, Content: content, SizeBytes: len(content), UpdatedAt: time.Date(2026, 10, 23, 9, 0, 0, 0, time.UTC)}
+}
+
+func (labsFake) Files(_ context.Context, _, id uuid.UUID) ([]labs.LabFile, error) {
+	return []labs.LabFile{fakeFile("manifests/web.yaml", "apiVersion: v1\nkind: Namespace\nmetadata:\n  name: web\n")}, labErr(id)
+}
+
+func (labsFake) SaveFile(_ context.Context, _, id uuid.UUID, path, content string, base *time.Time) (labs.LabFile, error) {
+	if path == "manifests/full.yaml" {
+		return labs.LabFile{}, labs.ErrFileLimit
+	}
+	if base != nil && !base.Equal(time.Date(2026, 10, 23, 9, 0, 0, 0, time.UTC)) {
+		return labs.LabFile{}, labs.ErrStaleFile
+	}
+	return fakeFile(path, content), labErr(id)
+}
+
+func (labsFake) DeleteFile(_ context.Context, _, id uuid.UUID, path string) error {
+	if path == "manifests/nope.yaml" {
+		return labs.ErrFileNotFound
+	}
+	return labErr(id)
+}
+
 type limiter struct{}
 
 func (limiter) Allow(ctx context.Context, key string, _ int, _ time.Duration) (ratelimit.Decision, error) {

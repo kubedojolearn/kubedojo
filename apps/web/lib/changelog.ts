@@ -8,6 +8,16 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-11-08",
+    title: "Write manifests in the lab editor",
+    items: [
+      "Every lab has a YAML editor. Lessons that start from a manifest put it there for you.",
+      "kubectl apply -f, create -f and delete -f read the files you save, and Apply in the editor saves and applies in one step.",
+      "apply works like kubectl's: it remembers what you last applied and merges your changes with what the controllers and your other commands did.",
+      "YAML mistakes are underlined as you type, and the cluster explains anything it can't accept when you apply.",
+    ],
+  },
+  {
+    date: "2026-11-08",
     title: "Change your cluster from the terminal",
     items: [
       "kubectl create, run, expose, scale, set image, set env, label, annotate, delete, rollout undo and rollout restart now work in every lab.",

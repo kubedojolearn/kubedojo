@@ -131,9 +131,13 @@ func (sv *Service) RunCommand(ctx context.Context, userID, labID, requestID uuid
 		if err != nil {
 			return Change{}, err
 		}
+		files, err := fileMap(ctx, q, s.ID)
+		if err != nil {
+			return Change{}, err
+		}
 
 		started := time.Now()
-		res := kubectl.Plan(input).Run(kubectl.Env{State: state, Events: events})
+		res := kubectl.Plan(input).Run(kubectl.Env{State: state, Events: events, Files: files})
 		duration := time.Since(started).Milliseconds()
 		if res.Err != nil {
 			// A simulator bug: roll back and report an internal error, never a half-applied command.

@@ -3,8 +3,10 @@ package labs
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"regexp"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -24,6 +26,9 @@ type Lifecycle interface {
 	Snapshot(ctx context.Context, userID, labID uuid.UUID) (Snapshot, error)
 	Events(ctx context.Context, userID, labID uuid.UUID, afterSeq int64, limit int32) ([]SimEvent, *int64, error)
 	RunCommand(ctx context.Context, userID, labID, requestID uuid.UUID, input string) (CommandResult, error)
+	Files(ctx context.Context, userID, labID uuid.UUID) ([]LabFile, error)
+	SaveFile(ctx context.Context, userID, labID uuid.UUID, path, content string, base *time.Time) (LabFile, error)
+	DeleteFile(ctx context.Context, userID, labID uuid.UUID, path string) error
 	Commands(ctx context.Context, userID, labID uuid.UUID, before *CommandCursor, limit int32) ([]CommandResult, *CommandCursor, error)
 }
 
@@ -50,6 +55,16 @@ func MapError(err error) error {
 		return httpx.Validation("Invalid command.", httpx.FieldError{Field: "input", Message: "must be 1-16384 bytes of UTF-8 text without NUL characters"})
 	case errors.Is(err, ErrIdempotencyConflict):
 		return httpx.Conflict("This Idempotency-Key was already used for a different request.")
+	case errors.Is(err, ErrInvalidFile):
+		return httpx.Validation("Invalid file.",
+			httpx.FieldError{Field: "path", Message: "must look like manifests/<name>.yaml (lowercase letters, digits, '.', '_' or '-')"},
+			httpx.FieldError{Field: "content", Message: "must be UTF-8 text of at most 65536 bytes without NUL characters"})
+	case errors.Is(err, ErrFileLimit):
+		return httpx.Validation(fmt.Sprintf("A lab can hold at most %d files.", MaxFiles), httpx.FieldError{Field: "path", Message: "lab file limit reached"})
+	case errors.Is(err, ErrFileNotFound):
+		return httpx.NotFound("File")
+	case errors.Is(err, ErrStaleFile):
+		return &httpx.Error{Status: http.StatusConflict, Code: httpx.CodeStaleVersion, Message: "This file changed since you opened it (perhaps in another tab). Reload it before saving."}
 	}
 	return httpx.Internal(err)
 }
@@ -325,4 +340,78 @@ func (h Handler) ListCommands(w http.ResponseWriter, r *http.Request) error {
 		return h.writePage(w, r, cmds, *next)
 	}
 	return h.writePage(w, r, cmds, nil)
+}
+
+// ListFiles handles GET /labs/{labId}/files.
+func (h Handler) ListFiles(w http.ResponseWriter, r *http.Request) error {
+	p, err := principal(r)
+	if err != nil {
+		return err
+	}
+	id, err := LabID(r)
+	if err != nil {
+		return err
+	}
+	files, err := h.Labs.Files(r.Context(), p.UserID, id)
+	if err != nil {
+		return MapError(err)
+	}
+	httpx.WriteJSON(w, r, http.StatusOK, files)
+	return nil
+}
+
+// SaveFileRequest is the PUT /labs/{labId}/files body.
+type SaveFileRequest struct {
+	Path          string     `json:"path"`
+	Content       *string    `json:"content"`
+	BaseUpdatedAt *time.Time `json:"baseUpdatedAt"`
+}
+
+// SaveFile handles PUT /labs/{labId}/files.
+func (h Handler) SaveFile(w http.ResponseWriter, r *http.Request) error {
+	p, err := principal(r)
+	if err != nil {
+		return err
+	}
+	id, err := LabID(r)
+	if err != nil {
+		return err
+	}
+	var req SaveFileRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		return err
+	}
+	if req.Content == nil {
+		return httpx.Validation("Invalid file.", httpx.FieldError{Field: "content", Message: "is required"})
+	}
+	if !validFile(req.Path, *req.Content) {
+		return MapError(ErrInvalidFile)
+	}
+	file, err := h.Labs.SaveFile(r.Context(), p.UserID, id, req.Path, *req.Content, req.BaseUpdatedAt)
+	if err != nil {
+		return MapError(err)
+	}
+	httpx.WriteJSON(w, r, http.StatusOK, file)
+	return nil
+}
+
+// DeleteFile handles DELETE /labs/{labId}/files?path=manifests/<name>.yaml.
+func (h Handler) DeleteFile(w http.ResponseWriter, r *http.Request) error {
+	p, err := principal(r)
+	if err != nil {
+		return err
+	}
+	id, err := LabID(r)
+	if err != nil {
+		return err
+	}
+	path := r.URL.Query().Get("path")
+	if !FilePath.MatchString(path) {
+		return MapError(ErrInvalidFile)
+	}
+	if err := h.Labs.DeleteFile(r.Context(), p.UserID, id, path); err != nil {
+		return MapError(err)
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
 }

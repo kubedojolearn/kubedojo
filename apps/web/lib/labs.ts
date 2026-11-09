@@ -69,6 +69,17 @@ export async function getCommandHistory(labId: string, limit = 50): Promise<Comm
   return [...data.data].reverse();
 }
 
+export type LabFile = Schemas["LabFile"];
+
+/** The lab editor's virtual files, in path order. */
+export async function getFiles(labId: string): Promise<LabFile[]> {
+  const { data, response } = await apiClient(await subject()).GET("/api/v1/labs/{labId}/files", {
+    params: { path: { labId } },
+  });
+  if (!data) throw new Error(`files request failed (${response.status})`);
+  return data.data;
+}
+
 /** The learner's active labs, most recently used first. */
 export async function listActiveLabs(limit = 5): Promise<Lab[]> {
   const { data, response } = await apiClient(await subject()).GET("/api/v1/labs", {

@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect, unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
-import { ArrowLeft, Clock, History, Network, SquareTerminal } from "lucide-react";
+import { ArrowLeft, Clock, FileCode2, History, Network, SquareTerminal } from "lucide-react";
 import { Belt } from "@/components/brand/belt";
 import { CardListSkeleton, LoadingStatus } from "@/components/feedback/loading";
 import { EmptyState } from "@/components/feedback/states";
+import { EditorPanel } from "@/components/lab/editor-panel";
 import { LabControls } from "@/components/lab/lab-controls";
 import { ResourceList } from "@/components/lab/resource-list";
 import { Terminal } from "@/components/lab/terminal";
@@ -14,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getLesson, type LessonDetail } from "@/lib/catalog";
 import { courseOrder, courseTitle } from "@/lib/curriculum";
-import { getCommandHistory, getLab, getRecentEvents, getSnapshot, isLabId, type Lab } from "@/lib/labs";
+import { getCommandHistory, getFiles, getLab, getRecentEvents, getSnapshot, isLabId, type Lab } from "@/lib/labs";
 
 export const metadata: Metadata = { title: "Lab" };
 
@@ -54,10 +55,11 @@ async function LabView({ params }: Props) {
   // Ownership first: someone else's lab is simply not found.
   const lab = await getLab(sessionId);
   if (!lab) notFound();
-  const [snapshot, events, history, lesson] = await Promise.all([
+  const [snapshot, events, history, files, lesson] = await Promise.all([
     getSnapshot(sessionId),
     getRecentEvents(sessionId, 30),
     getCommandHistory(sessionId),
+    getFiles(sessionId),
     lessonFor(lab),
   ]);
   if (!snapshot) notFound();
@@ -105,6 +107,9 @@ async function LabView({ params }: Props) {
             <TabsTrigger value="terminal">
               <SquareTerminal aria-hidden /> Terminal
             </TabsTrigger>
+            <TabsTrigger value="editor">
+              <FileCode2 aria-hidden /> Editor
+            </TabsTrigger>
             <TabsTrigger value="cluster">
               <Network aria-hidden /> Cluster
             </TabsTrigger>
@@ -112,6 +117,10 @@ async function LabView({ params }: Props) {
               <History aria-hidden /> Events
             </TabsTrigger>
           </TabsList>
+          {/* The editor and terminal stay mounted, so drafts and output survive switching tabs. */}
+          <TabsContent value="editor" className="mt-3 data-[state=inactive]:hidden" forceMount>
+            <EditorPanel labId={lab.id} active={active} initial={files} />
+          </TabsContent>
           <TabsContent value="cluster" className="mt-3">
             <p className="mb-4 text-sm text-muted-foreground">
               Every object in your simulated cluster ({snapshot.resources.length}). Nothing here runs on a real cluster.
@@ -142,7 +151,7 @@ async function LabView({ params }: Props) {
               </ol>
             )}
           </TabsContent>
-          <TabsContent value="terminal" className="mt-3">
+          <TabsContent value="terminal" className="mt-3 data-[state=inactive]:hidden" forceMount>
             <Terminal
               labId={lab.id}
               active={active}

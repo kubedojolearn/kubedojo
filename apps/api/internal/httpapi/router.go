@@ -49,6 +49,8 @@ var (
 	labLifecycleLimit = ratelimit.Rule{Name: "lab-lifecycle", Limit: 30, Window: time.Hour}
 	// Terminal commands (simulator-compatibility.md §5).
 	commandLimit = ratelimit.Rule{Name: "commands", Limit: 100, Window: time.Minute}
+	// Editor saves (autosave included) and deletes of virtual files.
+	fileSaveLimit = ratelimit.Rule{Name: "lab-files", Limit: 120, Window: time.Minute}
 	// A full export reads every row the learner has; deletion is once per account.
 	exportLimit   = ratelimit.Rule{Name: "export", Limit: 10, Window: time.Hour}
 	deletionLimit = ratelimit.Rule{Name: "deletion", Limit: 5, Window: time.Hour, FailClosed: true}
@@ -123,6 +125,9 @@ func NewRouter(d Deps) http.Handler {
 			r.Method(http.MethodGet, "/labs/{labId}/events", httpx.Handler(labsHandler.ListEvents))
 			r.Method(http.MethodGet, "/labs/{labId}/commands", httpx.Handler(labsHandler.ListCommands))
 			r.With(ratelimit.PerUser(d.Limiter, commandLimit)).Method(http.MethodPost, "/labs/{labId}/commands", httpx.Handler(labsHandler.RunCommand))
+			r.Method(http.MethodGet, "/labs/{labId}/files", httpx.Handler(labsHandler.ListFiles))
+			r.With(ratelimit.PerUser(d.Limiter, fileSaveLimit)).Method(http.MethodPut, "/labs/{labId}/files", httpx.Handler(labsHandler.SaveFile))
+			r.With(ratelimit.PerUser(d.Limiter, fileSaveLimit)).Method(http.MethodDelete, "/labs/{labId}/files", httpx.Handler(labsHandler.DeleteFile))
 
 			// Admin: the role is read from the database for every request (never from the assertion).
 			r.Group(func(r chi.Router) {

@@ -733,7 +733,30 @@ paths:
         "400": { $ref: "#/components/responses/ValidationFailed" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: The lab has ended, or (STALE_VERSION) the file changed after baseUpdatedAt.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "410": { $ref: "#/components/responses/SessionExpired" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+    delete:
+      tags: [labs]
+      operationId: deleteLabFile
+      summary: Delete a virtual file
+      x-kubedojo-part: 13
+      parameters:
+        - name: path
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/VirtualPath" }
+      responses:
+        "204": { description: Deleted. }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
+        "410": { $ref: "#/components/responses/SessionExpired" }
         "429": { $ref: "#/components/responses/RateLimited" }
 
   /api/v1/labs/{labId}/answers:

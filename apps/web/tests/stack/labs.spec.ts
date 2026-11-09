@@ -121,3 +121,46 @@ test("the terminal runs kubectl commands, changes the cluster and keeps history"
   await command.press("Enter");
   await expect(page.getByRole("log", { name: "Terminal output" })).toContainText("Try: kubectl get pods");
 });
+
+test("the editor saves manifests and applies them to the cluster", async ({ page }) => {
+  await signIn(page, testIdentity("editor"));
+  await startLab(page);
+  await page.getByRole("tab", { name: "Editor" }).click();
+  const editor = page.getByRole("tabpanel", { name: "Editor" });
+
+  // The lesson's starting manifest is there.
+  await expect(editor.getByRole("button", { name: "nginx.yaml", exact: true })).toBeVisible();
+  const code = editor.getByRole("textbox", { name: "Editor for manifests/nginx.yaml" });
+  await expect(code).toContainText("replicas: 1");
+
+  // Change replicas to 3 and apply: the file is saved and kubectl apply runs.
+  await code.click();
+  await page.keyboard.press("ControlOrMeta+a");
+  const manifest = (await code.innerText()).replace("replicas: 1", "replicas: 3");
+  await page.keyboard.insertText(manifest);
+  await expect(editor.getByText("Unsaved", { exact: true })).toBeVisible();
+  await editor.getByRole("button", { name: "Apply" }).click();
+  await expect(editor.getByRole("status")).toContainText("deployment.apps/nginx configured");
+  await expect(page.getByRole("main").locator("header").first().getByText("Version 2")).toBeVisible();
+
+  // The command is in the terminal too, and the saved file survives a reload.
+  await page.getByRole("tab", { name: "Terminal" }).click();
+  await expect(page.getByRole("log", { name: "Terminal output" })).toContainText(
+    "kubectl apply -f manifests/nginx.yaml",
+  );
+  await page.reload();
+  await page.getByRole("tab", { name: "Editor" }).click();
+  await expect(
+    page.getByRole("tabpanel", { name: "Editor" }).getByRole("textbox", { name: "Editor for manifests/nginx.yaml" }),
+  ).toContainText("replicas: 3");
+
+  // New files start from a template and can be used with -f.
+  await page.getByRole("textbox", { name: "New file name" }).fill("extra");
+  await page.getByRole("button", { name: "Create file" }).click();
+  await expect(page.getByRole("button", { name: "extra.yaml", exact: true })).toBeVisible();
+  await page.getByRole("tab", { name: "Terminal" }).click();
+  const command = page.getByRole("textbox", { name: "Command" });
+  await command.fill("kubectl apply -f manifests/extra.yaml");
+  await command.press("Enter");
+  await expect(page.getByRole("log", { name: "Terminal output" })).toContainText("deployment.apps/web created");
+});

@@ -170,3 +170,24 @@ WHERE session_id = sqlc.arg(session_id)
   AND (sqlc.narg(before_seq)::bigint IS NULL OR sequence < sqlc.narg(before_seq)::bigint)
 ORDER BY sequence DESC
 LIMIT sqlc.arg(page_limit);
+
+-- name: ListLabFiles :many
+SELECT * FROM lab_files WHERE session_id = $1 ORDER BY path;
+
+-- name: GetLabFile :one
+SELECT * FROM lab_files WHERE session_id = $1 AND path = $2;
+
+-- name: CountLabFiles :one
+SELECT count(*) FROM lab_files WHERE session_id = $1;
+
+-- name: UpsertLabFile :one
+INSERT INTO lab_files (session_id, path, content)
+VALUES ($1, $2, $3)
+ON CONFLICT (session_id, path) DO UPDATE SET content = EXCLUDED.content, updated_at = now()
+RETURNING *;
+
+-- name: DeleteLabFile :execrows
+DELETE FROM lab_files WHERE session_id = $1 AND path = $2;
+
+-- name: DeleteAllLabFiles :exec
+DELETE FROM lab_files WHERE session_id = $1;

@@ -1,0 +1,345 @@
+$ kubectl apply -f manifests/web.yaml
+--- exit 0
+--- stdout
+deployment.apps/web created
+service/web configured
+--- stderr
+Warning: resource services/web is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources created declaratively by either kubectl create --save-config or kubectl apply. The missing annotation will be patched automatically.
+
+$ kubectl get deploy,svc,pods -l app=web
+--- exit 0
+--- stdout
+NAME                  READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/web   2/2     2            2           0s
+
+NAME          TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+service/web   ClusterIP   10.96.0.10   <none>        80/TCP    50m
+
+NAME                       READY   STATUS    RESTARTS   AGE
+pod/web-cgdwpr5bzz-pzqvd   1/1     Running   0          0s
+pod/web-cgdwpr5bzz-t4mvn   1/1     Running   0          0s
+--- stderr
+
+$ kubectl apply -f manifests/web.yaml
+--- exit 0
+--- stdout
+deployment.apps/web unchanged
+service/web unchanged
+--- stderr
+
+$ kubectl get deploy web -o yaml
+--- exit 0
+--- stdout
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"labels":{"app":"web"},"name":"web","namespace":"default"},"spec":{"replicas":2,"selector":{"matchLabels":{"app":"web"}},"template":{"metadata":{"labels":{"app":"web"}},"spec":{"containers":[{"image":"nginx:1.27","name":"web","ports":[{"containerPort":80}]}]}}}}
+    kubedojo.dev/simulated: "true"
+  creationTimestamp: "2026-01-01T00:00:10Z"
+  generation: 1
+  labels:
+    app: web
+  name: web
+  namespace: default
+  resourceVersion: "70"
+  uid: 92d2510f-bb0e-412b-b8dd-a1232865cd13
+spec:
+  replicas: 2
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: web
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - image: nginx:1.27
+        name: web
+        ports:
+        - containerPort: 80
+          protocol: TCP
+        resources: {}
+      restartPolicy: Always
+status:
+  availableReplicas: 2
+  conditions:
+  - message: Deployment has minimum availability.
+    reason: MinimumReplicasAvailable
+    status: "True"
+    type: Available
+  - message: ReplicaSet "web-cgdwpr5bzz" has successfully progressed.
+    reason: NewReplicaSetAvailable
+    status: "True"
+    type: Progressing
+  observedGeneration: 1
+  readyReplicas: 2
+  replicas: 2
+  updatedReplicas: 2
+--- stderr
+
+$ kubectl scale deploy web --replicas=5
+--- exit 0
+--- stdout
+deployment.apps/web scaled
+--- stderr
+
+$ kubectl set env deploy/web DEBUG=1
+--- exit 0
+--- stdout
+deployment.apps/web env updated
+--- stderr
+
+$ kubectl apply -f manifests/web.yaml
+--- exit 0
+--- stdout
+deployment.apps/web configured
+service/web unchanged
+--- stderr
+
+$ kubectl get deploy web -o wide
+--- exit 0
+--- stdout
+NAME   READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES       SELECTOR
+web    2/2     2            2           30s   web          nginx:1.27   app=web
+--- stderr
+
+$ kubectl describe deploy web
+--- exit 0
+--- stdout
+Name:               web
+Namespace:          default
+CreationTimestamp:  Thu, 01 Jan 2026 00:00:10 +0000
+Labels:             app=web
+Annotations:        deployment.kubernetes.io/revision: 2
+                    kubectl.kubernetes.io/last-applied-configuration: {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"labels":{"app":"web"},"name":"web","namespace":"default"},"spec":{"replicas":2,"selector":{"matchLabels":{"app":"web"}},"template":{"metadata":{"labels":{"app":"web"}},"spec":{"containers":[{"image":"nginx:1.27","name":"web","ports":[{"containerPort":80}]}]}}}}
+
+Selector:               app=web
+Replicas:               2 desired | 2 updated | 2 total | 2 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=web
+  Containers:
+   web:
+    Image:      nginx:1.27
+    Port:       80/TCP
+    Host Port:  0/TCP
+    Environment:
+      DEBUG:       1
+    Mounts:        <none>
+  Volumes:         <none>
+  Node-Selectors:  <none>
+  Tolerations:     <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      True    MinimumReplicasAvailable
+  Progressing    True    NewReplicaSetAvailable
+OldReplicaSets:  <none>
+NewReplicaSet:   web-t2vgljrfqr (2/2 replicas created)
+Events:
+  Type    Reason             Age   From                   Message
+  ----    ------             ----  ----                   -------
+  Normal  ScalingReplicaSet  30s   deployment-controller  Scaled up replica set web-cgdwpr5bzz from 0 to 2
+  Normal  ScalingReplicaSet  20s   deployment-controller  Scaled up replica set web-cgdwpr5bzz from 2 to 5
+  Normal  ScalingReplicaSet  10s   deployment-controller  Scaled up replica set web-t2vgljrfqr from 0 to 2
+  Normal  ScalingReplicaSet  10s   deployment-controller  Scaled down replica set web-cgdwpr5bzz from 5 to 4
+  Normal  ScalingReplicaSet  10s   deployment-controller  Scaled up replica set web-t2vgljrfqr from 2 to 3
+  Normal  ScalingReplicaSet  10s   deployment-controller  Scaled down replica set web-cgdwpr5bzz from 4 to 2
+  Normal  ScalingReplicaSet  10s   deployment-controller  Scaled up replica set web-t2vgljrfqr from 3 to 5
+  Normal  ScalingReplicaSet  10s   deployment-controller  Scaled down replica set web-cgdwpr5bzz from 2 to 1
+  Normal  ScalingReplicaSet  10s   deployment-controller  Scaled down replica set web-cgdwpr5bzz from 1 to 0
+  Normal  ScalingReplicaSet  0s    deployment-controller  Scaled down replica set web-t2vgljrfqr from 5 to 2
+--- stderr
+
+$ kubectl apply -f manifests/web-v2.yaml
+--- exit 0
+--- stdout
+deployment.apps/web configured
+--- stderr
+
+$ kubectl rollout history deploy/web
+--- exit 0
+--- stdout
+deployment.apps/web
+REVISION  CHANGE-CAUSE
+1         <none>
+2         <none>
+3         <none>
+
+--- stderr
+
+$ kubectl get deploy web --show-labels
+--- exit 0
+--- stdout
+NAME   READY   UP-TO-DATE   AVAILABLE   AGE   LABELS
+web    3/3     3            3           40s   <none>
+--- stderr
+
+$ kubectl apply -f manifests/nginx.yaml
+--- exit 0
+--- stdout
+deployment.apps/nginx configured
+--- stderr
+Warning: resource deployments.apps/nginx is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources created declaratively by either kubectl create --save-config or kubectl apply. The missing annotation will be patched automatically.
+
+$ kubectl get deploy nginx
+--- exit 0
+--- stdout
+NAME    READY   UP-TO-DATE   AVAILABLE   AGE
+nginx   3/3     3            3           61m
+--- stderr
+
+$ kubectl apply -f manifests/team.yaml
+--- exit 0
+--- stdout
+namespace/team created
+configmap/settings created
+--- stderr
+
+$ kubectl get cm -n team
+--- exit 0
+--- stdout
+NAME       DATA   AGE
+settings   1      0s
+--- stderr
+
+$ kubectl apply -f manifests/web.yaml -n shop
+--- exit 0
+--- stdout
+deployment.apps/web created
+service/web created
+--- stderr
+
+$ kubectl get all -n shop
+--- exit 0
+--- stdout
+NAME                          READY   STATUS             RESTARTS      AGE
+pod/orders-vqtcsddx9v-flhpw   0/1     CrashLoopBackOff   6 (70s ago)   11m
+pod/orders-vqtcsddx9v-q7rwf   0/1     CrashLoopBackOff   6 (70s ago)   11m
+pod/web-cgdwpr5bzz-vc6kn      1/1     Running            0             0s
+pod/web-cgdwpr5bzz-z4fst      1/1     Running            0             0s
+
+NAME          TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+service/web   ClusterIP   10.96.0.12   <none>        80/TCP    0s
+
+NAME                     READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/orders   0/2     2            0           11m
+deployment.apps/web      2/2     2            2           0s
+
+NAME                                DESIRED   CURRENT   READY   AGE
+replicaset.apps/orders-vqtcsddx9v   2         2         0       11m
+replicaset.apps/web-cgdwpr5bzz      2         2         2       0s
+--- stderr
+
+$ kubectl apply -f manifests/shop-config.yaml -n default
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: the namespace from the provided object "shop" does not match the namespace "default". You must pass '--namespace=shop' to perform this operation.
+
+$ kubectl apply -f manifests/shop-config.yaml
+--- exit 0
+--- stdout
+configmap/orders-config created
+--- stderr
+
+$ kubectl get pods -n shop
+--- exit 0
+--- stdout
+NAME                      READY   STATUS    RESTARTS   AGE
+orders-vqtcsddx9v-flhpw   1/1     Running   6          11m
+orders-vqtcsddx9v-q7rwf   1/1     Running   6          11m
+web-cgdwpr5bzz-vc6kn      1/1     Running   0          10s
+web-cgdwpr5bzz-z4fst      1/1     Running   0          10s
+--- stderr
+
+$ kubectl apply -f manifests/web.yaml --dry-run=client
+--- exit 0
+--- stdout
+deployment.apps/web configured (dry run)
+service/web unchanged (dry run)
+--- stderr
+
+$ kubectl apply -f manifests/web.yaml -o name
+--- exit 0
+--- stdout
+deployment.apps/web
+service/web
+--- stderr
+
+$ kubectl apply -f manifests/bad.yaml
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: error parsing manifests/bad.yaml: error converting YAML to JSON: yaml: line 4: did not find expected key
+
+$ kubectl apply -f manifests/job.yaml
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: resource mapping not found for name: "nightly" from "manifests/job.yaml": no matches for kind "Job" in version "batch/v1"
+ⓘ Job isn't part of the KubeDojo simulator. Run 'kubectl api-resources' to see what is.
+
+$ kubectl apply -f manifests/probe.yaml
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: error validating "manifests/probe.yaml": field livenessProbe in Pod is not supported by the KubeDojo simulator
+
+$ kubectl apply -f web.yaml
+--- exit 1 (NOT_FOUND)
+--- stdout
+--- stderr
+error: the path "web.yaml" does not exist
+ⓘ Files from the lab editor live in manifests/, e.g. manifests/web.yaml
+
+$ kubectl apply -f manifests/nope.yaml
+--- exit 1 (NOT_FOUND)
+--- stdout
+--- stderr
+error: the path "manifests/nope.yaml" does not exist
+ⓘ The lab's files are: manifests/bad.yaml, manifests/job.yaml, manifests/nginx.yaml, manifests/probe.yaml, manifests/shop-config.yaml, manifests/team.yaml, manifests/web-v2.yaml, manifests/web.yaml
+
+$ kubectl apply -f https://example.com/web.yaml
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: the simulator can't fetch manifests from URLs; paste the manifest into the lab editor and pass its path
+
+$ kubectl apply -f -
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: reading manifests from stdin isn't supported; save the manifest in the lab editor and pass its path
+
+$ kubectl apply
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: must specify one of -f and -k
+ⓘ Save a manifest in the lab editor, then: kubectl apply -f manifests/<file>.yaml
+
+$ kubectl apply -f manifests/web.yaml --server-side
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: server-side apply isn't simulated; kubectl apply without --server-side works the same for these lessons
+
+$ kubectl apply -k manifests
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: kustomize (-k) isn't part of the simulator; apply the manifests with -f
+
