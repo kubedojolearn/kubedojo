@@ -164,3 +164,35 @@ test("the editor saves manifests and applies them to the cluster", async ({ page
   await command.press("Enter");
   await expect(page.getByRole("log", { name: "Terminal output" })).toContainText("deployment.apps/web created");
 });
+
+test("checking work grades the goals, completes the lab and awards XP once", async ({ page }) => {
+  await signIn(page, testIdentity("grade"));
+  await startLab(page);
+  const goals = page.getByRole("complementary", { name: "Goals" });
+
+  // Nothing done yet: the goal fails with the lesson's feedback.
+  await goals.getByRole("button", { name: "Check my work" }).click();
+  await expect(goals).toContainText("0% of the goals pass");
+  await expect(goals).toContainText("Compare READY with what you asked for.");
+
+  // A hint, in order, with its cost shown.
+  await goals.getByRole("button", { name: /Show hint 1 of 3/ }).click();
+  await expect(goals).toContainText("Try kubectl get deployments.");
+
+  const command = page.getByRole("textbox", { name: "Command" });
+  await command.fill("kubectl scale deployment nginx --replicas=3");
+  await command.press("Enter");
+  await expect(page.getByRole("log", { name: "Terminal output" })).toContainText("deployment.apps/nginx scaled");
+
+  await goals.getByRole("button", { name: "Check my work" }).click();
+  await expect(goals).toContainText("Lab complete");
+  // 100 base XP, minus 10 for the hint; the first check failed, so no first-try bonus.
+  await expect(goals).toContainText("You earned 90 XP.");
+  await expect(goals).toContainText("Achievement unlocked: First steps");
+
+  // The lab is completed and read-only; the result is still shown after a reload.
+  await page.reload();
+  await expect(page.getByRole("main").locator("header").first().getByText("Completed", { exact: true })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Goals" })).toContainText("Lab complete");
+  await expect(page.getByRole("textbox", { name: "Command" })).toBeDisabled();
+});

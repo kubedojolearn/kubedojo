@@ -17,6 +17,8 @@ import (
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth/authtest"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/courses"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/gamification"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/grading"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/health"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/labs"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/httpx"
@@ -303,6 +305,49 @@ func (labsFake) DeleteFile(_ context.Context, _, id uuid.UUID, path string) erro
 		return labs.ErrFileNotFound
 	}
 	return labErr(id)
+}
+
+func (labsFake) SubmitAnswer(_ context.Context, _, id uuid.UUID, goalID, answer string) (labs.AnswerStatus, error) {
+	switch goalID {
+	case "nope":
+		return labs.AnswerStatus{}, labs.ErrGoalNotFound
+	case "used-up":
+		return labs.AnswerStatus{}, labs.ErrNoSubmissionsLeft
+	}
+	return labs.AnswerStatus{GoalID: goalID, Submissions: 1, SubmissionsRemaining: 9, LastAnswer: &answer}, labErr(id)
+}
+
+func (labsFake) RevealHint(_ context.Context, _, id uuid.UUID, index int) (labs.Hint, error) {
+	switch {
+	case index > 2:
+		return labs.Hint{}, labs.ErrHintNotFound
+	case index > 0:
+		return labs.Hint{}, labs.ErrHintOrder
+	}
+	return labs.Hint{Index: 0, Text: "Try kubectl get deployments.", PenaltyXP: 10, HintsUsed: 1, HintCount: 3}, labErr(id)
+}
+
+func fakeValidation() labs.ValidationResult {
+	return labs.ValidationResult{
+		AttemptID: uuid.MustParse("cdcdcdcd-cdcd-4cdc-8cdc-cdcdcdcdcdcd"), Passed: true, Score: 100, XPAwarded: 125,
+		Goals: []grading.Result{{GoalID: "deployment-replicas", Passed: true, Message: "Done."}}, LabState: "completed",
+		EvaluatedAt: time.Date(2026, 10, 23, 9, 0, 0, 0, time.UTC), Achievements: []gamification.Award{{Key: "first-lesson", Title: "First steps"}},
+	}
+}
+
+func (labsFake) Validate(_ context.Context, _, id uuid.UUID, _ string) (labs.ValidationResult, error) {
+	return fakeValidation(), labErr(id)
+}
+
+func (labsFake) Goals(_ context.Context, _, id uuid.UUID) (labs.LabGoals, error) {
+	last := fakeValidation()
+	last.Achievements = []gamification.Award{}
+	answer := "3"
+	return labs.LabGoals{
+		Answers:   []labs.AnswerStatus{{GoalID: "pod-count", Submissions: 1, SubmissionsRemaining: 9, LastAnswer: &answer}},
+		Hints:     []labs.Hint{{Index: 0, Text: "Try kubectl get deployments.", PenaltyXP: 10, HintsUsed: 1, HintCount: 3}},
+		HintCount: 3, PenaltyXP: 10, LastAttempt: &last,
+	}, labErr(id)
 }
 
 type limiter struct{}

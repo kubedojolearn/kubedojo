@@ -80,6 +80,17 @@ export async function getFiles(labId: string): Promise<LabFile[]> {
   return data.data;
 }
 
+export type LabGoals = Schemas["LabGoals"];
+
+/** Answers, revealed hints and the latest check, for the goals panel. */
+export async function getGoals(labId: string): Promise<LabGoals> {
+  const { data, response } = await apiClient(await subject()).GET("/api/v1/labs/{labId}/goals", {
+    params: { path: { labId } },
+  });
+  if (!data) throw new Error(`goals request failed (${response.status})`);
+  return data.data;
+}
+
 /** The learner's active labs, most recently used first. */
 export async function listActiveLabs(limit = 5): Promise<Lab[]> {
   const { data, response } = await apiClient(await subject()).GET("/api/v1/labs", {

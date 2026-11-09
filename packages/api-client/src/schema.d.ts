@@ -492,6 +492,28 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/labs/{labId}/goals": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        labId: components["parameters"]["LabId"];
+      };
+      cookie?: never;
+    };
+    /**
+     * Answers, revealed hints and the latest check, for the goals panel
+     * @description Works on ended labs too. Expected answers and unrevealed hints are never included.
+     */
+    get: operations["getLabGoals"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/labs/{labId}/validate": {
     parameters: {
       query?: never;
@@ -802,6 +824,8 @@ export interface components {
       /** @enum {string} */
       type: "state" | "answer" | "observation";
       description: string;
+      /** @description The question an answer goal asks. */
+      prompt?: string;
       /** @enum {string} */
       input?: "text" | "number" | "choice";
       choices?: string[];
@@ -1063,6 +1087,26 @@ export interface components {
       labState: components["schemas"]["LabState"];
       /** Format: date-time */
       evaluatedAt: string;
+      /** @description Achievements this check unlocked (empty on later reads). */
+      achievements?: {
+        key: string;
+        title: string;
+      }[];
+    };
+    AnswerStatus: {
+      goalId: components["schemas"]["GoalId"];
+      submissions: number;
+      submissionsRemaining: number;
+      /** @description The learner's own latest answer (never the expected one). */
+      lastAnswer: string | null;
+    };
+    LabGoals: {
+      answers: components["schemas"]["AnswerStatus"][];
+      /** @description Revealed hints, in order. */
+      hints: components["schemas"]["Hint"][];
+      hintCount: number;
+      hintPenaltyXp: number;
+      lastAttempt: components["schemas"]["ValidationResult"] | null;
     };
     Hint: {
       index: number;
@@ -2089,10 +2133,7 @@ export interface operations {
         };
         content: {
           "application/json": {
-            data: {
-              goalId: components["schemas"]["GoalId"];
-              submissionsRemaining: number;
-            };
+            data: components["schemas"]["AnswerStatus"];
             meta: components["schemas"]["Meta"];
           };
         };
@@ -2100,7 +2141,44 @@ export interface operations {
       400: components["responses"]["ValidationFailed"];
       401: components["responses"]["Unauthenticated"];
       404: components["responses"]["NotFound"];
-      409: components["responses"]["Conflict"];
+      /** @description The lab has ended, or the goal has no submissions left. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      410: components["responses"]["SessionExpired"];
+      429: components["responses"]["RateLimited"];
+    };
+  };
+  getLabGoals: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        labId: components["parameters"]["LabId"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Goal state. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: components["schemas"]["LabGoals"];
+            meta: components["schemas"]["Meta"];
+          };
+        };
+      };
+      401: components["responses"]["Unauthenticated"];
+      404: components["responses"]["NotFound"];
       429: components["responses"]["RateLimited"];
     };
   };
@@ -2134,6 +2212,7 @@ export interface operations {
       401: components["responses"]["Unauthenticated"];
       404: components["responses"]["NotFound"];
       409: components["responses"]["Conflict"];
+      410: components["responses"]["SessionExpired"];
       429: components["responses"]["RateLimited"];
     };
   };
@@ -2164,6 +2243,7 @@ export interface operations {
       401: components["responses"]["Unauthenticated"];
       404: components["responses"]["NotFound"];
       409: components["responses"]["Conflict"];
+      410: components["responses"]["SessionExpired"];
       429: components["responses"]["RateLimited"];
     };
   };

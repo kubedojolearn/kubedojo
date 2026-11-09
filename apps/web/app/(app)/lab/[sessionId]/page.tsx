@@ -7,6 +7,7 @@ import { Belt } from "@/components/brand/belt";
 import { CardListSkeleton, LoadingStatus } from "@/components/feedback/loading";
 import { EmptyState } from "@/components/feedback/states";
 import { EditorPanel } from "@/components/lab/editor-panel";
+import { GoalsPanel } from "@/components/lab/goals-panel";
 import { LabControls } from "@/components/lab/lab-controls";
 import { ResourceList } from "@/components/lab/resource-list";
 import { Terminal } from "@/components/lab/terminal";
@@ -15,7 +16,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getLesson, type LessonDetail } from "@/lib/catalog";
 import { courseOrder, courseTitle } from "@/lib/curriculum";
-import { getCommandHistory, getFiles, getLab, getRecentEvents, getSnapshot, isLabId, type Lab } from "@/lib/labs";
+import {
+  getCommandHistory,
+  getFiles,
+  getGoals,
+  getLab,
+  getRecentEvents,
+  getSnapshot,
+  isLabId,
+  type Lab,
+} from "@/lib/labs";
 
 export const metadata: Metadata = { title: "Lab" };
 
@@ -55,11 +65,12 @@ async function LabView({ params }: Props) {
   // Ownership first: someone else's lab is simply not found.
   const lab = await getLab(sessionId);
   if (!lab) notFound();
-  const [snapshot, events, history, files, lesson] = await Promise.all([
+  const [snapshot, events, history, files, goals, lesson] = await Promise.all([
     getSnapshot(sessionId),
     getRecentEvents(sessionId, 30),
     getCommandHistory(sessionId),
     getFiles(sessionId),
+    getGoals(sessionId),
     lessonFor(lab),
   ]);
   if (!snapshot) notFound();
@@ -178,11 +189,15 @@ async function LabView({ params }: Props) {
               Goals
             </h2>
             {lesson ? (
-              <ol className="mt-2 list-decimal space-y-2 pl-5">
-                {lesson.goals.map((g) => (
-                  <li key={g.id}>{g.description}</li>
-                ))}
-              </ol>
+              <div className="mt-3">
+                <GoalsPanel
+                  labId={lab.id}
+                  active={active}
+                  goals={lesson.goals}
+                  reward={lesson.reward}
+                  initial={goals}
+                />
+              </div>
             ) : (
               <p className="mt-2 text-muted-foreground">
                 The goals are on the{" "}
@@ -192,9 +207,6 @@ async function LabView({ params }: Props) {
                 .
               </p>
             )}
-            <p className="mt-3 text-xs text-muted-foreground">
-              Automatic goal checks and hints arrive with the next release. For now, find the answers with kubectl.
-            </p>
           </div>
           <div>
             <h2 className="text-base font-bold">Try</h2>

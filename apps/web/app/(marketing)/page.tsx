@@ -54,7 +54,7 @@ const steps = [
   {
     verb: "prove it",
     title: "Goals checked against the cluster",
-    body: "The check looks at the state you produced, not the command you typed, so any correct approach passes. Automatic checking ships with the next release.",
+    body: "The check looks at the state you produced, not the command you typed, so any correct approach passes. Pass every goal to complete the lab and earn XP.",
   },
 ];
 

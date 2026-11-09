@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	dbgen "github.com/kubedojolearn/kubedojo/apps/api/db/generated"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/grading"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/simulator"
 )
 
@@ -23,10 +24,21 @@ type VirtualFile struct {
 	Content string `json:"content"`
 }
 
-// definition is what a lab needs from its challenge version.
+// Reward is a challenge's XP (challenge.schema.json reward).
+type Reward struct {
+	BaseXP               int32 `json:"baseXP"`
+	FirstTryBonusXP      int32 `json:"firstTryBonusXP"`
+	HintPenaltyPerHintXP int32 `json:"hintPenaltyPerHintXP"`
+}
+
+// definition is what a lab needs from its challenge version. Goals and hints are hidden from
+// learners: they leave the server only as grading results and revealed hint text.
 type definition struct {
 	Fixture      simulator.Fixture
 	InitialFiles []VirtualFile
+	Goals        []grading.Goal
+	Hints        []string
+	Reward       Reward
 }
 
 // fixtureCache holds parsed challenge definitions by challenge version. Published versions are
@@ -71,7 +83,10 @@ func (c *fixtureCache) get(ctx context.Context, q *dbgen.Queries, versionID uuid
 func parseDefinition(spec json.RawMessage) (definition, error) {
 	var doc struct {
 		Challenge struct {
-			InitialFiles []VirtualFile `json:"initialFiles"`
+			InitialFiles []VirtualFile  `json:"initialFiles"`
+			Goals        []grading.Goal `json:"goals"`
+			Hints        []string       `json:"hints"`
+			Reward       Reward         `json:"reward"`
 		} `json:"challenge"`
 		Fixture *simulator.Fixture `json:"fixture"`
 	}
@@ -81,7 +96,8 @@ func parseDefinition(spec json.RawMessage) (definition, error) {
 	if doc.Fixture == nil {
 		return definition{}, fmt.Errorf("challenge spec has no fixture")
 	}
-	return definition{Fixture: *doc.Fixture, InitialFiles: doc.Challenge.InitialFiles}, nil
+	c := doc.Challenge
+	return definition{Fixture: *doc.Fixture, InitialFiles: c.InitialFiles, Goals: c.Goals, Hints: c.Hints, Reward: c.Reward}, nil
 }
 
 // newSeed returns a random non-negative seed (lab_sessions.seed is a signed bigint).
