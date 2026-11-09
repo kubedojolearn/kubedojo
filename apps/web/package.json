@@ -29,6 +29,7 @@
     "@codemirror/view": "6.43.15",
     "@kubedojo/api-client": "workspace:*",
     "@lezer/highlight": "1.2.5",
+    "@xyflow/react": "12.12.1",
     "class-variance-authority": "0.7.1",
     "cmdk": "1.1.1",
     "cn": "0.5.2",
