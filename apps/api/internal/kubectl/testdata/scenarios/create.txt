@@ -1,0 +1,231 @@
+$ kubectl create deployment api --image=kubedojo/demo-api:1.0 --replicas=2 --port=8080
+--- exit 0
+--- stdout
+deployment.apps/api created
+--- stderr
+
+$ kubectl get deploy,rs,pods -l app=api
+--- exit 0
+--- stdout
+NAME                  READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/api   2/2     2            2           0s
+
+NAME                             DESIRED   CURRENT   READY   AGE
+replicaset.apps/api-5cs5x6ljzs   2         2         2       0s
+
+NAME                       READY   STATUS    RESTARTS   AGE
+pod/api-5cs5x6ljzs-pzqvd   1/1     Running   0          0s
+pod/api-5cs5x6ljzs-t4mvn   1/1     Running   0          0s
+--- stderr
+
+$ kubectl create deploy api --image=nginx:1.27
+--- exit 1 (CONFLICT)
+--- stdout
+--- stderr
+Error from server (AlreadyExists): deployments.apps "api" already exists
+
+$ kubectl create deployment two --image=nginx:1.27 --image=redis:7 --dry-run=client -o yaml
+--- exit 0
+--- stdout
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: two
+  name: two
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: two
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: two
+    spec:
+      containers:
+      - image: nginx:1.27
+        name: nginx
+        resources: {}
+      - image: redis:7
+        name: redis
+        resources: {}
+status: {}
+--- stderr
+
+$ kubectl create deployment big --image=nginx:1.27 --replicas=60
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+The Deployment "big" is invalid: spec.replicas: Invalid value: 60: KubeDojo allows 0 to 50 replicas
+
+$ kubectl create deployment noimage
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: required flag(s) "image" not set
+
+$ kubectl create namespace dev
+--- exit 0
+--- stdout
+namespace/dev created
+--- stderr
+
+$ kubectl create ns Dev
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+The Namespace "Dev" is invalid: metadata.name: Invalid value: "Dev": a lowercase RFC 1123 label must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character
+
+$ kubectl create configmap settings --from-literal=mode=prod --from-literal=level=info -n dev
+--- exit 0
+--- stdout
+configmap/settings created
+--- stderr
+
+$ kubectl create cm dup --from-literal=a=1 --from-literal=a=2
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: cannot add key "a", another key by that name already exists in Data for ConfigMap "dup"
+
+$ kubectl create cm bad --from-literal=nokey
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: invalid literal source nokey, expected key=value
+
+$ kubectl get cm settings -n dev -o yaml
+--- exit 0
+--- stdout
+apiVersion: v1
+data:
+  level: info
+  mode: prod
+kind: ConfigMap
+metadata:
+  annotations:
+    kubedojo.dev/simulated: "true"
+  creationTimestamp: "2026-01-01T00:00:30Z"
+  name: settings
+  namespace: dev
+  resourceVersion: "70"
+  uid: cbf3f4c2-10aa-4c11-8722-d16d8c3f0f43
+--- stderr
+
+$ kubectl create secret generic db --from-literal=password=practice-only
+--- exit 0
+--- stdout
+secret/db created
+--- stderr
+ⓘ Simulated Secrets are for practice. Never put real passwords, tokens or keys in a lab.
+
+$ kubectl describe secret db
+--- exit 0
+--- stdout
+Name:         db
+Namespace:    default
+Labels:       <none>
+Annotations:  <none>
+
+Type:  Opaque
+
+Data
+====
+password:  13 bytes
+--- stderr
+
+$ kubectl create secret tls cert
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: tls Secrets aren't simulated; KubeDojo has Opaque Secrets only (kubectl create secret generic)
+
+$ kubectl create secret db2
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: unknown Secret type "db2"; use: kubectl create secret generic NAME --from-literal=KEY=VALUE
+
+$ kubectl create service nodeport api --tcp=80:8080 --node-port=30080
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+The Service "api" is invalid: spec.ports[0].nodePort: Invalid value: 30080: provided port is already allocated
+
+$ kubectl create service clusterip cache --tcp=6379
+--- exit 0
+--- stdout
+service/cache created
+--- stderr
+
+$ kubectl get svc -o wide
+--- exit 0
+--- stdout
+NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)        AGE   SELECTOR
+cache        ClusterIP   10.96.0.12   <none>        6379/TCP       0s    app=cache
+kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP        30d   <none>
+web          ClusterIP   10.96.0.10   <none>        80/TCP         50m   app=nginx
+web-np       NodePort    10.96.0.11   <none>        80:30080/TCP   34m   app=nginx
+--- stderr
+
+$ kubectl get endpointslices
+--- exit 0
+--- stdout
+NAME           ADDRESSTYPE   PORTS   ENDPOINTS    AGE
+cache-r29hs    IPv4          6379    <unset>      0s
+web-np-4fhqh   IPv4          80      10.244.1.2   34m
+web-sj9wz      IPv4          80      10.244.1.2   50m
+--- stderr
+
+$ kubectl create service externalname ext --tcp=80
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: ExternalName Services aren't simulated; use clusterip or nodeport
+
+$ kubectl create service clusterip nop
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: at least one tcp port specifier must be provided, e.g. --tcp=80:8080
+
+$ kubectl create job nightly --image=busybox
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: Jobs are not part of the KubeDojo simulator yet. Run 'kubectl api-resources' to see what is.
+
+$ kubectl create pod x
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: unknown or unsupported resource "pod" for 'kubectl create'. The simulator can create: deployment, namespace, configmap, secret generic, service clusterip|nodeport|loadbalancer.
+
+$ kubectl create
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: must specify one of -f and -k, or a resource to create, e.g. kubectl create deployment web --image=nginx:1.27
+See 'kubectl create -h' for help and examples
+
+$ kubectl create -f manifests/web.yaml
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: -f reads manifests from the lab's YAML editor, which isn't available yet. For now, use kubectl create deployment|namespace|configmap|secret|service, kubectl run and kubectl expose.
+
+$ kubectl get ns
+--- exit 0
+--- stdout
+NAME              STATUS   AGE
+default           Active   30d
+dev               Active   30s
+kube-node-lease   Active   30d
+kube-public       Active   30d
+kube-system       Active   30d
+shop              Active   25h
+--- stderr
+

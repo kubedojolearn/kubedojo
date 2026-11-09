@@ -5,14 +5,17 @@ package labs_test
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/labs"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/testdb"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/simulator"
 )
 
 // fixtureWithSecret adds a training Secret to the nginx fixture.
@@ -169,5 +172,103 @@ func TestCommandsRespectOwnershipAndLifecycle(t *testing.T) {
 	// A retry of a command that already ran still gets its result.
 	if r, err := svc.RunCommand(ctx, owner, lab.ID, id, "kubectl get pods"); err != nil || r.Sequence != 1 {
 		t.Fatalf("replay after end: %v %+v", err, r)
+	}
+}
+
+func TestMutatingCommandsCommitState(t *testing.T) {
+	s := newSetup(t)
+	lab, _, _ := s.svc.Create(ctx, s.user, s.lesson.VersionID)
+	before, _ := s.svc.Snapshot(ctx, s.user, lab.ID)
+
+	res, err := s.svc.RunCommand(ctx, s.user, lab.ID, uuid.New(), "kubectl scale deployment nginx --replicas=3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.ExitCode != 0 || !res.Mutated || res.SnapshotVersion != 2 || res.Stdout != "deployment.apps/nginx scaled\n" {
+		t.Fatalf("scale: %+v", res)
+	}
+	after, _ := s.svc.Snapshot(ctx, s.user, lab.ID)
+	if after.Version != 2 || !after.SimTime.Equal(before.SimTime.Add(10e9)) {
+		t.Fatalf("version %d simTime %s (was %s)", after.Version, after.SimTime, before.SimTime)
+	}
+	pods, _ := s.svc.RunCommand(ctx, s.user, lab.ID, uuid.New(), "kubectl get pods --no-headers")
+	if n := strings.Count(pods.Stdout, "Running"); n != 3 {
+		t.Fatalf("want 3 running Pods after a reload from the database, got %d:\n%s", n, pods.Stdout)
+	}
+	// The controllers' events were stored with the new version.
+	events, _, _ := s.svc.Events(ctx, s.user, lab.ID, 0, 500)
+	scaled := false
+	for _, e := range events {
+		if e.Reason == "ScalingReplicaSet" && e.Version == 2 && strings.Contains(e.Message, "from 1 to 3") {
+			scaled = true
+		}
+	}
+	if !scaled {
+		t.Fatal("no ScalingReplicaSet event at version 2")
+	}
+	var outbox int
+	_ = s.pool.QueryRow(ctx, `SELECT count(*) FROM outbox_events WHERE aggregate_id = $1 AND event_type = 'lab.state_changed'`, lab.ID).Scan(&outbox)
+	if outbox != 1 {
+		t.Fatalf("outbox events: %d", outbox)
+	}
+
+	// A refused mutation changes nothing: no version, no clock, no objects.
+	bad, err := s.svc.RunCommand(ctx, s.user, lab.ID, uuid.New(), "kubectl delete namespace default")
+	if err != nil || bad.ExitCode == 0 || bad.Mutated || bad.SnapshotVersion != 2 {
+		t.Fatalf("refused delete: %v %+v", err, bad)
+	}
+	if again, _ := s.svc.Snapshot(ctx, s.user, lab.ID); again.Version != 2 || !again.SimTime.Equal(after.SimTime) {
+		t.Fatalf("refused command changed the lab: version %d", again.Version)
+	}
+
+	// The kubeconfig namespace persists without moving the clock.
+	if r, err := s.svc.RunCommand(ctx, s.user, lab.ID, uuid.New(), "kubectl config set-context --current --namespace=kube-system"); err != nil || !r.Mutated {
+		t.Fatalf("set-context: %v %+v", err, r)
+	}
+	snap, _ := s.svc.Snapshot(ctx, s.user, lab.ID)
+	if snap.CurrentNamespace != "kube-system" || !snap.SimTime.Equal(after.SimTime) {
+		t.Fatalf("namespace %q simTime %s", snap.CurrentNamespace, snap.SimTime)
+	}
+
+	// Reset brings back the fixture, keeping the version moving forward.
+	reset, err := s.svc.Reset(ctx, s.user, lab.ID, "reset-key-0001")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reset.Version <= snap.Version {
+		t.Fatalf("reset version %d after %d", reset.Version, snap.Version)
+	}
+	pods, _ = s.svc.RunCommand(ctx, s.user, lab.ID, uuid.New(), "kubectl get pods -n default --no-headers")
+	if n := strings.Count(pods.Stdout, "Running"); n != 1 {
+		t.Fatalf("after reset want 1 Pod, got %d", n)
+	}
+}
+
+func TestConcurrentCommandsSerialize(t *testing.T) {
+	s := newSetup(t)
+	lab, _, _ := s.svc.Create(ctx, s.user, s.lesson.VersionID)
+	const n = 6
+	var wg sync.WaitGroup
+	for i := 0; i < n; i++ {
+		wg.Go(func() {
+			r, err := s.svc.RunCommand(ctx, s.user, lab.ID, uuid.New(), fmt.Sprintf("kubectl create configmap cm-%d --from-literal=k=v", i))
+			if err != nil || r.ExitCode != 0 || !r.Mutated {
+				t.Errorf("create %d: %v %+v", i, err, r)
+			}
+		})
+	}
+	wg.Wait()
+	l, _ := s.svc.Get(ctx, s.user, lab.ID)
+	if l.Version != 1+n || l.CommandSeq != n {
+		t.Fatalf("version %d commandSeq %d", l.Version, l.CommandSeq)
+	}
+	cms, _ := s.svc.RunCommand(ctx, s.user, lab.ID, uuid.New(), "kubectl get configmaps --no-headers")
+	if got := strings.Count(cms.Stdout, "cm-"); got != n {
+		t.Fatalf("want %d ConfigMaps, got %d:\n%s", n, got, cms.Stdout)
+	}
+	// Every mutation moved the clock exactly one tick.
+	snap, _ := s.svc.Snapshot(ctx, s.user, lab.ID)
+	if want := simulator.DefaultEpoch.Add(time.Duration(n) * simulator.Tick); !snap.SimTime.Equal(want) {
+		t.Fatalf("simTime %s, want %s", snap.SimTime, want)
 	}
 }

@@ -1,0 +1,5 @@
+$ kubectl edit deploy nginx
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: 'kubectl edit' opens a text editor, which the browser terminal doesn't have. Change the manifest in the lab's YAML editor, then run kubectl apply -f <file>.

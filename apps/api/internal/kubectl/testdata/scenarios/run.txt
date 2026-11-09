@@ -1,0 +1,172 @@
+$ kubectl run web --image=nginx:1.27 --port=80 --env=MODE=prod --labels=app=web,tier=frontend
+--- exit 0
+--- stdout
+pod/web created
+--- stderr
+
+$ kubectl get pods -o wide --show-labels
+--- exit 0
+--- stdout
+NAME                     READY   STATUS             RESTARTS   AGE     IP           NODE     NOMINATED NODE   READINESS GATES   LABELS
+nginx-4fzxcz7snh-tbjxs   1/1     Running            0          60m     10.244.1.2   node-2   <none>           <none>            app=nginx,pod-template-hash=4fzxcz7snh
+picky                    0/1     Pending            0          2m10s   <none>       <none>   <none>           <none>            <none>
+typo                     0/1     ImagePullBackOff   0          5m10s   10.244.1.3   node-2   <none>           <none>            run=typo
+web                      1/1     Running            0          0s      10.244.1.4   node-2   <none>           <none>            app=web,tier=frontend
+--- stderr
+
+$ kubectl describe pod web
+--- exit 0
+--- stdout
+Name:             web
+Namespace:        default
+Priority:         0
+Service Account:  default
+Node:             node-2/192.168.49.3
+Start Time:       Thu, 01 Jan 2026 00:00:10 +0000
+Labels:           app=web
+                  tier=frontend
+Annotations:      <none>
+Status:           Running
+IP:               10.244.1.4
+IPs:
+  IP:  10.244.1.4
+Containers:
+  web:
+    Image:          nginx:1.27
+    Port:           80/TCP
+    Host Port:      0/TCP
+    State:          Running
+      Started:      Thu, 01 Jan 2026 00:00:10 +0000
+    Ready:          True
+    Restart Count:  0
+    Environment:
+      MODE:  prod
+    Mounts:  <none>
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True
+  Initialized                 True
+  Ready                       True
+  ContainersReady             True
+  PodScheduled                True
+Volumes:                      <none>
+QoS Class:                    BestEffort
+Node-Selectors:               <none>
+Tolerations:                  <none>
+Events:
+  Type    Reason     Age   From               Message
+  ----    ------     ----  ----               -------
+  Normal  Scheduled  0s    default-scheduler  Successfully assigned default/web to node-2
+  Normal  Pulled     0s    kubelet            Container image "nginx:1.27" already present on machine (simulated)
+  Normal  Created    0s    kubelet            Created container: web
+  Normal  Started    0s    kubelet            Started container web
+--- stderr
+
+$ kubectl run web --image=nginx:1.27
+--- exit 1 (CONFLICT)
+--- stdout
+--- stderr
+Error from server (AlreadyExists): pods "web" already exists
+
+$ kubectl run Web --image=nginx:1.27
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+The Pod "Web" is invalid: 
+* metadata.name: Invalid value: "Web": a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character
+* spec.containers[0].name: Invalid value: "Web"
+
+$ kubectl run broken --image=ngnix:1.27
+--- exit 0
+--- stdout
+pod/broken created
+--- stderr
+
+$ kubectl get pod broken
+--- exit 0
+--- stdout
+NAME     READY   STATUS             RESTARTS   AGE
+broken   0/1     ImagePullBackOff   0          0s
+--- stderr
+
+$ kubectl events --for pod/broken
+--- exit 0
+--- stdout
+LAST SEEN   TYPE      REASON      OBJECT       MESSAGE
+0s          Normal    Scheduled   pod/broken   Successfully assigned default/broken to node-2
+0s          Normal    Pulling     pod/broken   Pulling image "ngnix:1.27"
+0s          Warning   Failed      pod/broken   Failed to pull image "ngnix:1.27": rpc error: code = NotFound desc = failed to pull and unpack image "ngnix:1.27": not found (simulated registry)
+0s          Warning   Failed      pod/broken   Error: ErrImagePull
+0s          Normal    BackOff     pod/broken   Back-off pulling image "ngnix:1.27"
+0s          Warning   Failed      pod/broken   Error: ImagePullBackOff
+--- stderr
+
+$ kubectl run x --image=nginx:1.27 --restart=Never
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: --restart=Never isn't simulated: Pods in KubeDojo always restart their containers (--restart=Always)
+
+$ kubectl run x -it --rm --image=busybox
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: -it isn't supported: no containers actually run in the simulator, so there is no shell to attach to. Create the Pod, then use kubectl logs and kubectl describe.
+
+$ kubectl run x --image=busybox -- sleep 3600
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: container commands and arguments (--command, -- ARGS) aren't simulated: each image has a fixed behavior. Leave them out.
+
+$ kubectl run x
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: required flag(s) "image" not set
+
+$ kubectl run x --image=nginx:1.27 -n nope
+--- exit 1 (NOT_FOUND)
+--- stdout
+--- stderr
+Error from server (NotFound): namespaces "nope" not found
+
+$ kubectl run draft --image=nginx:1.27 --port=80 --dry-run=client -o yaml
+--- exit 0
+--- stdout
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: draft
+  name: draft
+  namespace: default
+spec:
+  containers:
+  - image: nginx:1.27
+    name: draft
+    ports:
+    - containerPort: 80
+    resources: {}
+  restartPolicy: Always
+status: {}
+--- stderr
+
+$ kubectl run draft --image=nginx:1.27 --dry-run=client
+--- exit 0
+--- stdout
+pod/draft created (dry run)
+--- stderr
+
+$ kubectl run draft --image=nginx:1.27 --dry-run=server
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: --dry-run=server isn't supported: there is no API server to ask; use --dry-run=client
+
+$ kubectl get pod draft
+--- exit 1 (NOT_FOUND)
+--- stdout
+--- stderr
+Error from server (NotFound): pods "draft" not found
+

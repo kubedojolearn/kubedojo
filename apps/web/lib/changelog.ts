@@ -7,6 +7,17 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-11-08",
+    title: "Change your cluster from the terminal",
+    items: [
+      "kubectl create, run, expose, scale, set image, set env, label, annotate, delete, rollout undo and rollout restart now work in every lab.",
+      "After each change the simulated controllers react before the command returns: scale a Deployment and its ReplicaSet creates the Pods; relabel a Pod and its ReplicaSet lets it go and starts a replacement.",
+      "Each change moves the lab's simulated clock forward 10 seconds, so AGE, events and restart counts move with you.",
+      "Try a change first with --dry-run=client -o yaml. A command that fails changes nothing.",
+      "Change your default namespace with kubectl config set-context --current --namespace=<name>.",
+    ],
+  },
+  {
     date: "2026-10-27",
     title: "Sign in with Google, GitHub or email",
     items: [

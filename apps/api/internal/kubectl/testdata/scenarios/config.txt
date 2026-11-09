@@ -1,0 +1,83 @@
+$ kubectl config set-context --current --namespace=shop
+--- exit 0
+--- stdout
+Context "kubedojo" modified.
+--- stderr
+
+$ kubectl config get-contexts
+--- exit 0
+--- stdout
+CURRENT   NAME       CLUSTER    AUTHINFO   NAMESPACE
+*         kubedojo   kubedojo   learner    shop
+--- stderr
+
+$ kubectl get pods
+--- exit 0
+--- stdout
+NAME                      READY   STATUS             RESTARTS        AGE
+orders-vqtcsddx9v-flhpw   0/1     CrashLoopBackOff   5 (4m50s ago)   10m
+orders-vqtcsddx9v-q7rwf   0/1     CrashLoopBackOff   5 (4m50s ago)   10m
+--- stderr
+
+$ kubectl run web --image=nginx:1.27
+--- exit 0
+--- stdout
+pod/web created
+--- stderr
+
+$ kubectl get pods -o wide
+--- exit 0
+--- stdout
+NAME                      READY   STATUS             RESTARTS     AGE   IP           NODE     NOMINATED NODE   READINESS GATES
+orders-vqtcsddx9v-flhpw   0/1     CrashLoopBackOff   6 (0s ago)   10m   10.244.2.2   node-3   <none>           <none>
+orders-vqtcsddx9v-q7rwf   0/1     CrashLoopBackOff   6 (0s ago)   10m   10.244.2.3   node-3   <none>           <none>
+web                       1/1     Running            0            0s    10.244.1.4   node-2   <none>           <none>
+--- stderr
+
+$ kubectl config set-context --current --namespace=staging
+--- exit 0
+--- stdout
+Context "kubedojo" modified.
+--- stderr
+ⓘ The namespace "staging" doesn't exist yet. Create it with: kubectl create namespace staging
+
+$ kubectl get pods
+--- exit 0
+--- stdout
+--- stderr
+No resources found in staging namespace.
+ⓘ The namespace "staging" doesn't exist. List namespaces with: kubectl get namespaces
+
+$ kubectl config set-context --current --namespace=Bad
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: "Bad" is not a valid namespace name
+
+$ kubectl config set-context prod --namespace=x
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: the simulator has a single context (kubedojo); use kubectl config set-context --current --namespace=NAME
+
+$ kubectl config set-context --current
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: only --namespace can be changed in the simulator: kubectl config set-context --current --namespace=NAME
+
+$ kubectl config set-context --current --namespace=default
+--- exit 0
+--- stdout
+Context "kubedojo" modified.
+--- stderr
+
+$ kubectl get pods
+--- exit 0
+--- stdout
+NAME                     READY   STATUS             RESTARTS   AGE
+nginx-4fzxcz7snh-tbjxs   1/1     Running            0          60m
+picky                    0/1     Pending            0          2m10s
+typo                     0/1     ImagePullBackOff   0          5m10s
+--- stderr
+

@@ -89,9 +89,11 @@ func storedEvents(ctx context.Context, q *dbgen.Queries, labID uuid.UUID) ([]sim
 }
 
 // RunCommand executes one terminal command at most once per requestID. A repeated requestID
-// returns the stored result, whatever the input. Only read commands exist in this version, so
-// commands never change lab state; they are recorded in the lab's history (with Secret values
-// redacted) and count as activity.
+// returns the stored result, whatever the input. A command that changes the lab advances its
+// clock, reconciles, and commits the new state, its events, the next lab version and the
+// command record in one transaction (ADR-0006); read commands and failed commands change
+// nothing. Every command is recorded in the lab's history (with Secret values redacted) and
+// counts as activity.
 func (sv *Service) RunCommand(ctx context.Context, userID, labID, requestID uuid.UUID, input string) (CommandResult, error) {
 	if !ValidInput(input) {
 		return CommandResult{}, ErrInvalidInput
@@ -133,6 +135,19 @@ func (sv *Service) RunCommand(ctx context.Context, userID, labID, requestID uuid
 		started := time.Now()
 		res := kubectl.Plan(input).Run(kubectl.Env{State: state, Events: events})
 		duration := time.Since(started).Milliseconds()
+		if res.Err != nil {
+			// A simulator bug: roll back and report an internal error, never a half-applied command.
+			return Change{}, fmt.Errorf("simulator: %w", res.Err)
+		}
+
+		var change Change
+		if res.Mutated {
+			p, err := persist(ctx, q, s, state, s.Version+1)
+			if err != nil {
+				return Change{}, err
+			}
+			change = Change{StateChanged: true, EventCount: p.Events}
+		}
 
 		seq, err := q.NextCommandSeq(ctx, s.ID)
 		if err != nil {
@@ -150,18 +165,23 @@ func (sv *Service) RunCommand(ctx context.Context, userID, labID, requestID uuid
 			code = &c
 		}
 		stderr := clip(res.Stderr, maxStderr)
-		row, err := q.InsertCommandExecution(ctx, dbgen.InsertCommandExecutionParams{
-			SessionID: s.ID, Sequence: seq, RequestID: requestID, Input: input, Parsed: parsed,
-			Stdout: clip(res.Redacted, maxStdout), Stderr: stderr, ExitCode: int16(min(max(res.ExitCode, 0), 255)), //nolint:gosec // clamped to 0-255
-			ErrorCode: code, Mutated: false, SnapshotVersion: s.Version, DurationMs: int32(min(duration, math.MaxInt32)), //nolint:gosec // clamped to int32
-		})
-		if err != nil {
-			return Change{}, fmt.Errorf("record command: %w", err)
+		// The command is recorded with the version it produced, which Mutate knows only after
+		// bumping it, so the insert runs last in the transaction.
+		change.Then = func(ctx context.Context, q *dbgen.Queries, version int64) error {
+			row, err := q.InsertCommandExecution(ctx, dbgen.InsertCommandExecutionParams{
+				SessionID: s.ID, Sequence: seq, RequestID: requestID, Input: input, Parsed: parsed,
+				Stdout: clip(res.Redacted, maxStdout), Stderr: stderr, ExitCode: int16(min(max(res.ExitCode, 0), 255)), //nolint:gosec // clamped to 0-255
+				ErrorCode: code, Mutated: res.Mutated, SnapshotVersion: version, DurationMs: int32(min(duration, math.MaxInt32)), //nolint:gosec // clamped to int32
+			})
+			if err != nil {
+				return fmt.Errorf("record command: %w", err)
+			}
+			result = commandFromRow(row)
+			// The learner sees their own Secret values; history keeps the redacted copy.
+			result.Stdout = clip(res.Stdout, maxStdout)
+			return nil
 		}
-		result = commandFromRow(row)
-		// The learner sees their own Secret values; history keeps the redacted copy.
-		result.Stdout = clip(res.Stdout, maxStdout)
-		return Change{}, nil
+		return change, nil
 	})
 	return result, err
 }

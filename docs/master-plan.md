@@ -593,3 +593,23 @@ docs/product/PRD.md, six ADRs, threat model, versioned API and challenge schemas
 ## Parts 11–20
 
 Not included in the source document. Per the milestone graph above, they cover: mutation commands and controllers (Parts 11–13, including YAML editing/apply), terminal, cluster graph and grading UX (Parts 14–16), the full 30-lab catalog and XP/admin (Parts 17–18), and hardening, deployment, docs and release (Parts 19–20).
+
+The parts below were specified when they were built (November 2026), from this plan's executive specification, the ADRs and the [simulator compatibility matrix](architecture/simulator-compatibility.md), which already listed the commands lessons rely on.
+
+### Part 11/20 — Mutating kubectl commands
+
+**Priority:** P0 · **Dependencies:** Parts 09–10 · **Outcome:** learners change the simulated cluster from the terminal.
+
+#### Implement
+
+1. `run`, `create deployment|namespace|configmap|secret generic|service`, `expose`, `delete`, `scale`, `set image|env`, `label`, `annotate`, `rollout undo|restart` and `config set-context --current --namespace`, with the flags in compatibility matrix §3 and kubectl's output and error wording.
+2. Every learner write goes through API-server-like checks (defaults, validation, namespace exists, unique names, immutable fields, NodePort allocation, protected system objects). Controllers keep writing directly.
+3. A mutating command runs against a copy of the state: the clock advances one tick, the command writes, the controllers reconcile, and the copy replaces the state only if all of that succeeded within the lab's limits. A refused command leaves no trace.
+4. The command, its state, events, outbox notification and the next lab version commit in one transaction; the command row records the version it produced.
+5. Fill controller gaps the commands expose: ReplicaSets release Pods relabelled out of their selector and adopt matching orphans; Deployments adopt orphaned ReplicaSets.
+
+#### Acceptance tests / gate
+
+- Golden transcripts for each command family, run as sequences against a fresh lab; replaying a sequence reproduces it byte for byte.
+- Every non-mutating or failed command leaves state, clock and version unchanged; every mutating one advances the clock exactly one tick and leaves a reconciled cluster.
+- Concurrent commands on one lab serialize; a limit breach refuses the whole command.

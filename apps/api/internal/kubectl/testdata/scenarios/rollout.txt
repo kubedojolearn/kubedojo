@@ -1,0 +1,168 @@
+$ kubectl rollout history deploy/nginx
+--- exit 0
+--- stdout
+deployment.apps/nginx
+REVISION  CHANGE-CAUSE
+1         <none>
+
+--- stderr
+
+$ kubectl set image deployment/nginx nginx=nginx:1.26
+--- exit 0
+--- stdout
+deployment.apps/nginx image updated
+--- stderr
+
+$ kubectl rollout status deployment/nginx
+--- exit 0
+--- stdout
+deployment "nginx" successfully rolled out
+--- stderr
+
+$ kubectl rollout history deployment/nginx
+--- exit 0
+--- stdout
+deployment.apps/nginx
+REVISION  CHANGE-CAUSE
+1         <none>
+2         <none>
+
+--- stderr
+
+$ kubectl get rs
+--- exit 0
+--- stdout
+NAME               DESIRED   CURRENT   READY   AGE
+nginx-4fzxcz7snh   0         0         0       60m
+nginx-6fj6zcq7xk   1         1         1       0s
+--- stderr
+
+$ kubectl set image deploy/nginx nginx=nginx:9.99
+--- exit 0
+--- stdout
+deployment.apps/nginx image updated
+--- stderr
+
+$ kubectl rollout status deploy/nginx
+--- exit 1
+--- stdout
+Waiting for deployment "nginx" rollout to finish: 1 old replicas are pending termination...
+--- stderr
+ⓘ The simulated cluster is fully reconciled, so this rollout won't progress until something changes. Look at the Pods: kubectl get pods -l app=nginx
+
+$ kubectl get pods
+--- exit 0
+--- stdout
+NAME                     READY   STATUS             RESTARTS   AGE
+nginx-6fj6zcq7xk-x4jsn   1/1     Running            0          10s
+nginx-jkwtzslhz7-t4mvn   0/1     ImagePullBackOff   0          0s
+picky                    0/1     Pending            0          2m20s
+typo                     0/1     ImagePullBackOff   0          5m20s
+--- stderr
+
+$ kubectl rollout undo deploy/nginx
+--- exit 0
+--- stdout
+deployment.apps/nginx rolled back
+--- stderr
+
+$ kubectl rollout status deploy/nginx
+--- exit 0
+--- stdout
+deployment "nginx" successfully rolled out
+--- stderr
+
+$ kubectl rollout history deploy/nginx
+--- exit 0
+--- stdout
+deployment.apps/nginx
+REVISION  CHANGE-CAUSE
+1         <none>
+3         <none>
+4         <none>
+
+--- stderr
+
+$ kubectl get deploy nginx -o wide
+--- exit 0
+--- stdout
+NAME    READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES       SELECTOR
+nginx   1/1     1            1           60m   nginx        nginx:1.26   app=nginx
+--- stderr
+
+$ kubectl rollout undo deploy/nginx --to-revision=3
+--- exit 0
+--- stdout
+deployment.apps/nginx rolled back
+--- stderr
+
+$ kubectl rollout undo deploy/nginx --to-revision=9
+--- exit 1 (NOT_FOUND)
+--- stdout
+--- stderr
+error: unable to find specified revision 9 in history
+
+$ kubectl rollout restart deploy/nginx
+--- exit 0
+--- stdout
+deployment.apps/nginx restarted
+--- stderr
+
+$ kubectl rollout history deploy/nginx
+--- exit 0
+--- stdout
+deployment.apps/nginx
+REVISION  CHANGE-CAUSE
+1         <none>
+4         <none>
+5         <none>
+6         <none>
+
+--- stderr
+
+$ kubectl get rs
+--- exit 0
+--- stdout
+NAME               DESIRED   CURRENT   READY   AGE
+nginx-4fzxcz7snh   0         0         0       60m
+nginx-6fj6zcq7xk   1         1         1       40s
+nginx-jkwtzslhz7   0         0         0       30s
+nginx-qqgt8wl6mb   1         1         0       0s
+--- stderr
+
+$ kubectl rollout pause deploy/nginx
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: 'kubectl rollout pause' isn't simulated: paused Deployments aren't part of the simulator
+
+$ kubectl rollout undo svc/web
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: no rollout undo for services: the simulator supports rollouts of deployments only
+
+$ kubectl set image deploy/nginx nope=nginx:1.27
+--- exit 1 (NOT_FOUND)
+--- stdout
+--- stderr
+error: unable to find container named "nope"
+
+$ kubectl set image pod/typo web=nginx:1.27
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: changing a Pod's containers in place isn't simulated; change its Deployment instead (Pods are replaced, not edited)
+
+$ kubectl set image deploy/nginx
+--- exit 1 (VALIDATION_FAILED)
+--- stdout
+--- stderr
+error: at least one image update is required, e.g. kubectl set image deployment/web nginx=nginx:1.27
+
+$ kubectl set resources deploy/nginx --limits=cpu=200m
+--- exit 1 (UNSUPPORTED_COMMAND)
+--- stdout
+--- stderr
+error: 'kubectl set resources' isn't supported yet; change resources in the manifest and use kubectl apply -f
+
