@@ -1,8 +1,8 @@
 import type { MetadataRoute } from "next";
+import { serverEnv } from "@/lib/server-env";
 
-const origin = process.env.WEB_ORIGIN ?? "http://localhost:8000";
 const publicPaths = ["/", "/learn", "/about", "/faq", "/changelog", "/privacy", "/terms"];
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  return publicPaths.map((path) => ({ url: `${origin}${path}` }));
+  return publicPaths.map((path) => ({ url: `${serverEnv.webOrigin}${path}` }));
 }
