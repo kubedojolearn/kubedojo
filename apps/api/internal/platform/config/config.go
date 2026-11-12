@@ -109,6 +109,9 @@ type API struct {
 	TrustedProxyCIDRs string
 	RequestTimeout    time.Duration
 	MaxBodyBytes      int64
+	// WSAllowedOrigins are the browser origins that may open lab WebSockets. Empty disables
+	// the socket (the terminal then uses REST only).
+	WSAllowedOrigins []string
 }
 
 // LoadAPI loads and validates the API's configuration, reporting every problem at once.
@@ -135,6 +138,19 @@ func LoadAPI(getenv func(string) string) (API, error) {
 			errs = append(errs, errors.New("REQUEST_TIMEOUT must be a duration between 1s and 1m"))
 		}
 		cfg.RequestTimeout = d
+	}
+
+	for _, o := range strings.Split(getenv("WS_ALLOWED_ORIGINS"), ",") {
+		o = strings.TrimSpace(o)
+		if o == "" {
+			continue
+		}
+		u, err := url.Parse(o)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.Path != "" || u.RawQuery != "" {
+			errs = append(errs, fmt.Errorf("WS_ALLOWED_ORIGINS must be comma-separated origins like https://kubedojo.example.com, got %q", o))
+			continue
+		}
+		cfg.WSAllowedOrigins = append(cfg.WSAllowedOrigins, o)
 	}
 
 	cfg.MaxBodyBytes = 128 << 10

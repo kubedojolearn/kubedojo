@@ -26,6 +26,14 @@ test("starting a lab loads the lesson's simulated cluster", async ({ page }) => 
   await expect(header.getByText("Version 1")).toBeVisible();
   await page.getByRole("tab", { name: "Cluster" }).click();
   const cluster = page.getByRole("tabpanel", { name: "Cluster" });
+  // The map draws the Deployment, its ReplicaSet and Pod, and how they relate.
+  await expect(cluster.getByTestId("cluster-map")).toBeVisible();
+  await expect(cluster.getByLabel(/^Deployment nginx in default: 1\/1 ready/)).toBeVisible();
+  await cluster.getByText(/^Relationships as text/).click();
+  await expect(cluster.getByText(/^Deployment nginx owns ReplicaSet nginx-/)).toBeVisible();
+  await expect(cluster.getByText(/^ReplicaSet nginx-[a-z0-9]+ owns Pod nginx-/)).toBeVisible();
+  // The list view shows every object with its status.
+  await cluster.getByRole("button", { name: "List" }).click();
   await expect(cluster.getByRole("heading", { name: /^Deployment/ })).toBeVisible();
   await expect(cluster.getByText("1/1 ready").first()).toBeVisible();
   await expect(cluster.getByText(/^default\/nginx-[a-z0-9]{10}-[a-z0-9]{5}$/)).toBeVisible();
@@ -88,6 +96,8 @@ test("the terminal runs kubectl commands, changes the cluster and keeps history"
   await startLab(page);
   const command = page.getByRole("textbox", { name: "Command" });
   const output = page.getByRole("log", { name: "Terminal output" });
+  // Commands run over the lab's WebSocket.
+  await expect(page.getByTestId("terminal-status")).toHaveText("Live");
 
   await command.fill("kubectl get pods");
   await command.press("Enter");
@@ -120,4 +130,97 @@ test("the terminal runs kubectl commands, changes the cluster and keeps history"
   await command.fill("clear");
   await command.press("Enter");
   await expect(page.getByRole("log", { name: "Terminal output" })).toContainText("Try: kubectl get pods");
+});
+
+test("the editor saves manifests and applies them to the cluster", async ({ page }) => {
+  await signIn(page, testIdentity("editor"));
+  await startLab(page);
+  await page.getByRole("tab", { name: "Editor" }).click();
+  const editor = page.getByRole("tabpanel", { name: "Editor" });
+
+  // The lesson's starting manifest is there.
+  await expect(editor.getByRole("button", { name: "nginx.yaml", exact: true })).toBeVisible();
+  const code = editor.getByRole("textbox", { name: "Editor for manifests/nginx.yaml" });
+  await expect(code).toContainText("replicas: 1");
+
+  // Change replicas to 3 and apply: the file is saved and kubectl apply runs.
+  await code.click();
+  await page.keyboard.press("ControlOrMeta+a");
+  const manifest = (await code.innerText()).replace("replicas: 1", "replicas: 3");
+  await page.keyboard.insertText(manifest);
+  await expect(editor.getByText("Unsaved", { exact: true })).toBeVisible();
+  await editor.getByRole("button", { name: "Apply" }).click();
+  await expect(editor.getByRole("status")).toContainText("deployment.apps/nginx configured");
+  await expect(page.getByRole("main").locator("header").first().getByText("Version 2")).toBeVisible();
+
+  // The command is in the terminal too, and the saved file survives a reload.
+  await page.getByRole("tab", { name: "Terminal" }).click();
+  await expect(page.getByRole("log", { name: "Terminal output" })).toContainText(
+    "kubectl apply -f manifests/nginx.yaml",
+  );
+  await page.reload();
+  await page.getByRole("tab", { name: "Editor" }).click();
+  await expect(
+    page.getByRole("tabpanel", { name: "Editor" }).getByRole("textbox", { name: "Editor for manifests/nginx.yaml" }),
+  ).toContainText("replicas: 3");
+
+  // New files start from a template and can be used with -f.
+  await page.getByRole("textbox", { name: "New file name" }).fill("extra");
+  await page.getByRole("button", { name: "Create file" }).click();
+  await expect(page.getByRole("button", { name: "extra.yaml", exact: true })).toBeVisible();
+  await page.getByRole("tab", { name: "Terminal" }).click();
+  const command = page.getByRole("textbox", { name: "Command" });
+  await command.fill("kubectl apply -f manifests/extra.yaml");
+  await command.press("Enter");
+  await expect(page.getByRole("log", { name: "Terminal output" })).toContainText("deployment.apps/web created");
+});
+
+test("checking work grades the goals, completes the lab and awards XP once", async ({ page }) => {
+  await signIn(page, testIdentity("grade"));
+  await startLab(page);
+  const goals = page.getByRole("complementary", { name: "Goals" });
+
+  // Nothing done yet: the goal fails with the lesson's feedback.
+  await goals.getByRole("button", { name: "Check my work" }).click();
+  await expect(goals).toContainText("0% of the goals pass");
+  await expect(goals).toContainText("Compare READY with what you asked for.");
+
+  // A hint, in order, with its cost shown.
+  await goals.getByRole("button", { name: /Show hint 1 of 3/ }).click();
+  await expect(goals).toContainText("Try kubectl get deployments.");
+
+  const command = page.getByRole("textbox", { name: "Command" });
+  await command.fill("kubectl scale deployment nginx --replicas=3");
+  await command.press("Enter");
+  await expect(page.getByRole("log", { name: "Terminal output" })).toContainText("deployment.apps/nginx scaled");
+
+  await goals.getByRole("button", { name: "Check my work" }).click();
+  await expect(goals).toContainText("Lab complete");
+  // 100 base XP, minus 10 for the hint; the first check failed, so no first-try bonus.
+  await expect(goals).toContainText("You earned 90 XP.");
+  await expect(goals).toContainText("Achievement unlocked: First steps");
+
+  // The lab is completed and read-only; the result is still shown after a reload.
+  await page.reload();
+  await expect(page.getByRole("main").locator("header").first().getByText("Completed", { exact: true })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Goals" })).toContainText("Lab complete");
+  await expect(page.getByRole("textbox", { name: "Command" })).toBeDisabled();
+});
+
+test("a change made in one tab shows up in another", async ({ page, context }) => {
+  await signIn(page, testIdentity("tabs"));
+  await startLab(page);
+  await expect(page.getByTestId("terminal-status")).toHaveText("Live");
+  const header = page.getByRole("main").locator("header").first();
+  await expect(header.getByText("Version 1")).toBeVisible();
+
+  const other = await context.newPage();
+  await other.goto(page.url());
+  const command = other.getByRole("textbox", { name: "Command" });
+  await command.fill("kubectl scale deployment nginx --replicas=2");
+  await command.press("Enter");
+  await expect(other.getByRole("log", { name: "Terminal output" })).toContainText("deployment.apps/nginx scaled");
+
+  // The first tab hears about it over its socket and refreshes, without a reload.
+  await expect(header.getByText("Version 2")).toBeVisible({ timeout: 10_000 });
 });

@@ -154,6 +154,8 @@ jobs:
           expect /api/healthz 200
           expect /api/v1/healthz 404   # Go REST must not be reachable through the edge
           expect /api/v1/readyz 404
+          # The lab WebSocket is the one Go route the edge exposes; without an allowed Origin it's 403.
+          expect /api/v1/ws/labs/00000000-0000-4000-8000-000000000000 403
           docker compose exec -T edge wget -qO- http://api:8080/api/v1/readyz | grep -q '"status":"ready"'
       - name: Signed-in end-to-end tests
         run: |

@@ -34,7 +34,7 @@ func runDelete(args []string, env Env, p *Parsed) (Result, *Failure) {
 		return r, nil
 	}
 	recordFlags(p, fl)
-	if fl.str("filename") != "" {
+	if len(fl.values["filename"]) > 0 {
 		return deleteFromFile(fl, env, p, pos)
 	}
 	output := fl.str("output")

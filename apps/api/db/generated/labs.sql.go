@@ -32,6 +32,35 @@ func (q *Queries) BumpLabVersion(ctx context.Context, arg BumpLabVersionParams) 
 	return version, err
 }
 
+const countLabFiles = `-- name: CountLabFiles :one
+SELECT count(*) FROM lab_files WHERE session_id = $1
+`
+
+func (q *Queries) CountLabFiles(ctx context.Context, sessionID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countLabFiles, sessionID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countLessonAttempts = `-- name: CountLessonAttempts :one
+SELECT count(*) FROM challenge_attempts a JOIN lab_sessions s ON s.id = a.session_id
+WHERE a.user_id = $1 AND s.lesson_id = $2
+`
+
+type CountLessonAttemptsParams struct {
+	UserID   uuid.UUID
+	LessonID uuid.UUID
+}
+
+// Checks of this lesson by this learner across all of their labs.
+func (q *Queries) CountLessonAttempts(ctx context.Context, arg CountLessonAttemptsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countLessonAttempts, arg.UserID, arg.LessonID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createLabSession = `-- name: CreateLabSession :one
 INSERT INTO lab_sessions (user_id, lesson_id, challenge_version_id, simulator_version, seed, sim_time, expires_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -87,6 +116,15 @@ func (q *Queries) CreateLabSession(ctx context.Context, arg CreateLabSessionPara
 	return i, err
 }
 
+const deleteAllLabFiles = `-- name: DeleteAllLabFiles :exec
+DELETE FROM lab_files WHERE session_id = $1
+`
+
+func (q *Queries) DeleteAllLabFiles(ctx context.Context, sessionID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteAllLabFiles, sessionID)
+	return err
+}
+
 const deleteAllLabResources = `-- name: DeleteAllLabResources :exec
 DELETE FROM lab_resources WHERE session_id = $1
 `
@@ -103,6 +141,23 @@ DELETE FROM lab_events WHERE session_id = $1
 func (q *Queries) DeleteLabEvents(ctx context.Context, sessionID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, deleteLabEvents, sessionID)
 	return err
+}
+
+const deleteLabFile = `-- name: DeleteLabFile :execrows
+DELETE FROM lab_files WHERE session_id = $1 AND path = $2
+`
+
+type DeleteLabFileParams struct {
+	SessionID uuid.UUID
+	Path      string
+}
+
+func (q *Queries) DeleteLabFile(ctx context.Context, arg DeleteLabFileParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteLabFile, arg.SessionID, arg.Path)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const deleteLabResource = `-- name: DeleteLabResource :exec
@@ -216,6 +271,34 @@ func (q *Queries) GetActiveLabForLesson(ctx context.Context, arg GetActiveLabFor
 	return i, err
 }
 
+const getAttemptByKey = `-- name: GetAttemptByKey :one
+SELECT id, session_id, user_id, challenge_version_id, idempotency_key, passed, score, hints_used, goal_results, evaluated_at FROM challenge_attempts WHERE session_id = $1 AND user_id = $2 AND idempotency_key = $3
+`
+
+type GetAttemptByKeyParams struct {
+	SessionID      uuid.UUID
+	UserID         uuid.UUID
+	IdempotencyKey string
+}
+
+func (q *Queries) GetAttemptByKey(ctx context.Context, arg GetAttemptByKeyParams) (ChallengeAttempt, error) {
+	row := q.db.QueryRow(ctx, getAttemptByKey, arg.SessionID, arg.UserID, arg.IdempotencyKey)
+	var i ChallengeAttempt
+	err := row.Scan(
+		&i.ID,
+		&i.SessionID,
+		&i.UserID,
+		&i.ChallengeVersionID,
+		&i.IdempotencyKey,
+		&i.Passed,
+		&i.Score,
+		&i.HintsUsed,
+		&i.GoalResults,
+		&i.EvaluatedAt,
+	)
+	return i, err
+}
+
 const getChallengeVersionSpec = `-- name: GetChallengeVersionSpec :one
 SELECT spec FROM challenge_versions WHERE id = $1
 `
@@ -280,6 +363,27 @@ func (q *Queries) GetIdempotencyRecord(ctx context.Context, arg GetIdempotencyRe
 		&i.StatusCode,
 		&i.Response,
 		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getLabFile = `-- name: GetLabFile :one
+SELECT session_id, path, content, updated_at FROM lab_files WHERE session_id = $1 AND path = $2
+`
+
+type GetLabFileParams struct {
+	SessionID uuid.UUID
+	Path      string
+}
+
+func (q *Queries) GetLabFile(ctx context.Context, arg GetLabFileParams) (LabFile, error) {
+	row := q.db.QueryRow(ctx, getLabFile, arg.SessionID, arg.Path)
+	var i LabFile
+	err := row.Scan(
+		&i.SessionID,
+		&i.Path,
+		&i.Content,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -434,6 +538,71 @@ func (q *Queries) GetLaunchableChallengeVersion(ctx context.Context, id uuid.UUI
 	return i, err
 }
 
+const insertAnswer = `-- name: InsertAnswer :exec
+INSERT INTO lab_answers (session_id, goal_id, submission_no, answer) VALUES ($1, $2, $3, $4)
+`
+
+type InsertAnswerParams struct {
+	SessionID    uuid.UUID
+	GoalID       string
+	SubmissionNo int16
+	Answer       string
+}
+
+func (q *Queries) InsertAnswer(ctx context.Context, arg InsertAnswerParams) error {
+	_, err := q.db.Exec(ctx, insertAnswer,
+		arg.SessionID,
+		arg.GoalID,
+		arg.SubmissionNo,
+		arg.Answer,
+	)
+	return err
+}
+
+const insertAttempt = `-- name: InsertAttempt :one
+INSERT INTO challenge_attempts (session_id, user_id, challenge_version_id, idempotency_key, passed, score, hints_used, goal_results)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, session_id, user_id, challenge_version_id, idempotency_key, passed, score, hints_used, goal_results, evaluated_at
+`
+
+type InsertAttemptParams struct {
+	SessionID          uuid.UUID
+	UserID             uuid.UUID
+	ChallengeVersionID uuid.UUID
+	IdempotencyKey     string
+	Passed             bool
+	Score              int16
+	HintsUsed          int16
+	GoalResults        json.RawMessage
+}
+
+func (q *Queries) InsertAttempt(ctx context.Context, arg InsertAttemptParams) (ChallengeAttempt, error) {
+	row := q.db.QueryRow(ctx, insertAttempt,
+		arg.SessionID,
+		arg.UserID,
+		arg.ChallengeVersionID,
+		arg.IdempotencyKey,
+		arg.Passed,
+		arg.Score,
+		arg.HintsUsed,
+		arg.GoalResults,
+	)
+	var i ChallengeAttempt
+	err := row.Scan(
+		&i.ID,
+		&i.SessionID,
+		&i.UserID,
+		&i.ChallengeVersionID,
+		&i.IdempotencyKey,
+		&i.Passed,
+		&i.Score,
+		&i.HintsUsed,
+		&i.GoalResults,
+		&i.EvaluatedAt,
+	)
+	return i, err
+}
+
 const insertCommandExecution = `-- name: InsertCommandExecution :one
 INSERT INTO command_executions (session_id, sequence, request_id, input, parsed, stdout, stderr, exit_code, error_code, mutated, snapshot_version, duration_ms)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
@@ -549,6 +718,61 @@ func (q *Queries) InsertLabEvent(ctx context.Context, arg InsertLabEventParams) 
 	return err
 }
 
+const latestAnswers = `-- name: LatestAnswers :many
+SELECT DISTINCT ON (goal_id) goal_id, submission_no, answer
+FROM lab_answers WHERE session_id = $1
+ORDER BY goal_id, submission_no DESC
+`
+
+type LatestAnswersRow struct {
+	GoalID       string
+	SubmissionNo int16
+	Answer       string
+}
+
+// The newest answer per goal; submission_no is also how many answers the goal has had.
+func (q *Queries) LatestAnswers(ctx context.Context, sessionID uuid.UUID) ([]LatestAnswersRow, error) {
+	rows, err := q.db.Query(ctx, latestAnswers, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []LatestAnswersRow{}
+	for rows.Next() {
+		var i LatestAnswersRow
+		if err := rows.Scan(&i.GoalID, &i.SubmissionNo, &i.Answer); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const latestAttempt = `-- name: LatestAttempt :one
+SELECT id, session_id, user_id, challenge_version_id, idempotency_key, passed, score, hints_used, goal_results, evaluated_at FROM challenge_attempts WHERE session_id = $1 ORDER BY evaluated_at DESC, id DESC LIMIT 1
+`
+
+func (q *Queries) LatestAttempt(ctx context.Context, sessionID uuid.UUID) (ChallengeAttempt, error) {
+	row := q.db.QueryRow(ctx, latestAttempt, sessionID)
+	var i ChallengeAttempt
+	err := row.Scan(
+		&i.ID,
+		&i.SessionID,
+		&i.UserID,
+		&i.ChallengeVersionID,
+		&i.IdempotencyKey,
+		&i.Passed,
+		&i.Score,
+		&i.HintsUsed,
+		&i.GoalResults,
+		&i.EvaluatedAt,
+	)
+	return i, err
+}
+
 const listCommands = `-- name: ListCommands :many
 SELECT session_id, sequence, request_id, input, parsed, stdout, stderr, exit_code, error_code, mutated, snapshot_version, duration_ms, executed_at FROM command_executions
 WHERE session_id = $1
@@ -643,6 +867,35 @@ func (q *Queries) ListLabEvents(ctx context.Context, arg ListLabEventsParams) ([
 	return items, nil
 }
 
+const listLabFiles = `-- name: ListLabFiles :many
+SELECT session_id, path, content, updated_at FROM lab_files WHERE session_id = $1 ORDER BY path
+`
+
+func (q *Queries) ListLabFiles(ctx context.Context, sessionID uuid.UUID) ([]LabFile, error) {
+	rows, err := q.db.Query(ctx, listLabFiles, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []LabFile{}
+	for rows.Next() {
+		var i LabFile
+		if err := rows.Scan(
+			&i.SessionID,
+			&i.Path,
+			&i.Content,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLabResources = `-- name: ListLabResources :many
 SELECT kind, namespace, name, api_version, uid, resource_version, generation, metadata, spec, status, extra
 FROM lab_resources WHERE session_id = $1
@@ -688,6 +941,33 @@ func (q *Queries) ListLabResources(ctx context.Context, sessionID uuid.UUID) ([]
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listObservedCommands = `-- name: ListObservedCommands :many
+SELECT parsed FROM command_executions
+WHERE session_id = $1 AND exit_code = 0 AND parsed IS NOT NULL
+ORDER BY sequence
+`
+
+// Parsed forms of the commands that succeeded, for observation goals.
+func (q *Queries) ListObservedCommands(ctx context.Context, sessionID uuid.UUID) ([][]byte, error) {
+	rows, err := q.db.Query(ctx, listObservedCommands, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := [][]byte{}
+	for rows.Next() {
+		var parsed []byte
+		if err := rows.Scan(&parsed); err != nil {
+			return nil, err
+		}
+		items = append(items, parsed)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -935,6 +1215,20 @@ func (q *Queries) PruneLabEvents(ctx context.Context, arg PruneLabEventsParams) 
 	return err
 }
 
+const recordHint = `-- name: RecordHint :exec
+INSERT INTO hint_usage (session_id, hint_index) VALUES ($1, $2) ON CONFLICT DO NOTHING
+`
+
+type RecordHintParams struct {
+	SessionID uuid.UUID
+	HintIndex int16
+}
+
+func (q *Queries) RecordHint(ctx context.Context, arg RecordHintParams) error {
+	_, err := q.db.Exec(ctx, recordHint, arg.SessionID, arg.HintIndex)
+	return err
+}
+
 const recordLabStarted = `-- name: RecordLabStarted :exec
 INSERT INTO lesson_progress (user_id, lesson_id, attempts, first_started_at, last_started_at)
 VALUES ($1, $2, 1, now(), now())
@@ -985,6 +1279,20 @@ func (q *Queries) SaveLabEngineState(ctx context.Context, arg SaveLabEngineState
 	return err
 }
 
+const setHintsUsed = `-- name: SetHintsUsed :exec
+UPDATE lab_sessions SET hints_used = $2 WHERE id = $1
+`
+
+type SetHintsUsedParams struct {
+	ID        uuid.UUID
+	HintsUsed int16
+}
+
+func (q *Queries) SetHintsUsed(ctx context.Context, arg SetHintsUsedParams) error {
+	_, err := q.db.Exec(ctx, setHintsUsed, arg.ID, arg.HintsUsed)
+	return err
+}
+
 const touchLab = `-- name: TouchLab :exec
 UPDATE lab_sessions SET last_active_at = now(), expires_at = $1
 WHERE id = $2 AND state = 'active'
@@ -999,6 +1307,31 @@ type TouchLabParams struct {
 func (q *Queries) TouchLab(ctx context.Context, arg TouchLabParams) error {
 	_, err := q.db.Exec(ctx, touchLab, arg.ExpiresAt, arg.ID)
 	return err
+}
+
+const upsertLabFile = `-- name: UpsertLabFile :one
+INSERT INTO lab_files (session_id, path, content)
+VALUES ($1, $2, $3)
+ON CONFLICT (session_id, path) DO UPDATE SET content = EXCLUDED.content, updated_at = now()
+RETURNING session_id, path, content, updated_at
+`
+
+type UpsertLabFileParams struct {
+	SessionID uuid.UUID
+	Path      string
+	Content   string
+}
+
+func (q *Queries) UpsertLabFile(ctx context.Context, arg UpsertLabFileParams) (LabFile, error) {
+	row := q.db.QueryRow(ctx, upsertLabFile, arg.SessionID, arg.Path, arg.Content)
+	var i LabFile
+	err := row.Scan(
+		&i.SessionID,
+		&i.Path,
+		&i.Content,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const upsertLabResource = `-- name: UpsertLabResource :exec

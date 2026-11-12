@@ -95,6 +95,21 @@ func TestLoadAPI(t *testing.T) {
 	}
 }
 
+func TestLoadAPIWebSocketOrigins(t *testing.T) {
+	e := apiEnv(t)
+	e["WS_ALLOWED_ORIGINS"] = "http://localhost:8000, https://kubedojo.example.com"
+	cfg, err := LoadAPI(env(e))
+	if err != nil || len(cfg.WSAllowedOrigins) != 2 || cfg.WSAllowedOrigins[1] != "https://kubedojo.example.com" {
+		t.Fatalf("%v %v", err, cfg.WSAllowedOrigins)
+	}
+	for _, bad := range []string{"kubedojo.example.com", "https://x.example/path", "ftp://x.example"} {
+		e["WS_ALLOWED_ORIGINS"] = bad
+		if _, err := LoadAPI(env(e)); err == nil || !strings.Contains(err.Error(), "WS_ALLOWED_ORIGINS") {
+			t.Errorf("%q accepted: %v", bad, err)
+		}
+	}
+}
+
 func TestLoadAPIReportsProblems(t *testing.T) {
 	e := apiEnv(t)
 	delete(e, "API_JWT_PUBLIC_KEYS")

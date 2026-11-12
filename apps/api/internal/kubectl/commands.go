@@ -455,6 +455,7 @@ func runConfig(args []string, env Env, p *Parsed) (Result, *Failure) {
 		}
 		return Result{Stdout: fmt.Sprintf("Switched to context %q.\n", contextName)}, nil
 	case "set-context":
+		p.Namespace = fl.str("namespace")
 		return setContext(pos, fl, env)
 	}
 	return Result{}, reject(CodeUnsupported, "error: 'kubectl config %s' isn't supported: the simulator has a single built-in context", pos[0])

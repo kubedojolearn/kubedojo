@@ -2,19 +2,30 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect, unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
-import { ArrowLeft, Clock, History, Network, SquareTerminal } from "lucide-react";
+import { ArrowLeft, Clock, FileCode2, History, Network, SquareTerminal } from "lucide-react";
 import { Belt } from "@/components/brand/belt";
 import { CardListSkeleton, LoadingStatus } from "@/components/feedback/loading";
 import { EmptyState } from "@/components/feedback/states";
+import { EditorPanel } from "@/components/lab/editor-panel";
+import { GoalsPanel } from "@/components/lab/goals-panel";
 import { LabControls } from "@/components/lab/lab-controls";
-import { ResourceList } from "@/components/lab/resource-list";
+import { ClusterPanel } from "@/components/lab/cluster-map";
 import { Terminal } from "@/components/lab/terminal";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getLesson, type LessonDetail } from "@/lib/catalog";
 import { courseOrder, courseTitle } from "@/lib/curriculum";
-import { getCommandHistory, getLab, getRecentEvents, getSnapshot, isLabId, type Lab } from "@/lib/labs";
+import {
+  getCommandHistory,
+  getFiles,
+  getGoals,
+  getLab,
+  getRecentEvents,
+  getSnapshot,
+  isLabId,
+  type Lab,
+} from "@/lib/labs";
 
 export const metadata: Metadata = { title: "Lab" };
 
@@ -54,10 +65,12 @@ async function LabView({ params }: Props) {
   // Ownership first: someone else's lab is simply not found.
   const lab = await getLab(sessionId);
   if (!lab) notFound();
-  const [snapshot, events, history, lesson] = await Promise.all([
+  const [snapshot, events, history, files, goals, lesson] = await Promise.all([
     getSnapshot(sessionId),
     getRecentEvents(sessionId, 30),
     getCommandHistory(sessionId),
+    getFiles(sessionId),
+    getGoals(sessionId),
     lessonFor(lab),
   ]);
   if (!snapshot) notFound();
@@ -105,6 +118,9 @@ async function LabView({ params }: Props) {
             <TabsTrigger value="terminal">
               <SquareTerminal aria-hidden /> Terminal
             </TabsTrigger>
+            <TabsTrigger value="editor">
+              <FileCode2 aria-hidden /> Editor
+            </TabsTrigger>
             <TabsTrigger value="cluster">
               <Network aria-hidden /> Cluster
             </TabsTrigger>
@@ -112,11 +128,16 @@ async function LabView({ params }: Props) {
               <History aria-hidden /> Events
             </TabsTrigger>
           </TabsList>
+          {/* The editor and terminal stay mounted, so drafts and output survive switching tabs. */}
+          <TabsContent value="editor" className="mt-3 data-[state=inactive]:hidden" forceMount>
+            <EditorPanel labId={lab.id} active={active} initial={files} />
+          </TabsContent>
           <TabsContent value="cluster" className="mt-3">
-            <p className="mb-4 text-sm text-muted-foreground">
-              Every object in your simulated cluster ({snapshot.resources.length}). Nothing here runs on a real cluster.
-            </p>
-            <ResourceList resources={snapshot.resources} />
+            <ClusterPanel
+              resources={snapshot.resources}
+              currentNamespace={snapshot.currentNamespace}
+              version={snapshot.version}
+            />
           </TabsContent>
           <TabsContent value="events" className="mt-3">
             {events.length === 0 ? (
@@ -142,10 +163,11 @@ async function LabView({ params }: Props) {
               </ol>
             )}
           </TabsContent>
-          <TabsContent value="terminal" className="mt-3">
+          <TabsContent value="terminal" className="mt-3 data-[state=inactive]:hidden" forceMount>
             <Terminal
               labId={lab.id}
               active={active}
+              version={lab.version}
               initial={history.map((c) => ({
                 key: c.requestId,
                 input: c.input,
@@ -169,11 +191,15 @@ async function LabView({ params }: Props) {
               Goals
             </h2>
             {lesson ? (
-              <ol className="mt-2 list-decimal space-y-2 pl-5">
-                {lesson.goals.map((g) => (
-                  <li key={g.id}>{g.description}</li>
-                ))}
-              </ol>
+              <div className="mt-3">
+                <GoalsPanel
+                  labId={lab.id}
+                  active={active}
+                  goals={lesson.goals}
+                  reward={lesson.reward}
+                  initial={goals}
+                />
+              </div>
             ) : (
               <p className="mt-2 text-muted-foreground">
                 The goals are on the{" "}
@@ -183,9 +209,6 @@ async function LabView({ params }: Props) {
                 .
               </p>
             )}
-            <p className="mt-3 text-xs text-muted-foreground">
-              Automatic goal checks and hints arrive with the next release. For now, find the answers with kubectl.
-            </p>
           </div>
           <div>
             <h2 className="text-base font-bold">Try</h2>

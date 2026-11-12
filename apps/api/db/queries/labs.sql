@@ -170,3 +170,61 @@ WHERE session_id = sqlc.arg(session_id)
   AND (sqlc.narg(before_seq)::bigint IS NULL OR sequence < sqlc.narg(before_seq)::bigint)
 ORDER BY sequence DESC
 LIMIT sqlc.arg(page_limit);
+
+-- name: ListLabFiles :many
+SELECT * FROM lab_files WHERE session_id = $1 ORDER BY path;
+
+-- name: GetLabFile :one
+SELECT * FROM lab_files WHERE session_id = $1 AND path = $2;
+
+-- name: CountLabFiles :one
+SELECT count(*) FROM lab_files WHERE session_id = $1;
+
+-- name: UpsertLabFile :one
+INSERT INTO lab_files (session_id, path, content)
+VALUES ($1, $2, $3)
+ON CONFLICT (session_id, path) DO UPDATE SET content = EXCLUDED.content, updated_at = now()
+RETURNING *;
+
+-- name: DeleteLabFile :execrows
+DELETE FROM lab_files WHERE session_id = $1 AND path = $2;
+
+-- name: DeleteAllLabFiles :exec
+DELETE FROM lab_files WHERE session_id = $1;
+
+-- name: LatestAnswers :many
+-- The newest answer per goal; submission_no is also how many answers the goal has had.
+SELECT DISTINCT ON (goal_id) goal_id, submission_no, answer
+FROM lab_answers WHERE session_id = $1
+ORDER BY goal_id, submission_no DESC;
+
+-- name: InsertAnswer :exec
+INSERT INTO lab_answers (session_id, goal_id, submission_no, answer) VALUES ($1, $2, $3, $4);
+
+-- name: ListObservedCommands :many
+-- Parsed forms of the commands that succeeded, for observation goals.
+SELECT parsed FROM command_executions
+WHERE session_id = $1 AND exit_code = 0 AND parsed IS NOT NULL
+ORDER BY sequence;
+
+-- name: RecordHint :exec
+INSERT INTO hint_usage (session_id, hint_index) VALUES ($1, $2) ON CONFLICT DO NOTHING;
+
+-- name: SetHintsUsed :exec
+UPDATE lab_sessions SET hints_used = $2 WHERE id = $1;
+
+-- name: GetAttemptByKey :one
+SELECT * FROM challenge_attempts WHERE session_id = $1 AND user_id = $2 AND idempotency_key = $3;
+
+-- name: LatestAttempt :one
+SELECT * FROM challenge_attempts WHERE session_id = $1 ORDER BY evaluated_at DESC, id DESC LIMIT 1;
+
+-- name: CountLessonAttempts :one
+-- Checks of this lesson by this learner across all of their labs.
+SELECT count(*) FROM challenge_attempts a JOIN lab_sessions s ON s.id = a.session_id
+WHERE a.user_id = sqlc.arg(user_id) AND s.lesson_id = sqlc.arg(lesson_id);
+
+-- name: InsertAttempt :one
+INSERT INTO challenge_attempts (session_id, user_id, challenge_version_id, idempotency_key, passed, score, hints_used, goal_results)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING *;

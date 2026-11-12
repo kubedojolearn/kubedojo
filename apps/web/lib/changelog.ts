@@ -8,6 +8,44 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-11-08",
+    title: "A live terminal",
+    items: [
+      "The lab terminal keeps a live connection to your cluster, shown as Live next to it.",
+      "Open a lab in two tabs and a change in one appears in the other within a moment.",
+      "If the connection drops, the terminal reconnects on its own and keeps working meanwhile; a command is never run twice.",
+    ],
+  },
+  {
+    date: "2026-11-08",
+    title: "A map of your cluster",
+    items: [
+      "The Cluster tab draws your lab as a map: which Deployment owns which ReplicaSet and Pods, which Pods each Service sends traffic to, where Pods run and which ConfigMaps and Secrets they read.",
+      "Everything your last command changed is highlighted, so you can watch a rollout or a scale-up happen.",
+      "Pods a Service selects but can't send traffic to are faded. Every relationship is also listed as text, and the list view is one click away.",
+    ],
+  },
+  {
+    date: "2026-11-08",
+    title: "Complete labs and earn XP",
+    items: [
+      "Check my work grades every goal against your cluster and tells you which still need work, without giving the answer away.",
+      "Pass every goal to complete the lab and earn the lesson's XP. Your first check passing earns a bonus; each hint you reveal costs a little.",
+      "Questions in the goals panel take your answer, and hints appear one at a time when you ask.",
+      "Completing lessons builds your streak and unlocks achievements on your dashboard.",
+    ],
+  },
+  {
+    date: "2026-11-08",
+    title: "Write manifests in the lab editor",
+    items: [
+      "Every lab has a YAML editor. Lessons that start from a manifest put it there for you.",
+      "kubectl apply -f, create -f and delete -f read the files you save, and Apply in the editor saves and applies in one step.",
+      "apply works like kubectl's: it remembers what you last applied and merges your changes with what the controllers and your other commands did.",
+      "YAML mistakes are underlined as you type, and the cluster explains anything it can't accept when you apply.",
+    ],
+  },
+  {
+    date: "2026-11-08",
     title: "Change your cluster from the terminal",
     items: [
       "kubectl create, run, expose, scale, set image, set env, label, annotate, delete, rollout undo and rollout restart now work in every lab.",

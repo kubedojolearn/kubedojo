@@ -12,5 +12,7 @@ Each ADR records one decision, the context that forced it and what it costs. ADR
 | [0006](0006-deterministic-reconciliation.md) | Deterministic reconciliation on a logical clock | Accepted |
 | [0007](0007-challenge-goal-types.md) | Three challenge goal types: state, answer, observation | Accepted |
 | [0008](0008-asgardeo-identity-broker.md) | Asgardeo brokers sign-in with Google, GitHub and email | Accepted |
+| [0009](0009-codemirror-yaml-editor.md) | CodeMirror 6 for the lab's YAML editor | Accepted |
+| [0010](0010-html-terminal.md) | The lab terminal is HTML, not xterm.js | Accepted |
 
 Template: Context → Decision → Consequences → Alternatives considered.

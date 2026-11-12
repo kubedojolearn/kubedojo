@@ -50,9 +50,11 @@ The master plan's example sent `{"type":"error","code":"UNSUPPORTED_COMMAND"}` f
 - **Version gaps.** The client tracks the highest `snapshotVersion` it has rendered. On `state.changed` or `command.result` with a higher version, it refetches the snapshot. Out-of-order notifications with a lower version are ignored.
 - **Commands are serialized per lab** on the server (row lock). A client may pipeline commands; results arrive in execution order.
 - **Rate limit:** 100 commands per minute per user. Excess frames get `{"type":"error","code":"RATE_LIMITED","requestId":"…","retryAfterMs":…}` and are not executed.
-- **Limits:** frame ≤ 32 KiB (`input` ≤ 16 KiB); at most 3 open sockets per user per lab (the oldest is closed with 4409).
+- **Limits:** frame ≤ 32 KiB (`input` ≤ 16 KiB); at most 3 open sockets per user per lab (the oldest is closed with 4409). The limit is kept by each API process, so with several replicas a user can briefly hold more.
+- **Commands share REST's limit:** a command over the socket counts against the same per-user `commands` budget as `POST /commands`.
 - **Session state:** if the lab leaves the `active` state (completed, abandoned or expired; a reset keeps it active), the server sends `error` with `SESSION_EXPIRED` or `CONFLICT`, `fatal: true`, and closes with 4410.
-- **Liveness:** the server closes connections with no frames for 2 × `heartbeatIntervalMs` (close 4408).
+- **Liveness:** the server closes connections with no frames for 2 × `heartbeatIntervalMs` (close 4408). Each heartbeat also checks the lab is still active, so a lab finished or completed over REST closes its sockets within one interval.
+- **Notifications** reach every API process through Redis pub/sub (`lab:<id>`), published by the worker from the transactional outbox about every 500 ms (ADR-0004).
 
 ## Close codes
 

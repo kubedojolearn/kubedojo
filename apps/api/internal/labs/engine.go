@@ -12,55 +12,92 @@ import (
 	"github.com/google/uuid"
 
 	dbgen "github.com/kubedojolearn/kubedojo/apps/api/db/generated"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/grading"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/simulator"
 )
 
 // The simulator is pure (ADR-0006); this file moves its state in and out of PostgreSQL.
 
-// fixtureCache holds parsed fixtures by challenge version. Published versions are immutable, so
-// entries never go stale; the cache is cleared when full rather than tracking recency.
+// VirtualFile is a file in the lab editor.
+type VirtualFile struct {
+	Path    string `json:"path"`
+	Content string `json:"content"`
+}
+
+// Reward is a challenge's XP (challenge.schema.json reward).
+type Reward struct {
+	BaseXP               int32 `json:"baseXP"`
+	FirstTryBonusXP      int32 `json:"firstTryBonusXP"`
+	HintPenaltyPerHintXP int32 `json:"hintPenaltyPerHintXP"`
+}
+
+// definition is what a lab needs from its challenge version. Goals and hints are hidden from
+// learners: they leave the server only as grading results and revealed hint text.
+type definition struct {
+	Fixture      simulator.Fixture
+	InitialFiles []VirtualFile
+	Goals        []grading.Goal
+	Hints        []string
+	Reward       Reward
+}
+
+// fixtureCache holds parsed challenge definitions by challenge version. Published versions are
+// immutable, so entries never go stale; the cache is cleared when full rather than tracking
+// recency.
 type fixtureCache struct {
 	mu sync.Mutex
-	m  map[uuid.UUID]simulator.Fixture
+	m  map[uuid.UUID]definition
 }
 
 const fixtureCacheSize = 256
 
-func (c *fixtureCache) get(ctx context.Context, q *dbgen.Queries, versionID uuid.UUID) (simulator.Fixture, error) {
+func (c *fixtureCache) definition(ctx context.Context, q *dbgen.Queries, versionID uuid.UUID) (definition, error) {
 	c.mu.Lock()
-	f, ok := c.m[versionID]
+	d, ok := c.m[versionID]
 	c.mu.Unlock()
 	if ok {
-		return f, nil
+		return d, nil
 	}
 	spec, err := q.GetChallengeVersionSpec(ctx, versionID)
 	if err != nil {
-		return f, fmt.Errorf("load challenge version: %w", err)
+		return d, fmt.Errorf("load challenge version: %w", err)
 	}
-	if f, err = parseFixture(spec); err != nil {
-		return f, err
+	if d, err = parseDefinition(spec); err != nil {
+		return d, err
 	}
 	c.mu.Lock()
 	if c.m == nil || len(c.m) >= fixtureCacheSize {
-		c.m = map[uuid.UUID]simulator.Fixture{}
+		c.m = map[uuid.UUID]definition{}
 	}
-	c.m[versionID] = f
+	c.m[versionID] = d
 	c.mu.Unlock()
-	return f, nil
+	return d, nil
 }
 
-// parseFixture reads the fixture from a stored challenge spec: {"challenge": …, "fixture": …}.
-func parseFixture(spec json.RawMessage) (simulator.Fixture, error) {
+func (c *fixtureCache) get(ctx context.Context, q *dbgen.Queries, versionID uuid.UUID) (simulator.Fixture, error) {
+	d, err := c.definition(ctx, q, versionID)
+	return d.Fixture, err
+}
+
+// parseDefinition reads a stored challenge spec: {"challenge": …, "fixture": …}.
+func parseDefinition(spec json.RawMessage) (definition, error) {
 	var doc struct {
+		Challenge struct {
+			InitialFiles []VirtualFile  `json:"initialFiles"`
+			Goals        []grading.Goal `json:"goals"`
+			Hints        []string       `json:"hints"`
+			Reward       Reward         `json:"reward"`
+		} `json:"challenge"`
 		Fixture *simulator.Fixture `json:"fixture"`
 	}
 	if err := json.Unmarshal(spec, &doc); err != nil {
-		return simulator.Fixture{}, fmt.Errorf("challenge spec: %w", err)
+		return definition{}, fmt.Errorf("challenge spec: %w", err)
 	}
 	if doc.Fixture == nil {
-		return simulator.Fixture{}, fmt.Errorf("challenge spec has no fixture")
+		return definition{}, fmt.Errorf("challenge spec has no fixture")
 	}
-	return *doc.Fixture, nil
+	c := doc.Challenge
+	return definition{Fixture: *doc.Fixture, InitialFiles: c.InitialFiles, Goals: c.Goals, Hints: c.Hints, Reward: c.Reward}, nil
 }
 
 // newSeed returns a random non-negative seed (lab_sessions.seed is a signed bigint).

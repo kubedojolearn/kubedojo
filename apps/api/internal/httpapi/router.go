@@ -17,24 +17,29 @@ import (
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/httpx"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/ratelimit"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/progress"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/realtime"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/users"
 )
 
 // Deps are the router's collaborators.
 type Deps struct {
-	Log            *slog.Logger
-	Health         health.Handler
-	Verifier       *auth.Verifier
-	Identities     auth.IdentityResolver
-	Users          users.Service
-	Catalog        courses.Catalog
-	Progress       progress.Reader
-	Labs           labs.Lifecycle
-	Accounts       account.Accounts
-	Admin          admin.Reader
-	Settings       progress.SettingsReader
-	Cursors        *httpx.Cursors
-	Limiter        ratelimit.Limiter
+	Log        *slog.Logger
+	Health     health.Handler
+	Verifier   *auth.Verifier
+	Identities auth.IdentityResolver
+	Users      users.Service
+	Catalog    courses.Catalog
+	Progress   progress.Reader
+	Labs       labs.Lifecycle
+	Accounts   account.Accounts
+	Admin      admin.Reader
+	Settings   progress.SettingsReader
+	Cursors    *httpx.Cursors
+	Limiter    ratelimit.Limiter
+	// Realtime is the lab WebSocket gateway and Tickets issues its tickets; both optional (nil
+	// disables the socket, and the terminal uses REST).
+	Realtime       http.Handler
+	Tickets        realtime.Issuer
 	RequestTimeout time.Duration
 	MaxBodyBytes   int64
 }
@@ -49,6 +54,12 @@ var (
 	labLifecycleLimit = ratelimit.Rule{Name: "lab-lifecycle", Limit: 30, Window: time.Hour}
 	// Terminal commands (simulator-compatibility.md §5).
 	commandLimit = ratelimit.Rule{Name: "commands", Limit: 100, Window: time.Minute}
+	// Editor saves (autosave included) and deletes of virtual files.
+	fileSaveLimit = ratelimit.Rule{Name: "lab-files", Limit: 120, Window: time.Minute}
+	// Checks, answers and hints. Answers are also capped per goal (ADR-0007).
+	gradingLimit = ratelimit.Rule{Name: "lab-grading", Limit: 30, Window: time.Minute}
+	// WebSocket tickets: one per (re)connect, with backoff on the client.
+	ticketLimit = ratelimit.Rule{Name: "ws-ticket", Limit: 60, Window: time.Minute}
 	// A full export reads every row the learner has; deletion is once per account.
 	exportLimit   = ratelimit.Rule{Name: "export", Limit: 10, Window: time.Hour}
 	deletionLimit = ratelimit.Rule{Name: "deletion", Limit: 5, Window: time.Hour, FailClosed: true}
@@ -58,7 +69,14 @@ var (
 // deadline, body cap, access log, security headers; then per route group: authentication,
 // per-user rate limit, authorization, handler.
 func NewRouter(d Deps) http.Handler {
+	root := chi.NewRouter()
+	if d.Realtime != nil {
+		// The socket outlives any request deadline and must reach the raw connection, so it gets
+		// only request IDs and panic recovery. Its Origin check and ticket are its authentication.
+		root.With(httpx.WithRequestID(d.Log), httpx.Recover).Get("/api/v1/ws/labs/{labId}", d.Realtime.ServeHTTP)
+	}
 	r := chi.NewRouter()
+	root.Mount("/", r)
 	r.NotFound(httpx.NotFoundHandler)
 	r.MethodNotAllowed(httpx.MethodNotAllowedHandler)
 
@@ -123,6 +141,18 @@ func NewRouter(d Deps) http.Handler {
 			r.Method(http.MethodGet, "/labs/{labId}/events", httpx.Handler(labsHandler.ListEvents))
 			r.Method(http.MethodGet, "/labs/{labId}/commands", httpx.Handler(labsHandler.ListCommands))
 			r.With(ratelimit.PerUser(d.Limiter, commandLimit)).Method(http.MethodPost, "/labs/{labId}/commands", httpx.Handler(labsHandler.RunCommand))
+			r.Method(http.MethodGet, "/labs/{labId}/files", httpx.Handler(labsHandler.ListFiles))
+			r.With(ratelimit.PerUser(d.Limiter, fileSaveLimit)).Method(http.MethodPut, "/labs/{labId}/files", httpx.Handler(labsHandler.SaveFile))
+			r.With(ratelimit.PerUser(d.Limiter, fileSaveLimit)).Method(http.MethodDelete, "/labs/{labId}/files", httpx.Handler(labsHandler.DeleteFile))
+			grading := ratelimit.PerUser(d.Limiter, gradingLimit)
+			r.Method(http.MethodGet, "/labs/{labId}/goals", httpx.Handler(labsHandler.GetGoals))
+			r.With(grading).Method(http.MethodPost, "/labs/{labId}/answers", httpx.Handler(labsHandler.SubmitAnswer))
+			r.With(grading).Method(http.MethodPost, "/labs/{labId}/validate", httpx.Handler(labsHandler.Validate))
+			r.With(grading).Method(http.MethodPost, "/labs/{labId}/hints/{index}", httpx.Handler(labsHandler.RevealHint))
+			if d.Tickets != nil {
+				tickets := realtime.TicketHandler{Tickets: d.Tickets, Labs: d.Labs}
+				r.With(ratelimit.PerUser(d.Limiter, ticketLimit)).Method(http.MethodPost, "/labs/{labId}/ws-ticket", httpx.Handler(tickets.Create))
+			}
 
 			// Admin: the role is read from the database for every request (never from the assertion).
 			r.Group(func(r chi.Router) {
@@ -133,7 +163,7 @@ func NewRouter(d Deps) http.Handler {
 			})
 		})
 	})
-	return r
+	return root
 }
 
 func routePattern(r *http.Request) string {

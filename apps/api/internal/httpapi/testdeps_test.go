@@ -17,11 +17,14 @@ import (
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth/authtest"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/courses"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/gamification"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/grading"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/health"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/labs"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/httpx"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/ratelimit"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/progress"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/realtime"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/users"
 )
 
@@ -280,6 +283,83 @@ func (labsFake) Commands(_ context.Context, _, id uuid.UUID, _ *labs.CommandCurs
 	return []labs.CommandResult{fakeCommand("kubectl get pods")}, &labs.CommandCursor{Sequence: 1}, labErr(id)
 }
 
+func fakeFile(path, content string) labs.LabFile {
+	return labs.LabFile{Path: path, Content: content, SizeBytes: len(content), UpdatedAt: time.Date(2026, 10, 23, 9, 0, 0, 0, time.UTC)}
+}
+
+func (labsFake) Files(_ context.Context, _, id uuid.UUID) ([]labs.LabFile, error) {
+	return []labs.LabFile{fakeFile("manifests/web.yaml", "apiVersion: v1\nkind: Namespace\nmetadata:\n  name: web\n")}, labErr(id)
+}
+
+func (labsFake) SaveFile(_ context.Context, _, id uuid.UUID, path, content string, base *time.Time) (labs.LabFile, error) {
+	if path == "manifests/full.yaml" {
+		return labs.LabFile{}, labs.ErrFileLimit
+	}
+	if base != nil && !base.Equal(time.Date(2026, 10, 23, 9, 0, 0, 0, time.UTC)) {
+		return labs.LabFile{}, labs.ErrStaleFile
+	}
+	return fakeFile(path, content), labErr(id)
+}
+
+func (labsFake) DeleteFile(_ context.Context, _, id uuid.UUID, path string) error {
+	if path == "manifests/nope.yaml" {
+		return labs.ErrFileNotFound
+	}
+	return labErr(id)
+}
+
+func (labsFake) SubmitAnswer(_ context.Context, _, id uuid.UUID, goalID, answer string) (labs.AnswerStatus, error) {
+	switch goalID {
+	case "nope":
+		return labs.AnswerStatus{}, labs.ErrGoalNotFound
+	case "used-up":
+		return labs.AnswerStatus{}, labs.ErrNoSubmissionsLeft
+	}
+	return labs.AnswerStatus{GoalID: goalID, Submissions: 1, SubmissionsRemaining: 9, LastAnswer: &answer}, labErr(id)
+}
+
+func (labsFake) RevealHint(_ context.Context, _, id uuid.UUID, index int) (labs.Hint, error) {
+	switch {
+	case index > 2:
+		return labs.Hint{}, labs.ErrHintNotFound
+	case index > 0:
+		return labs.Hint{}, labs.ErrHintOrder
+	}
+	return labs.Hint{Index: 0, Text: "Try kubectl get deployments.", PenaltyXP: 10, HintsUsed: 1, HintCount: 3}, labErr(id)
+}
+
+func fakeValidation() labs.ValidationResult {
+	return labs.ValidationResult{
+		AttemptID: uuid.MustParse("cdcdcdcd-cdcd-4cdc-8cdc-cdcdcdcdcdcd"), Passed: true, Score: 100, XPAwarded: 125,
+		Goals: []grading.Result{{GoalID: "deployment-replicas", Passed: true, Message: "Done."}}, LabState: "completed",
+		EvaluatedAt: time.Date(2026, 10, 23, 9, 0, 0, 0, time.UTC), Achievements: []gamification.Award{{Key: "first-lesson", Title: "First steps"}},
+	}
+}
+
+func (labsFake) Validate(_ context.Context, _, id uuid.UUID, _ string) (labs.ValidationResult, error) {
+	return fakeValidation(), labErr(id)
+}
+
+func (labsFake) Goals(_ context.Context, _, id uuid.UUID) (labs.LabGoals, error) {
+	last := fakeValidation()
+	last.Achievements = []gamification.Award{}
+	answer := "3"
+	return labs.LabGoals{
+		Answers:   []labs.AnswerStatus{{GoalID: "pod-count", Submissions: 1, SubmissionsRemaining: 9, LastAnswer: &answer}},
+		Hints:     []labs.Hint{{Index: 0, Text: "Try kubectl get deployments.", PenaltyXP: 10, HintsUsed: 1, HintCount: 3}},
+		HintCount: 3, PenaltyXP: 10, LastAttempt: &last,
+	}, labErr(id)
+}
+
+type ticketsFake struct{}
+
+func (ticketsFake) Issue(_ context.Context, _, labID uuid.UUID) (realtime.Ticket, error) {
+	return realtime.Ticket{
+		Ticket: strings.Repeat("t", 43), ExpiresAt: time.Date(2026, 10, 23, 9, 0, 30, 0, time.UTC),
+		URL: "/api/v1/ws/labs/" + labID.String(), ProtocolVersion: realtime.ProtocolVersion,
+	}, nil
+}
+
 type limiter struct{}
 
 func (limiter) Allow(ctx context.Context, key string, _ int, _ time.Duration) (ratelimit.Decision, error) {
@@ -310,6 +390,7 @@ func testRouter(t *testing.T, ready bool) (http.Handler, authtest.Signer) {
 		Catalog:        catalog{},
 		Progress:       progressFake{},
 		Labs:           labsFake{},
+		Tickets:        ticketsFake{},
 		Accounts:       accountsFake{},
 		Admin:          adminFake{},
 		Settings:       userStore{},

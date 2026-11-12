@@ -23,7 +23,7 @@ func (inv *Invocation) runMutating(env Env, p *Parsed) Result {
 	if inv.verb != "config" {
 		work.Advance(simulator.Tick)
 	}
-	wenv := Env{State: work, Events: env.Events}
+	wenv := Env{State: work, Events: env.Events, Files: env.Files}
 	run := map[string]runner{
 		"create": runCreate, "run": runRun, "expose": runExpose, "delete": runDelete, "scale": runScale,
 		"set": runSet, "label": runLabel, "annotate": runAnnotate, "rollout": runRollout, "config": runConfig,

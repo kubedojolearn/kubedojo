@@ -54,6 +54,7 @@ type PublicGoal struct {
 	ID          string   `json:"id"`
 	Type        string   `json:"type"`
 	Description string   `json:"description"`
+	Prompt      string   `json:"prompt,omitempty"`
 	Input       string   `json:"input,omitempty"`
 	Choices     []string `json:"choices,omitempty"`
 }

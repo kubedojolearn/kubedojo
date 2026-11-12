@@ -170,7 +170,7 @@ export const uiContrastPairs: Array<[keyof ThemeColors, keyof ThemeColors]> = [
   ["faint", "card"],
 ];
 
-/** Terminal palette (xterm.js theme, Part 14). Dark in both app themes, like most terminals. */
+/** Terminal palette (the lab terminal and YAML editor). Dark in both app themes, like most terminals. */
 export const terminal = {
   background: "#080A0D",
   foreground: "#D6DCE5",

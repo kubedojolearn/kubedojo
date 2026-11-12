@@ -41,6 +41,9 @@ type CommandResult struct {
 	SnapshotVersion int64     `json:"snapshotVersion"`
 	DurationMs      int32     `json:"durationMs"`
 	ExecutedAt      time.Time `json:"executedAt"`
+	// Deduplicated is set when the requestID had already run and the stored result is returned
+	// (the WebSocket protocol reports it; REST retries just get the same body).
+	Deduplicated bool `json:"-"`
 }
 
 func commandFromRow(r dbgen.CommandExecution) CommandResult {
@@ -105,7 +108,9 @@ func (sv *Service) RunCommand(ctx context.Context, userID, labID, requestID uuid
 		return CommandResult{}, err
 	}
 	if prev, err := q.GetCommandByRequestID(ctx, dbgen.GetCommandByRequestIDParams{SessionID: labID, RequestID: requestID}); err == nil {
-		return commandFromRow(prev), nil
+		res := commandFromRow(prev)
+		res.Deduplicated = true
+		return res, nil
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return CommandResult{}, err
 	}
@@ -115,6 +120,7 @@ func (sv *Service) RunCommand(ctx context.Context, userID, labID, requestID uuid
 		// A retry may have committed while this request waited for the lab lock.
 		if prev, err := q.GetCommandByRequestID(ctx, dbgen.GetCommandByRequestIDParams{SessionID: s.ID, RequestID: requestID}); err == nil {
 			result = commandFromRow(prev)
+			result.Deduplicated = true
 			return Change{}, nil
 		} else if !errors.Is(err, pgx.ErrNoRows) {
 			return Change{}, err
@@ -131,9 +137,13 @@ func (sv *Service) RunCommand(ctx context.Context, userID, labID, requestID uuid
 		if err != nil {
 			return Change{}, err
 		}
+		files, err := fileMap(ctx, q, s.ID)
+		if err != nil {
+			return Change{}, err
+		}
 
 		started := time.Now()
-		res := kubectl.Plan(input).Run(kubectl.Env{State: state, Events: events})
+		res := kubectl.Plan(input).Run(kubectl.Env{State: state, Events: events, Files: files})
 		duration := time.Since(started).Milliseconds()
 		if res.Err != nil {
 			// A simulator bug: roll back and report an internal error, never a half-applied command.

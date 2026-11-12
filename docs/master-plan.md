@@ -50,8 +50,8 @@ A new learner can: (1) visit the landing page, (2) sign in with GitHub, (3) comp
 | UI | Tailwind CSS, shadcn/ui, Lucide | Fast, accessible, consistent system |
 | Data fetching | TanStack Query | Client queries, caching, mutation and refresh |
 | Local layout state | Zustand | Editor/terminal/graph panel settings |
-| Terminal | xterm.js | Browser terminal rendering; not server shell |
-| YAML editor | Monaco Editor | Diagnostics and manifest editing |
+| Terminal | Accessible HTML terminal ([ADR-0010](adr/0010-html-terminal.md); the plan first named xterm.js) | Browser terminal rendering; not server shell |
+| YAML editor | CodeMirror 6 ([ADR-0009](adr/0009-codemirror-yaml-editor.md); the plan first named Monaco) | Diagnostics and manifest editing |
 | Resource graph | React Flow (@xyflow/react) | Node/edge visual learning |
 | Backend | Go + Chi | Modular API and deterministic engine |
 | Persistent DB | PostgreSQL | User, courses, sessions, commands, resource data |
@@ -613,3 +613,72 @@ The parts below were specified when they were built (November 2026), from this p
 - Golden transcripts for each command family, run as sequences against a fresh lab; replaying a sequence reproduces it byte for byte.
 - Every non-mutating or failed command leaves state, clock and version unchanged; every mutating one advances the clock exactly one tick and leaves a reconciled cluster.
 - Concurrent commands on one lab serialize; a limit breach refuses the whole command.
+
+### Part 12/20 — Controllers
+
+**Priority:** P0 · **Dependencies:** Part 09 · **Outcome:** controllers behave correctly under every command learners can run.
+
+The controllers themselves (Deployment rollouts and history, ReplicaSet scaling, scheduler, kubelet profiles, Service addresses, EndpointSlices, garbage collection) shipped with Part 09, because fixtures need them to load. Part 12's remaining work, done alongside Part 11, was what learner commands exposed: ReplicaSet release and adoption of Pods, Deployment adoption of orphaned ReplicaSets, NodePort allocation conflicts, and fixed-point reconciliation after every mutation with the whole command refused on a limit breach.
+
+### Part 13/20 — Virtual files, YAML editor and apply
+
+**Priority:** P0 · **Dependencies:** Parts 11–12 · **Outcome:** learners write manifests and apply them declaratively.
+
+#### Implement
+
+1. `GET/PUT/DELETE /labs/{id}/files`: up to 20 files of 64 KiB under `manifests/`, optimistic concurrency with `baseUpdatedAt` (STALE_VERSION), seeded from the lesson's `initialFiles` on start and reset. Saving a file is not a cluster change and doesn't move the lab version.
+2. `kubectl apply -f`, `create -f [--save-config]`, `delete -f` and `create configmap|secret --from-file` over virtual files (or the whole `manifests` directory): multi-document YAML, `kind: List`, namespace rules, kubectl's error wording, `--dry-run=client`, `-o name`.
+3. `apply` is kubectl's client-side apply: `last-applied-configuration`, three-way merge with strategic-merge keys for containers, env and ports, kubectl's warning for objects not created by apply, and `created` / `configured` / `unchanged` reporting.
+4. A YAML editor in the lab (ADR-0009) with in-browser syntax diagnostics, Save (Ctrl/Cmd+S) and Apply, whose command also appears in the terminal.
+
+#### Acceptance tests / gate
+
+- Golden transcripts for apply, create -f and delete -f, including merges with imperative changes, namespace mismatches, unsupported kinds and fields, and bad YAML.
+- Integration tests for seeding, reset, stale saves, limits, ownership and ended labs; contract tests for the new routes; a browser test that edits, applies and reloads.
+
+### Part 14/20 — Live terminal
+
+**Priority:** P0 · **Dependencies:** Parts 10–11 · **Outcome:** the terminal runs over a live connection and every open view of a lab stays current.
+
+#### Implement
+
+1. `POST /labs/{id}/ws-ticket`: a one-use, 30-second ticket in Redis (only its hash is stored), for the learner's active lab.
+2. The WebSocket gateway at `/api/v1/ws/labs/{id}` (docs/api/websocket.md): Origin allowlist (`WS_ALLOWED_ORIGINS`), 30 upgrades per IP per minute, an auth frame within 3 s, commands through the same at-most-once path as REST and the same per-user command limit, heartbeats that also notice labs ended elsewhere, idle and replacement closes, and the documented close codes. It sits outside the request-deadline middleware.
+3. The worker relays committed `lab.state_changed` outbox events to Redis (`lab:<id>`); each API process subscribes once and forwards `state.changed` to its sockets for that lab (ADR-0004).
+4. The terminal connects with backoff and a fresh ticket per attempt, runs commands over the socket, falls back to HTTP (same request ID, so nothing runs twice) and refreshes the lab when a newer version is announced. The terminal stays HTML (ADR-0010).
+
+#### Acceptance tests / gate
+
+- Gateway tests over a real socket: auth (bad, foreign, late, missing, old protocol), commands, notifications, protocol errors, rate limits, replacement, labs ending.
+- Integration tests for one-use tickets and the outbox relay; client tests for reconnects, ordering and fallbacks; a stack test where a change in one tab appears in another.
+
+### Part 15/20 — Cluster map
+
+**Priority:** P1 · **Dependencies:** Parts 09, 11 · **Outcome:** learners see how objects relate and watch them change.
+
+#### Implement
+
+1. A pure graph model (`apps/web/lib/cluster-graph.ts`) from the snapshot: Services, Deployments, ReplicaSets, Pods, ConfigMaps, Secrets and Nodes in fixed columns, joined by ownership (controller references), Service selection (with each Pod's endpoint readiness from the EndpointSlice), scheduling (`spec.nodeName`) and configuration references (`env`/`envFrom`). Layout is deterministic.
+2. A React Flow map in the lab's Cluster tab with a namespace filter, kind-specific shapes and icons (color is never the only signal), faded idle ReplicaSets and not-ready endpoints, and a highlight on everything the last command changed (resourceVersion moved).
+3. Text equivalents: every relationship as a sentence, nodes labelled for screen readers, and the existing list view one click away.
+
+#### Acceptance tests / gate
+
+- Unit tests for relationships, readiness, namespace scoping, deterministic layout, sentences and change detection.
+- The stack test checks the map, its relationship sentences and the list view.
+
+**Priority:** P0 · **Dependencies:** Parts 08, 11, 13 · **Outcome:** labs can be completed, and completing one earns XP.
+
+#### Implement
+
+1. A pure evaluator (`internal/grading`) for the three goal types of ADR-0007 and its assertion DSL: paths with `[n]` and `["key"]`, the ten operators, numeric and CPU/memory-quantity comparison, answers computed from the live state (`static`, `path`, `count`), and observation goals matched on the parser's structured output of successful commands.
+2. `POST /labs/{id}/answers` stores an answer (shape-checked, never graded on submit; at most 10 per goal, and `choices − 1` for choice goals). `POST /labs/{id}/hints/{i}` reveals hints in order; seeing one again is free. `GET /labs/{id}/goals` restores the panel after a reload, also for ended labs.
+3. `POST /labs/{id}/validate` (Idempotency-Key) grades every goal, records the attempt and the lesson's best score. When all goals pass, the lab completes, and in the same transaction: the lesson's first completion, totals and streak (in the learner's time zone), XP and achievements.
+4. XP for a lesson is awarded once, through the ledger's event key: `baseXP`, plus `firstTryBonusXP` if the learner's first check of the lesson passes, minus `hintPenaltyPerHintXP` for each hint revealed in the passing lab, never below zero.
+5. A goals panel in the lab: status per goal with the lesson's feedback (never the expected answer), answer inputs, hints with their cost, Check my work, and the result with XP and achievements.
+
+#### Acceptance tests / gate
+
+- Every lesson's hidden reference solution, replayed through the simulator, passes all its goals, and no lesson passes before the learner does anything (`internal/grading` content test, run in CI).
+- Integration tests: a failing then passing check, hint order and cost, answer limits, idempotent replay after completion, XP and achievements awarded once across labs, the first-try bonus, ownership.
+- A browser test that fails a check, takes a hint, fixes the cluster, passes, and sees the completed lab after a reload.

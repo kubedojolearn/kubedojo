@@ -7,6 +7,8 @@ package dbgen
 
 import (
 	"context"
+	"encoding/json"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -27,6 +29,103 @@ func (q *Queries) AddXP(ctx context.Context, arg AddXPParams) (int32, error) {
 	var total_xp int32
 	err := row.Scan(&total_xp)
 	return total_xp, err
+}
+
+const awardAchievement = `-- name: AwardAchievement :execrows
+INSERT INTO user_achievements (user_id, achievement_key) VALUES ($1, $2) ON CONFLICT DO NOTHING
+`
+
+type AwardAchievementParams struct {
+	UserID         uuid.UUID
+	AchievementKey string
+}
+
+func (q *Queries) AwardAchievement(ctx context.Context, arg AwardAchievementParams) (int64, error) {
+	result, err := q.db.Exec(ctx, awardAchievement, arg.UserID, arg.AchievementKey)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const completeLessonProgress = `-- name: CompleteLessonProgress :execrows
+UPDATE lesson_progress
+SET completed_at = now(), best_score = GREATEST(COALESCE(best_score, 0), $1::smallint)
+WHERE user_id = $2 AND lesson_id = $3 AND completed_at IS NULL
+`
+
+type CompleteLessonProgressParams struct {
+	Score    int16
+	UserID   uuid.UUID
+	LessonID uuid.UUID
+}
+
+// Marks the lesson completed once; returns 0 rows if it already was.
+func (q *Queries) CompleteLessonProgress(ctx context.Context, arg CompleteLessonProgressParams) (int64, error) {
+	result, err := q.db.Exec(ctx, completeLessonProgress, arg.Score, arg.UserID, arg.LessonID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const completedCourseSlugs = `-- name: CompletedCourseSlugs :many
+SELECT c.slug FROM courses c
+JOIN lessons l ON l.course_id = c.id AND l.current_challenge_version_id IS NOT NULL
+LEFT JOIN lesson_progress p ON p.lesson_id = l.id AND p.user_id = $1 AND p.completed_at IS NOT NULL
+WHERE c.published
+GROUP BY c.id, c.slug
+HAVING count(*) = count(p.lesson_id)
+`
+
+// Published courses in which the learner has completed every published lesson.
+func (q *Queries) CompletedCourseSlugs(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	rows, err := q.db.Query(ctx, completedCourseSlugs, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var slug string
+		if err := rows.Scan(&slug); err != nil {
+			return nil, err
+		}
+		items = append(items, slug)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const countFirstTryPasses = `-- name: CountFirstTryPasses :one
+SELECT count(*) FROM (
+  SELECT DISTINCT ON (s.lesson_id) a.passed
+  FROM challenge_attempts a JOIN lab_sessions s ON s.id = a.session_id
+  WHERE a.user_id = $1
+  ORDER BY s.lesson_id, a.evaluated_at, a.id
+) first WHERE first.passed
+`
+
+// Lessons whose first check by this learner passed.
+func (q *Queries) CountFirstTryPasses(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countFirstTryPasses, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countHintFreePasses = `-- name: CountHintFreePasses :one
+SELECT count(DISTINCT s.lesson_id) FROM challenge_attempts a JOIN lab_sessions s ON s.id = a.session_id
+WHERE a.user_id = $1 AND a.passed AND a.hints_used = 0
+`
+
+func (q *Queries) CountHintFreePasses(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countHintFreePasses, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const getUserTotals = `-- name: GetUserTotals :one
@@ -82,6 +181,108 @@ func (q *Queries) InsertXPEvent(ctx context.Context, arg InsertXPEventParams) (I
 	return i, err
 }
 
+const listAchievementConditions = `-- name: ListAchievementConditions :many
+SELECT key, title, condition FROM achievement_definitions ORDER BY display_order
+`
+
+type ListAchievementConditionsRow struct {
+	Key       string
+	Title     string
+	Condition json.RawMessage
+}
+
+func (q *Queries) ListAchievementConditions(ctx context.Context) ([]ListAchievementConditionsRow, error) {
+	rows, err := q.db.Query(ctx, listAchievementConditions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAchievementConditionsRow{}
+	for rows.Next() {
+		var i ListAchievementConditionsRow
+		if err := rows.Scan(&i.Key, &i.Title, &i.Condition); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockTotalsWithTimeZone = `-- name: LockTotalsWithTimeZone :one
+SELECT t.completed_lessons, t.current_streak, t.longest_streak, t.last_completion_date, s.time_zone
+FROM user_totals t JOIN user_settings s ON s.user_id = t.user_id
+WHERE t.user_id = $1
+FOR UPDATE OF t
+`
+
+type LockTotalsWithTimeZoneRow struct {
+	CompletedLessons   int32
+	CurrentStreak      int32
+	LongestStreak      int32
+	LastCompletionDate *time.Time
+	TimeZone           string
+}
+
+func (q *Queries) LockTotalsWithTimeZone(ctx context.Context, userID uuid.UUID) (LockTotalsWithTimeZoneRow, error) {
+	row := q.db.QueryRow(ctx, lockTotalsWithTimeZone, userID)
+	var i LockTotalsWithTimeZoneRow
+	err := row.Scan(
+		&i.CompletedLessons,
+		&i.CurrentStreak,
+		&i.LongestStreak,
+		&i.LastCompletionDate,
+		&i.TimeZone,
+	)
+	return i, err
+}
+
+const recordBestScore = `-- name: RecordBestScore :exec
+UPDATE lesson_progress SET best_score = GREATEST(COALESCE(best_score, 0), $1::smallint)
+WHERE user_id = $2 AND lesson_id = $3
+`
+
+type RecordBestScoreParams struct {
+	Score    int16
+	UserID   uuid.UUID
+	LessonID uuid.UUID
+}
+
+func (q *Queries) RecordBestScore(ctx context.Context, arg RecordBestScoreParams) error {
+	_, err := q.db.Exec(ctx, recordBestScore, arg.Score, arg.UserID, arg.LessonID)
+	return err
+}
+
+const recordCompletionTotals = `-- name: RecordCompletionTotals :one
+UPDATE user_totals SET
+  completed_lessons = completed_lessons + 1,
+  current_streak = $1,
+  longest_streak = GREATEST(longest_streak, $1),
+  last_completion_date = $2
+WHERE user_id = $3
+RETURNING completed_lessons, current_streak
+`
+
+type RecordCompletionTotalsParams struct {
+	Streak         int32
+	CompletionDate *time.Time
+	UserID         uuid.UUID
+}
+
+type RecordCompletionTotalsRow struct {
+	CompletedLessons int32
+	CurrentStreak    int32
+}
+
+func (q *Queries) RecordCompletionTotals(ctx context.Context, arg RecordCompletionTotalsParams) (RecordCompletionTotalsRow, error) {
+	row := q.db.QueryRow(ctx, recordCompletionTotals, arg.Streak, arg.CompletionDate, arg.UserID)
+	var i RecordCompletionTotalsRow
+	err := row.Scan(&i.CompletedLessons, &i.CurrentStreak)
+	return i, err
+}
+
 const sumXPEvents = `-- name: SumXPEvents :one
 SELECT COALESCE(SUM(delta), 0)::bigint FROM xp_events WHERE user_id = $1
 `
@@ -89,6 +290,17 @@ SELECT COALESCE(SUM(delta), 0)::bigint FROM xp_events WHERE user_id = $1
 func (q *Queries) SumXPEvents(ctx context.Context, userID uuid.UUID) (int64, error) {
 	row := q.db.QueryRow(ctx, sumXPEvents, userID)
 	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const xPForAttempt = `-- name: XPForAttempt :one
+SELECT COALESCE(SUM(delta), 0)::integer FROM xp_events WHERE attempt_id = $1
+`
+
+func (q *Queries) XPForAttempt(ctx context.Context, attemptID *uuid.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, xPForAttempt, attemptID)
+	var column_1 int32
 	err := row.Scan(&column_1)
 	return column_1, err
 }

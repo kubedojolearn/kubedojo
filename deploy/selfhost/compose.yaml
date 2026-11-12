@@ -70,6 +70,8 @@ services:
       <<: *backend-env
       API_LISTEN_ADDR: ":8080"
       API_JWT_PUBLIC_KEYS: ${API_JWT_PUBLIC_KEYS:?create .env first}
+      # Lab terminals connect over a WebSocket from the same origin people browse.
+      WS_ALLOWED_ORIGINS: ${WEB_ORIGIN:-http://localhost:8000}
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }

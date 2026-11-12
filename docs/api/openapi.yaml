@@ -733,7 +733,30 @@ paths:
         "400": { $ref: "#/components/responses/ValidationFailed" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: The lab has ended, or (STALE_VERSION) the file changed after baseUpdatedAt.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "410": { $ref: "#/components/responses/SessionExpired" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+    delete:
+      tags: [labs]
+      operationId: deleteLabFile
+      summary: Delete a virtual file
+      x-kubedojo-part: 13
+      parameters:
+        - name: path
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/VirtualPath" }
+      responses:
+        "204": { description: Deleted. }
+        "400": { $ref: "#/components/responses/ValidationFailed" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
+        "410": { $ref: "#/components/responses/SessionExpired" }
         "429": { $ref: "#/components/responses/RateLimited" }
 
   /api/v1/labs/{labId}/answers:
@@ -765,17 +788,41 @@ paths:
                 type: object
                 required: [data, meta]
                 properties:
-                  data:
-                    type: object
-                    required: [goalId, submissionsRemaining]
-                    properties:
-                      goalId: { $ref: "#/components/schemas/GoalId" }
-                      submissionsRemaining: { type: integer, minimum: 0 }
+                  data: { $ref: "#/components/schemas/AnswerStatus" }
                   meta: { $ref: "#/components/schemas/Meta" }
         "400": { $ref: "#/components/responses/ValidationFailed" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
-        "409": { $ref: "#/components/responses/Conflict" }
+        "409":
+          description: The lab has ended, or the goal has no submissions left.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "410": { $ref: "#/components/responses/SessionExpired" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/v1/labs/{labId}/goals:
+    parameters:
+      - $ref: "#/components/parameters/LabId"
+    get:
+      tags: [labs]
+      operationId: getLabGoals
+      summary: Answers, revealed hints and the latest check, for the goals panel
+      description: Works on ended labs too. Expected answers and unrevealed hints are never included.
+      x-kubedojo-part: 16
+      responses:
+        "200":
+          description: Goal state.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/LabGoals" }
+                  meta: { $ref: "#/components/schemas/Meta" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/RateLimited" }
 
   /api/v1/labs/{labId}/validate:
@@ -804,6 +851,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
+        "410": { $ref: "#/components/responses/SessionExpired" }
         "429": { $ref: "#/components/responses/RateLimited" }
 
   /api/v1/labs/{labId}/hints/{index}:
@@ -832,6 +880,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
+        "410": { $ref: "#/components/responses/SessionExpired" }
         "429": { $ref: "#/components/responses/RateLimited" }
 
   /api/v1/labs/{labId}/ws-ticket:
@@ -1300,6 +1349,7 @@ components:
         id: { $ref: "#/components/schemas/GoalId" }
         type: { type: string, enum: [state, answer, observation] }
         description: { type: string }
+        prompt: { type: string, description: The question an answer goal asks. }
         input: { type: string, enum: [text, number, choice] }
         choices:
           type: array
@@ -1620,6 +1670,42 @@ components:
           items: { $ref: "#/components/schemas/GoalResult" }
         labState: { $ref: "#/components/schemas/LabState" }
         evaluatedAt: { type: string, format: date-time }
+        achievements:
+          type: array
+          description: Achievements this check unlocked (empty on later reads).
+          items:
+            type: object
+            required: [key, title]
+            properties:
+              key: { type: string }
+              title: { type: string }
+
+    AnswerStatus:
+      type: object
+      required: [goalId, submissions, submissionsRemaining, lastAnswer]
+      properties:
+        goalId: { $ref: "#/components/schemas/GoalId" }
+        submissions: { type: integer, minimum: 0 }
+        submissionsRemaining: { type: integer, minimum: 0 }
+        lastAnswer: { type: [string, "null"], description: The learner's own latest answer (never the expected one). }
+
+    LabGoals:
+      type: object
+      required: [answers, hints, hintCount, hintPenaltyXp, lastAttempt]
+      properties:
+        answers:
+          type: array
+          items: { $ref: "#/components/schemas/AnswerStatus" }
+        hints:
+          type: array
+          description: Revealed hints, in order.
+          items: { $ref: "#/components/schemas/Hint" }
+        hintCount: { type: integer, minimum: 0 }
+        hintPenaltyXp: { type: integer, minimum: 0 }
+        lastAttempt:
+          oneOf:
+            - $ref: "#/components/schemas/ValidationResult"
+            - type: "null"
 
     Hint:
       type: object

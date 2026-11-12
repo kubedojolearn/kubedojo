@@ -155,8 +155,8 @@ async function LessonView({ params }: Props) {
               Lab goals
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Your lab has its own simulated cluster. Use the terminal to find each answer; automatic goal checks and
-              hints arrive with the next release.
+              Your lab has its own simulated cluster. Work through these goals there, then choose Check my work: every
+              goal is checked against your cluster, and hints are there if you get stuck.
             </p>
             <ol className="mt-3 list-decimal space-y-1 pl-6 text-sm">
               {lesson.goals.map((g) => (
