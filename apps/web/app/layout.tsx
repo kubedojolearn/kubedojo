@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { site } from "@/lib/site";
+import { serverEnv } from "@/lib/server-env";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
@@ -15,8 +16,8 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains-mono", preload: false });
 
 export const metadata: Metadata = {
-  // Absolute URLs for social cards. Set WEB_ORIGIN at build time for production.
-  metadataBase: new URL(process.env.WEB_ORIGIN ?? "http://localhost:8000"),
+  // Absolute URLs for social cards; Vercel previews use their assigned deployment URL.
+  metadataBase: new URL(serverEnv.webOrigin),
   title: { default: `${site.name} — ${site.tagline}`, template: `%s · ${site.name}` },
   description: site.description,
   applicationName: site.name,

@@ -1,5 +1,15 @@
 import "server-only";
 
+function getWebOrigin(): string {
+  const configured = process.env.WEB_ORIGIN;
+  if (configured) return configured.replace(/\/+$/, "");
+
+  // Vercel assigns a unique HTTPS hostname to each preview deployment. This keeps
+  // origin checks, callback paths, and generated metadata aligned with that host.
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL.replace(/\/+$/, "")}`;
+  return "http://localhost:8000";
+}
+
 /**
  * Server-only configuration. Secrets live here and are never read from client components;
  * scripts/check-client-bundle.mjs fails the build if they appear in browser bundles.
@@ -15,7 +25,7 @@ export const serverEnv = {
     return (process.env.API_INTERNAL_URL ?? "http://localhost:8080").replace(/\/+$/, "");
   },
   get webOrigin() {
-    return (process.env.WEB_ORIGIN ?? "http://localhost:8000").replace(/\/+$/, "");
+    return getWebOrigin();
   },
   get signingKey() {
     return required("BFF_SIGNING_PRIVATE_KEY");
