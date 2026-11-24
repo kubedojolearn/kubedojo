@@ -10,7 +10,16 @@ import {
   useSpring,
   type Variants,
 } from "motion/react";
-import { useEffect, useRef, useSyncExternalStore, type ComponentProps, type PointerEvent, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useSyncExternalStore,
+  type ComponentProps,
+  type PointerEvent,
+  type ReactNode,
+} from "react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -21,6 +30,7 @@ import { cn } from "@/lib/utils";
  */
 
 const EASE_OUT = [0.22, 1, 0.36, 1] as const;
+const MountContext = createContext(false);
 
 /** True when the OS or the account asks for reduced motion. */
 export function useCalmMotion(): boolean {
@@ -44,6 +54,13 @@ const revealVariants: Variants = {
   shown: { opacity: 1, y: 0, filter: "blur(0px)" },
 };
 
+// Above-the-fold mount animations keep opacity at 1 so LCP is immediate and WCAG contrast is never
+// reduced mid-transition.
+const mountVariants: Variants = {
+  hidden: { opacity: 1, y: 14 },
+  shown: { opacity: 1, y: 0 },
+};
+
 type RevealProps = Omit<ComponentProps<typeof motion.div>, "variants" | "initial" | "whileInView" | "animate"> & {
   delay?: number;
   /** Animate on mount (above the fold) instead of when scrolled into view. */
@@ -56,10 +73,10 @@ export function Reveal({ delay = 0, onMount = false, transition, children, ...pr
   return (
     <motion.div
       data-reveal
-      variants={revealVariants}
+      variants={onMount ? mountVariants : revealVariants}
       initial={calm ? false : "hidden"}
       {...(calm || onMount ? { animate: "shown" } : { whileInView: "shown", viewport: { once: true, amount: 0.2 } })}
-      transition={calm ? { duration: 0 } : { duration: 0.6, ease: EASE_OUT, delay, ...transition }}
+      transition={calm ? { duration: 0 } : { duration: onMount ? 0.45 : 0.6, ease: EASE_OUT, delay, ...transition }}
       {...props}
     >
       {children}
@@ -86,17 +103,19 @@ export function RevealGroup({
   const calm = useCalmMotion();
   const Comp = motion[as];
   return (
-    <Comp
-      initial={calm ? false : "hidden"}
-      {...(calm || onMount ? { animate: "shown" } : { whileInView: "shown", viewport: { once: true, amount: 0.15 } })}
-      variants={{
-        hidden: {},
-        shown: { transition: calm ? {} : { staggerChildren: stagger, delayChildren: delay } },
-      }}
-      className={className}
-    >
-      {children}
-    </Comp>
+    <MountContext.Provider value={onMount}>
+      <Comp
+        initial={calm ? false : "hidden"}
+        {...(calm || onMount ? { animate: "shown" } : { whileInView: "shown", viewport: { once: true, amount: 0.15 } })}
+        variants={{
+          hidden: {},
+          shown: { transition: calm ? {} : { staggerChildren: stagger, delayChildren: delay } },
+        }}
+        className={className}
+      >
+        {children}
+      </Comp>
+    </MountContext.Provider>
   );
 }
 
@@ -111,12 +130,13 @@ export function RevealItem({
   children: ReactNode;
 }) {
   const calm = useCalmMotion();
+  const onMount = useContext(MountContext);
   const Comp = motion[as];
   return (
     <Comp
       data-reveal
-      variants={revealVariants}
-      transition={calm ? { duration: 0 } : { duration: 0.55, ease: EASE_OUT }}
+      variants={onMount ? mountVariants : revealVariants}
+      transition={calm ? { duration: 0 } : { duration: onMount ? 0.4 : 0.55, ease: EASE_OUT }}
       className={className}
     >
       {children}
