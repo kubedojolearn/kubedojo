@@ -46,9 +46,9 @@ export function MobileNav({ signedIn }: { signedIn: boolean }) {
         id={id}
         aria-label="Mobile"
         hidden={!open}
-        className="absolute inset-x-0 top-14 max-h-[calc(100svh-3.5rem)] overflow-y-auto border-b border-border-subtle bg-background px-4 py-3 shadow-xl shadow-shade/40"
+        className="absolute inset-x-0 top-14 max-h-[calc(100svh-3.5rem)] overflow-y-auto border-b border-border-subtle bg-background px-4 py-3 shadow-xl shadow-shade/40 sm:px-6 lg:px-10"
       >
-        <ul className="mx-auto max-w-[1280px] space-y-1">
+        <ul className="space-y-1">
           {mainNav.map((item) => (
             <li key={item.href}>
               {item.href.startsWith("http") ? (
@@ -69,7 +69,7 @@ export function MobileNav({ signedIn }: { signedIn: boolean }) {
           ))}
         </ul>
         {!signedIn && (
-          <div className="mx-auto mt-3 grid max-w-[1280px] gap-2 border-t border-border-subtle pt-3 sm:hidden">
+          <div className="mt-3 grid gap-2 border-t border-border-subtle pt-3 sm:hidden">
             <Button asChild>
               <Link href="/learn" onClick={close}>
                 Start learning

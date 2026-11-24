@@ -18,7 +18,7 @@ const linkClass =
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border-subtle bg-background/90 backdrop-blur-sm">
-      <div className="mx-auto flex h-14 max-w-[1280px] items-center justify-between gap-4 px-4 sm:px-6">
+      <div className="flex h-14 w-full items-center justify-between gap-4 px-4 sm:px-6 lg:px-10 xl:px-14 2xl:px-20">
         <div className="flex min-w-0 items-center gap-6">
           <Link href="/" aria-label="KubeDojo home" className="shrink-0 rounded-md">
             <Logo />

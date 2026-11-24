@@ -12,7 +12,7 @@ const pages = [
 
 for (const scheme of ["dark", "light"] as const) {
   test.describe(scheme, () => {
-    test.use({ colorScheme: scheme, viewport: { width: 1280, height: 800 } });
+    test.use({ colorScheme: scheme, reducedMotion: "reduce", viewport: { width: 1280, height: 800 } });
     for (const p of pages) {
       test(p.name, async ({ page }) => {
         await page.goto(p.path);
@@ -24,7 +24,7 @@ for (const scheme of ["dark", "light"] as const) {
 }
 
 test.describe("mobile", () => {
-  test.use({ colorScheme: "dark", viewport: { width: 375, height: 800 } });
+  test.use({ colorScheme: "dark", reducedMotion: "reduce", viewport: { width: 375, height: 800 } });
   test("home", async ({ page }) => {
     await page.goto("/");
     await page.evaluate(() => document.fonts.ready);

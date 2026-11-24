@@ -24,7 +24,7 @@ export function Section({
       aria-labelledby={labelledBy}
       className={cn("scroll-mt-20", band && "border-y border-border-subtle bg-surface")}
     >
-      <div className={cn("mx-auto max-w-[1280px] px-4 py-16 sm:px-6 sm:py-24", className)}>{children}</div>
+      <div className={cn("w-full px-4 py-16 sm:px-6 sm:py-24 lg:px-10 xl:px-14 2xl:px-20", className)}>{children}</div>
     </section>
   );
 }
