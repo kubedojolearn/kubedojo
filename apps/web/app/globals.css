@@ -234,6 +234,145 @@
   }
 }
 
+/*
+ * Landing-page motion (components/marketing). Decorative only; the reduced-motion rules below
+ * stop all of it. Infinite loops animate transform/opacity/background-position only.
+ */
+:root {
+  --glow-strong: rgb(58 90 214 / 0.14);
+}
+.dark {
+  --glow-strong: rgb(108 140 255 / 0.16);
+}
+
+@keyframes kd-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+@keyframes kd-flash {
+  0% {
+    background-color: rgb(240 106 120 / 0.28);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+@keyframes kd-drift-a {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(6%, 8%, 0) scale(1.12);
+  }
+}
+@keyframes kd-drift-b {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1.05);
+  }
+  50% {
+    transform: translate3d(-8%, -4%, 0) scale(0.95);
+  }
+}
+@keyframes kd-shimmer {
+  to {
+    background-position: 200% center;
+  }
+}
+@keyframes kd-shine {
+  from {
+    transform: translateX(-120%) skewX(-20deg);
+  }
+  to {
+    transform: translateX(220%) skewX(-20deg);
+  }
+}
+
+/* Soft, slowly drifting light behind the hero. */
+.kd-aurora {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.kd-aurora::before,
+.kd-aurora::after {
+  content: "";
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  will-change: transform;
+}
+.kd-aurora::before {
+  top: -18rem;
+  left: 6%;
+  width: min(55vw, 64rem);
+  height: 36rem;
+  background: radial-gradient(closest-side, var(--glow-strong), transparent);
+  animation: kd-drift-a 22s ease-in-out infinite;
+}
+.kd-aurora::after {
+  top: -10rem;
+  right: 2%;
+  width: min(50vw, 56rem);
+  height: 34rem;
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--chart-5) 16%, transparent), transparent);
+  animation: kd-drift-b 26s ease-in-out infinite;
+}
+
+/* A faint grid that fades out from the center, like a cluster's node layout. */
+.kd-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, var(--border-subtle) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border-subtle) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 30%, transparent 75%);
+}
+
+/* Gradient text. `color` stays a solid token, so contrast checks and forced colors still see it. */
+.kd-gradient-text {
+  color: var(--highlight);
+  background: linear-gradient(90deg, var(--highlight), var(--chart-5), var(--chart-2), var(--highlight)) 0 center / 200%
+    auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: kd-shimmer 9s linear infinite;
+}
+@media (forced-colors: active) {
+  .kd-gradient-text {
+    -webkit-text-fill-color: currentColor;
+    background: none;
+  }
+}
+
+/* A band of light that crosses a button on hover. */
+.kd-shine {
+  position: relative;
+  overflow: hidden;
+}
+.kd-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.28), transparent);
+  transform: translateX(-120%) skewX(-20deg);
+  pointer-events: none;
+}
+.kd-shine:hover::after {
+  animation: kd-shine 0.9s ease-out;
+}
+
 /* Reduced motion: honor the OS setting and the in-app setting (html.reduce-motion, Part 08). */
 @media (prefers-reduced-motion: reduce) {
   *,

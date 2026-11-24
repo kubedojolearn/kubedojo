@@ -16,7 +16,10 @@ export function BeltLadder({ courses, status }: { courses: PlannedCourse[]; stat
         const body = (
           <>
             <span className="flex items-center gap-3 sm:w-36 sm:shrink-0">
-              <Belt order={i + 1} />
+              <Belt
+                order={i + 1}
+                className="transition-transform duration-200 ease-out group-hover:-rotate-6 group-hover:scale-110"
+              />
               <span className="font-mono text-caption text-muted-foreground">{beltName(i + 1).toLowerCase()} belt</span>
             </span>
             <span className="min-w-0 flex-1">

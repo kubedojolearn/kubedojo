@@ -22,9 +22,15 @@ describe("home page", () => {
     expect(curriculum).toHaveTextContent("black belt");
   });
 
-  it("only lists commands the simulator runs today as available", () => {
+  it("lists read and change commands separately", () => {
     render(<HomePage />);
-    const today = screen.getByText("kubectl, today").closest("div")!;
-    expect(today).not.toHaveTextContent("apply");
+    const read = screen.getByText("kubectl: look around").closest("div")!;
+    const change = screen.getByText("kubectl: change things").closest("div")!;
+    expect(read).toHaveTextContent("describe");
+    expect(read).not.toHaveTextContent("apply");
+    expect(change).toHaveTextContent("apply -f");
+    // `edit` is not supported by the simulator, so it must not be advertised.
+    const chips = Array.from(change.querySelectorAll("code"), (c) => c.textContent);
+    expect(chips).not.toContain("edit");
   });
 });

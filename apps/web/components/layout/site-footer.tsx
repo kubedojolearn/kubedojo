@@ -19,7 +19,7 @@ function FooterLink({ href, label }: { href: string; label: string }) {
 export function SiteFooter() {
   return (
     <footer className="border-t border-border-subtle">
-      <div className="mx-auto grid max-w-[1280px] grid-cols-2 gap-x-6 gap-y-10 px-4 py-12 sm:grid-cols-3 sm:px-6 md:grid-cols-[2fr_repeat(3,1fr)]">
+      <div className="grid w-full grid-cols-2 gap-x-6 gap-y-10 px-4 py-12 sm:grid-cols-3 sm:px-6 md:grid-cols-[2fr_repeat(3,1fr)] lg:px-10 xl:px-14 2xl:px-20">
         <div className="col-span-2 sm:col-span-3 md:col-span-1">
           <Logo />
           <p className="mt-3 max-w-xs text-small text-muted-foreground">{site.tagline}</p>
