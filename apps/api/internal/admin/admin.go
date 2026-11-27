@@ -1,13 +1,14 @@
-// Package admin serves the read-only admin views: imported content versions and the audit log.
-// Publishing from the browser (validate, publish, unpublish) arrives with Part 18; until then
-// content is published with `api content import -publish`.
+// Package admin serves the admin views and content publishing workflow: imported content
+// versions, reference-solution validation, publish/unpublish, and the audit log.
 package admin
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	dbgen "github.com/kubedojolearn/kubedojo/apps/api/db/generated"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/auth"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/httpx"
 )
 
@@ -111,16 +113,32 @@ func (s *Service) Audit(ctx context.Context, before *AuditCursor, limit int32) (
 	return out, next, nil
 }
 
-// Reader is what the handlers need (fakeable in router tests).
+// Reader is what the admin HTTP handlers need (fakeable in router tests).
 type Reader interface {
 	Content(ctx context.Context) ([]LessonContent, error)
+	Validate(ctx context.Context, versionID uuid.UUID) (ValidationReport, error)
+	Publish(ctx context.Context, actorUserID, versionID uuid.UUID, action string) (LessonContent, error)
 	Audit(ctx context.Context, before *AuditCursor, limit int32) ([]AuditEntry, *AuditCursor, error)
 }
 
-// Handler serves GET /admin/content and GET /admin/audit. The router allows admins only.
+var idempotencyKeyPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{8,128}$`)
+
+// Handler serves /admin/content, /admin/content/validate, /admin/content/publish and /admin/audit.
+// The router allows admins only.
 type Handler struct {
 	Admin   Reader
 	Cursors *httpx.Cursors
+}
+
+// ValidateRequest is the body of POST /admin/content/validate.
+type ValidateRequest struct {
+	ChallengeVersionID string `json:"challengeVersionId"`
+}
+
+// PublishRequest is the body of POST /admin/content/publish.
+type PublishRequest struct {
+	ChallengeVersionID string `json:"challengeVersionId"`
+	Action             string `json:"action"`
 }
 
 // ListContent handles GET /admin/content.
@@ -130,6 +148,65 @@ func (h Handler) ListContent(w http.ResponseWriter, r *http.Request) error {
 		return httpx.Internal(err)
 	}
 	httpx.WriteJSON(w, r, http.StatusOK, c)
+	return nil
+}
+
+// ValidateContent handles POST /admin/content/validate.
+func (h Handler) ValidateContent(w http.ResponseWriter, r *http.Request) error {
+	var body ValidateRequest
+	if err := httpx.DecodeJSON(r, &body); err != nil {
+		return err
+	}
+	versionID, err := uuid.Parse(body.ChallengeVersionID)
+	if err != nil {
+		return httpx.Validation("Invalid challengeVersionId.", httpx.FieldError{Field: "challengeVersionId", Message: "must be a UUID"})
+	}
+	report, err := h.Admin.Validate(r.Context(), versionID)
+	if errors.Is(err, ErrNotFound) {
+		return httpx.NotFound("Challenge version not found.")
+	}
+	if err != nil {
+		return httpx.Internal(err)
+	}
+	httpx.WriteJSON(w, r, http.StatusOK, report)
+	return nil
+}
+
+// PublishContent handles POST /admin/content/publish.
+func (h Handler) PublishContent(w http.ResponseWriter, r *http.Request) error {
+	p, ok := auth.PrincipalFrom(r.Context())
+	if !ok {
+		return httpx.Unauthenticated()
+	}
+	if !idempotencyKeyPattern.MatchString(r.Header.Get("Idempotency-Key")) {
+		return httpx.Validation("Idempotency-Key header is required.", httpx.FieldError{Field: "Idempotency-Key", Message: "must be 8-128 URL-safe characters"})
+	}
+	var body PublishRequest
+	if err := httpx.DecodeJSON(r, &body); err != nil {
+		return err
+	}
+	var fieldErrs []httpx.FieldError
+	versionID, err := uuid.Parse(body.ChallengeVersionID)
+	if err != nil {
+		fieldErrs = append(fieldErrs, httpx.FieldError{Field: "challengeVersionId", Message: "must be a UUID"})
+	}
+	if body.Action != "publish" && body.Action != "unpublish" {
+		fieldErrs = append(fieldErrs, httpx.FieldError{Field: "action", Message: "must be publish or unpublish"})
+	}
+	if len(fieldErrs) > 0 {
+		return httpx.Validation("Invalid publish request.", fieldErrs...)
+	}
+	lesson, err := h.Admin.Publish(r.Context(), p.UserID, versionID, body.Action)
+	if errors.Is(err, ErrNotFound) {
+		return httpx.NotFound("Challenge version not found.")
+	}
+	if errors.Is(err, ErrConflict) {
+		return httpx.Conflict(err.Error())
+	}
+	if err != nil {
+		return httpx.Internal(err)
+	}
+	httpx.WriteJSON(w, r, http.StatusOK, lesson)
 	return nil
 }
 

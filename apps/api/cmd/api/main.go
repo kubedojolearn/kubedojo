@@ -42,6 +42,7 @@ import (
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/httpserver"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/httpx"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/logging"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/observability"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/ratelimit"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/redis"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/progress"
@@ -82,6 +83,23 @@ func serve() error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	otelProvider, err := observability.Init(ctx, observability.Config{
+		ServiceName:    "kubedojo-api",
+		ServiceVersion: buildinfo.Version,
+		Environment:    cfg.Env,
+		OTLPEndpoint:   cfg.OTLPEndpoint,
+	})
+	if err != nil {
+		return err
+	}
+	defer func() {
+		shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := otelProvider.Shutdown(shutCtx); err != nil {
+			log.Warn("otel shutdown failed", "error", err)
+		}
+	}()
 
 	pool, err := database.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
