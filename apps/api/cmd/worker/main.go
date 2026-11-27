@@ -16,6 +16,7 @@ import (
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/config"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/database"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/logging"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/observability"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/redis"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/realtime"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/worker"
@@ -52,6 +53,23 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	otelProvider, err := observability.Init(ctx, observability.Config{
+		ServiceName:    "kubedojo-worker",
+		ServiceVersion: buildinfo.Version,
+		Environment:    cfg.Env,
+		OTLPEndpoint:   cfg.OTLPEndpoint,
+	})
+	if err != nil {
+		return err
+	}
+	defer func() {
+		shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := otelProvider.Shutdown(shutCtx); err != nil {
+			log.Warn("otel shutdown failed", "error", err)
+		}
+	}()
+
 	pool, err := database.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return err
@@ -64,7 +82,8 @@ func run() error {
 	}
 	defer func() { _ = rdb.Close() }()
 
-	// Jobs are registered here as their parts land (other retention: Part 19).
+	// Background jobs: outbox relay, lab expiry, account erasure and retention policies
+	// (docs/operations/database.md).
 	runner := worker.NewRunner(log)
 	// Lab state notifications for WebSockets (ADR-0004). Short interval: it is the latency of
 	// "another tab changed this lab", and an idle pass is one indexed query.
@@ -88,6 +107,41 @@ func run() error {
 		n, err := accounts.EraseDue(ctx, time.Now(), 100)
 		if n > 0 {
 			log.Info("erased deleted accounts", "count", n)
+		}
+		return err
+	}})
+	runner.Register(worker.Job{Name: "lab-content-purge", Interval: time.Hour, Run: func(ctx context.Context) error {
+		n, err := worker.PurgeEndedLabContent(ctx, pool, time.Now(), 200)
+		if n > 0 {
+			log.Info("purged ended lab content", "sessions", n)
+		}
+		return err
+	}})
+	runner.Register(worker.Job{Name: "command-history-retention", Interval: time.Hour, Run: func(ctx context.Context) error {
+		n, err := worker.PruneCommandHistory(ctx, pool, time.Now(), 5000)
+		if n > 0 {
+			log.Info("pruned command history", "rows", n)
+		}
+		return err
+	}})
+	runner.Register(worker.Job{Name: "outbox-retention", Interval: time.Hour, Run: func(ctx context.Context) error {
+		n, err := worker.PrunePublishedOutbox(ctx, pool, time.Now(), 5000)
+		if n > 0 {
+			log.Info("pruned published outbox", "rows", n)
+		}
+		return err
+	}})
+	runner.Register(worker.Job{Name: "activity-retention", Interval: 6 * time.Hour, Run: func(ctx context.Context) error {
+		n, err := worker.PruneActivityEvents(ctx, pool, time.Now(), 5000)
+		if n > 0 {
+			log.Info("pruned activity events", "rows", n)
+		}
+		return err
+	}})
+	runner.Register(worker.Job{Name: "audit-retention", Interval: 6 * time.Hour, Run: func(ctx context.Context) error {
+		n, err := worker.PruneAuditLogs(ctx, pool, time.Now(), 1000)
+		if n > 0 {
+			log.Info("pruned audit logs", "rows", n)
 		}
 		return err
 	}})

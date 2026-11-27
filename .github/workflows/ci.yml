@@ -231,6 +231,24 @@ jobs:
           kubectl -n kubedojo get pods,events -o wide || true
           kubectl -n kubedojo logs -l app.kubernetes.io/instance=kubedojo --all-containers --prefix --tail 100 || true
 
+  conformance:
+    name: Simulator conformance (kind)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/api/go.mod
+          cache-dependency-path: apps/api/go.sum
+      - name: Install kind
+        run: go install sigs.k8s.io/kind@v0.33.0
+      - name: Create kind cluster and run conformance suite
+        run: |
+          kind create cluster --name kubedojo-conformance --wait 120s
+          make test-conformance
+      - if: always()
+        run: kind delete cluster --name kubedojo-conformance || true
+
   secrets:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-24.04

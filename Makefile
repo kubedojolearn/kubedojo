@@ -136,6 +136,14 @@ test-contracts:
 test-integration: deps-up ## Go integration tests against Compose Postgres/Redis
 	cd $(API_DIR) && go test -race -tags=integration -count=1 ./...
 
+.PHONY: test-load
+test-load: deps-up ## Load and resource-budget tests against Compose Redis
+	cd $(API_DIR) && go test -race -tags=integration -count=1 ./tests/load/...
+
+.PHONY: test-conformance
+test-conformance: ## Replay simulator lessons against a real Kubernetes cluster (requires kind/kubectl)
+	cd $(API_DIR) && go test -v -tags=conformance -count=1 ./tests/conformance/...
+
 .PHONY: test-e2e
 test-e2e: ## Playwright end-to-end tests (builds and starts the web app)
 	pnpm --filter @kubedojo/web exec playwright install chromium

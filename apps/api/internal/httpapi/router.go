@@ -15,6 +15,7 @@ import (
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/health"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/labs"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/httpx"
+	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/observability"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/platform/ratelimit"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/progress"
 	"github.com/kubedojolearn/kubedojo/apps/api/internal/realtime"
@@ -82,6 +83,7 @@ func NewRouter(d Deps) http.Handler {
 
 	r.Use(httpx.WithRequestID(d.Log))
 	r.Use(httpx.Recover)
+	r.Use(observability.HTTPMiddleware("kubedojo-api", routePattern))
 	r.Use(httpx.Deadline(d.RequestTimeout))
 	r.Use(httpx.BodyLimit(d.MaxBodyBytes))
 	r.Use(httpx.AccessLog(routePattern))
@@ -159,6 +161,8 @@ func NewRouter(d Deps) http.Handler {
 				r.Use(auth.RequireRole(auth.RoleAdmin))
 				adminHandler := admin.Handler{Admin: d.Admin, Cursors: d.Cursors}
 				r.Method(http.MethodGet, "/admin/content", httpx.Handler(adminHandler.ListContent))
+				r.Method(http.MethodPost, "/admin/content/validate", httpx.Handler(adminHandler.ValidateContent))
+				r.Method(http.MethodPost, "/admin/content/publish", httpx.Handler(adminHandler.PublishContent))
 				r.Method(http.MethodGet, "/admin/audit", httpx.Handler(adminHandler.ListAudit))
 			})
 		})

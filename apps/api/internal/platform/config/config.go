@@ -29,6 +29,7 @@ type Config struct {
 	DatabaseURL     string
 	RedisURL        string
 	LogLevel        string
+	OTLPEndpoint    string
 	ShutdownTimeout time.Duration
 }
 
@@ -44,11 +45,18 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 
 	cfg := Config{
-		Env:         get("APP_ENV", EnvDevelopment),
-		HTTPAddr:    get("API_LISTEN_ADDR", ":8080"),
-		DatabaseURL: get("DATABASE_URL", ""),
-		RedisURL:    get("REDIS_URL", ""),
-		LogLevel:    strings.ToLower(get("LOG_LEVEL", "info")),
+		Env:          get("APP_ENV", EnvDevelopment),
+		HTTPAddr:     get("API_LISTEN_ADDR", ":8080"),
+		DatabaseURL:  get("DATABASE_URL", ""),
+		RedisURL:     get("REDIS_URL", ""),
+		LogLevel:     strings.ToLower(get("LOG_LEVEL", "info")),
+		OTLPEndpoint: get("OTEL_EXPORTER_OTLP_ENDPOINT", ""),
+	}
+
+	if cfg.OTLPEndpoint != "" {
+		if err := validateURL("OTEL_EXPORTER_OTLP_ENDPOINT", cfg.OTLPEndpoint, "http", "https"); err != nil {
+			errs = append(errs, err)
+		}
 	}
 
 	switch cfg.Env {

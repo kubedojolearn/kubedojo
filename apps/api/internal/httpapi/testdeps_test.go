@@ -116,6 +116,41 @@ func (adminFake) Content(context.Context) ([]admin.LessonContent, error) {
 		Versions: []admin.ChallengeVersion{{ID: v, Version: 1, ContentSHA256: strings.Repeat("a", 64), Status: "published", ImportedAt: at, PublishedAt: &at}}}}, nil
 }
 
+func (adminFake) Validate(_ context.Context, versionID uuid.UUID) (admin.ValidationReport, error) {
+	if versionID != testVersion {
+		return admin.ValidationReport{}, admin.ErrNotFound
+	}
+	return admin.ValidationReport{
+		ChallengeVersionID: versionID,
+		Valid:              true,
+		Errors:             []admin.ValidationError{},
+		SolutionReplay: admin.SolutionReplay{
+			Passed: true,
+			Goals:  []grading.Result{{GoalID: "deployment-replicas", Passed: true, Message: "Done."}},
+		},
+	}, nil
+}
+
+func (adminFake) Publish(_ context.Context, _, versionID uuid.UUID, action string) (admin.LessonContent, error) {
+	if versionID == staleVersion {
+		return admin.LessonContent{}, admin.ErrConflict
+	}
+	if versionID != testVersion {
+		return admin.LessonContent{}, admin.ErrNotFound
+	}
+	at := time.Date(2026, 10, 20, 9, 0, 0, 0, time.UTC)
+	status := "published"
+	cur := &versionID
+	if action == "unpublish" {
+		status = "retired"
+		cur = nil
+	}
+	return admin.LessonContent{
+		LessonID: "workloads/scaling-deployments", Title: "Scale a Deployment", CurrentVersionID: cur,
+		Versions: []admin.ChallengeVersion{{ID: versionID, Version: 1, ContentSHA256: strings.Repeat("a", 64), Status: status, ImportedAt: at, PublishedAt: &at}},
+	}, nil
+}
+
 func (adminFake) Audit(context.Context, *admin.AuditCursor, int32) ([]admin.AuditEntry, *admin.AuditCursor, error) {
 	return []admin.AuditEntry{{ID: uuid.MustParse("91919191-9191-4191-8191-919191919191"), Action: "user.deletion_requested", EntityType: "user",
 		EntityID: "x", Details: json.RawMessage(`{}`), CreatedAt: time.Date(2026, 10, 21, 9, 0, 0, 0, time.UTC)}}, nil, nil

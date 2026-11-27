@@ -7,10 +7,76 @@ package dbgen
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+const activateChallengeVersion = `-- name: ActivateChallengeVersion :exec
+UPDATE challenge_versions
+SET status = 'published', published_at = COALESCE(published_at, now()), retired_at = NULL
+WHERE id = $1
+`
+
+// Marks a draft or retired version as published without mutating an existing published_at.
+func (q *Queries) ActivateChallengeVersion(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, activateChallengeVersion, id)
+	return err
+}
+
+const getAdminChallengeVersion = `-- name: GetAdminChallengeVersion :one
+SELECT v.id, v.lesson_id, v.version, v.content_sha256, v.spec, v.simulator_version, v.status,
+       v.imported_at, v.published_at, v.retired_at,
+       l.course_id, l.slug AS lesson_slug, l.title AS lesson_title, l.current_challenge_version_id,
+       c.slug AS course_slug
+FROM challenge_versions v
+JOIN lessons l ON l.id = v.lesson_id
+JOIN courses c ON c.id = l.course_id
+WHERE v.id = $1
+`
+
+type GetAdminChallengeVersionRow struct {
+	ID                        uuid.UUID
+	LessonID                  uuid.UUID
+	Version                   int32
+	ContentSha256             string
+	Spec                      json.RawMessage
+	SimulatorVersion          string
+	Status                    string
+	ImportedAt                time.Time
+	PublishedAt               *time.Time
+	RetiredAt                 *time.Time
+	CourseID                  uuid.UUID
+	LessonSlug                string
+	LessonTitle               string
+	CurrentChallengeVersionID *uuid.UUID
+	CourseSlug                string
+}
+
+// Loads a challenge version together with its lesson and course metadata for validation/publishing.
+func (q *Queries) GetAdminChallengeVersion(ctx context.Context, id uuid.UUID) (GetAdminChallengeVersionRow, error) {
+	row := q.db.QueryRow(ctx, getAdminChallengeVersion, id)
+	var i GetAdminChallengeVersionRow
+	err := row.Scan(
+		&i.ID,
+		&i.LessonID,
+		&i.Version,
+		&i.ContentSha256,
+		&i.Spec,
+		&i.SimulatorVersion,
+		&i.Status,
+		&i.ImportedAt,
+		&i.PublishedAt,
+		&i.RetiredAt,
+		&i.CourseID,
+		&i.LessonSlug,
+		&i.LessonTitle,
+		&i.CurrentChallengeVersionID,
+		&i.CourseSlug,
+	)
+	return i, err
+}
 
 const listAdminContent = `-- name: ListAdminContent :many
 
@@ -35,7 +101,7 @@ type ListAdminContentRow struct {
 	PublishedAt               *time.Time
 }
 
-// Admin read views (Part 18 adds publishing from the browser).
+// Admin read and publishing views.
 // Every lesson with every imported version, in curriculum order (lessons without versions too).
 func (q *Queries) ListAdminContent(ctx context.Context) ([]ListAdminContentRow, error) {
 	rows, err := q.db.Query(ctx, listAdminContent)
@@ -66,4 +132,80 @@ func (q *Queries) ListAdminContent(ctx context.Context) ([]ListAdminContentRow, 
 		return nil, err
 	}
 	return items, nil
+}
+
+const listAdminLessonContent = `-- name: ListAdminLessonContent :many
+SELECT c.slug AS course_slug, l.slug AS lesson_slug, l.title, l.current_challenge_version_id,
+       v.id AS version_id, v.version, v.content_sha256, v.status, v.imported_at, v.published_at
+FROM lessons l
+JOIN courses c ON c.id = l.course_id
+LEFT JOIN challenge_versions v ON v.lesson_id = l.id
+WHERE l.id = $1
+ORDER BY v.version DESC
+`
+
+type ListAdminLessonContentRow struct {
+	CourseSlug                string
+	LessonSlug                string
+	Title                     string
+	CurrentChallengeVersionID *uuid.UUID
+	VersionID                 *uuid.UUID
+	Version                   *int32
+	ContentSha256             *string
+	Status                    *string
+	ImportedAt                *time.Time
+	PublishedAt               *time.Time
+}
+
+// One lesson with every imported version, newest version first.
+func (q *Queries) ListAdminLessonContent(ctx context.Context, id uuid.UUID) ([]ListAdminLessonContentRow, error) {
+	rows, err := q.db.Query(ctx, listAdminLessonContent, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAdminLessonContentRow{}
+	for rows.Next() {
+		var i ListAdminLessonContentRow
+		if err := rows.Scan(
+			&i.CourseSlug,
+			&i.LessonSlug,
+			&i.Title,
+			&i.CurrentChallengeVersionID,
+			&i.VersionID,
+			&i.Version,
+			&i.ContentSha256,
+			&i.Status,
+			&i.ImportedAt,
+			&i.PublishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockLessonForPublish = `-- name: LockLessonForPublish :one
+SELECT id, course_id, current_challenge_version_id
+FROM lessons
+WHERE id = $1
+FOR UPDATE
+`
+
+type LockLessonForPublishRow struct {
+	ID                        uuid.UUID
+	CourseID                  uuid.UUID
+	CurrentChallengeVersionID *uuid.UUID
+}
+
+// Locks the lesson row before switching its published version.
+func (q *Queries) LockLessonForPublish(ctx context.Context, id uuid.UUID) (LockLessonForPublishRow, error) {
+	row := q.db.QueryRow(ctx, lockLessonForPublish, id)
+	var i LockLessonForPublishRow
+	err := row.Scan(&i.ID, &i.CourseID, &i.CurrentChallengeVersionID)
+	return i, err
 }

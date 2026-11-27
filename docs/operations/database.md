@@ -43,17 +43,18 @@ Integration tests (`make test-integration`) never touch the development database
 
 ## Data retention and deletion
 
-Retention windows are defined in [requirements.md](../architecture/requirements.md#data-retention-and-deletion). Jobs that enforce them run in the worker (`cmd/worker`, the `worker` Compose service). Lab expiry and idempotency cleanup run since Part 09, account erasure since the account release; the rest arrive in Part 19, and the schema already supports them:
+Retention windows are defined in [requirements.md](../architecture/requirements.md#data-retention-and-deletion). Jobs that enforce them run in the worker (`cmd/worker`, the `worker` Compose service):
 
 | Job | What it does | Schema support |
 | --- | --- | --- |
 | Lab expiry (**running**, every minute) | Active labs idle for 14 days → `expired` (`IDLE_TIMEOUT`), in batches of 500 with `SKIP LOCKED`. A write that finds a lapsed lab first also expires it, and labs on an unsupported simulator version expire as `SIMULATOR_UPGRADED`. | `lab_sessions_expiry_idx` |
 | Idempotency cleanup (**running**, hourly) | Delete `idempotency_records` older than 7 days | `idempotency_records_created_idx` |
 | Account erasure (**running**, hourly) | Hard-delete accounts deleted more than 30 days ago, 100 per run, one transaction each (`account.EraseDue`) | `users.deleted_at`, cascades, `kubedojo.erasing_user` |
-| Lab content purge | 30 days after a lab ends, delete its resources, files, events, commands and answers (session row and attempts stay) | `lab_sessions_ended_idx`, cascades from `lab_sessions` children |
-| Command history cap | Delete `command_executions` older than 90 days | `command_executions_executed_at_idx` |
-| Outbox cleanup | Delete published outbox rows after 7 days | `outbox_events_published_idx` |
-| Audit retention | Delete audit entries older than 1 year | Trigger allows it only with `SET LOCAL kubedojo.audit_retention = 'on'` |
+| Lab content purge (**running**, hourly) | 30 days after a lab ends, delete its resources, files, events, commands and answers (session row and attempts stay) | `lab_sessions_ended_idx`, cascades from `lab_sessions` children |
+| Command history cap (**running**, hourly) | Delete `command_executions` older than 90 days | `command_executions_executed_at_idx` |
+| Outbox cleanup (**running**, hourly) | Delete published outbox rows after 7 days | `outbox_events_published_idx` |
+| Activity retention (**running**, every 6 hours) | Delete `activity_events` older than 180 days | `activity_events_occurred_idx` |
+| Audit retention (**running**, every 6 hours) | Delete audit entries older than 1 year | Trigger allows it only with `SET LOCAL kubedojo.audit_retention = 'on'` |
 
 ### Account deletion
 
