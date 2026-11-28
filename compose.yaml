@@ -11,7 +11,7 @@ x-hardening: &hardening
 services:
   postgres:
     <<: *hardening
-    image: postgres:18-alpine
+    image: postgres:19-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?run make setup}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run make setup}
